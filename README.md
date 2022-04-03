@@ -7,6 +7,17 @@
 
 <div align="center"> <img src='imgs/speed.png'> </div>
 
+## 特性 Features
+高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP 框架 [httpx](https://www.python-httpx.org/) ，和 [anyio](https://anyio.readthedocs.io/en/stable/) ：
+* 单个媒体文件（音频/视频）的分段异步下载
+* 单个视频的音视频异步下载
+* 多个视频的异步下载
+* 用户可控的并发量设置
+* 与高并发配合的很好的进度条
+* HTTP/2协议支持
+* 异步文件I/O
+* 异步视频合成进程
+
 ## 依赖环境 Environment
 1. Python 相关依赖
 ```shell
@@ -45,20 +56,8 @@ python bili_cmd.py get_video 'url'
 ```
 ## 进阶使用 Advance Guide
 请使用`python bili_cmd.py -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。
-### 我是大会员🥸
+### 你是大会员？🥸
 请在`-cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
-
-
-## 特性 Features
-高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP 框架 [httpx](https://www.python-httpx.org/) ，和 [anyio](https://anyio.readthedocs.io/en/stable/) ：
-* 单个媒体文件（音频/视频）的分段异步下载
-* 单个视频的音视频异步下载
-* 多个视频的异步下载
-* 用户可控的并发量设置
-* 与高并发配合的很好的进度条
-* HTTP/2协议支持
-* 异步文件I/O
-* 异步视频合成进程
 
 ## 声明
 
