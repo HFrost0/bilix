@@ -1,5 +1,6 @@
 # Lighting-bilibili-download
 ⚡️快如闪电的 [bilibili](https://www.bilibili.com/) 视频下载工具，基于 Python 现代 Async 异步特性，高速批量下载整部动漫，电视剧，电影，up投稿...
+
 ![alive-progress demo](imgs/lighting.gif)
 ## 依赖环境 Environment
 1. Python 相关依赖
