@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 from lighting_downloader import Downloader
 
@@ -8,12 +9,12 @@ async def main(args):
         await d.get_series(args.url, quality=args.q)
     elif args.method == 'get_video':
         await d.get_video(args.url, quality=args.q)
+    else:
+        print('请使用 get_series 或者 get_video')
     await d.aclose()
 
 
 if __name__ == '__main__':
-    import argparse
-
     parser = argparse.ArgumentParser(description='⚡️Lighting-bilibili-download ⚡️快如闪电的bilibili下载工具')
     parser.add_argument('method', type=str, help='get_series：获取整个系列的视频（包括多p投稿，动漫，电视剧，电影，纪录片），也可以下载单个视频 '
                                                  'get_video：获取特定的单个视频，在用户不希望下载系列其他视频的时候可以使用')
