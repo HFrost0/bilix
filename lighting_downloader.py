@@ -134,17 +134,35 @@ class Downloader:
             part_names.append(part_name)
             cos.append(self._get_media_part(media_url, range_header, part_name, task_id))
         await asyncio.gather(*cos)
-        async with await anyio.open_file(f'{self.videos_dir}/{media_name}.m4s', 'ab') as f:
+        async with await anyio.open_file(f'{self.videos_dir}/{media_name}.m4s', 'wb') as f:
             for part_name in part_names:
                 async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'rb') as pf:
                     await f.write(await pf.read())
                 os.remove(f'{self.videos_dir}/{part_name}.m4s')
 
     async def _get_media_part(self, media_url, range_header, part_name, task_id):
-        async with self.client.stream("GET", media_url, headers=range_header) as r:
-            async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'wb') as f:
-                downloaded = r.num_bytes_downloaded
-                async for chunk in r.aiter_bytes():
-                    await f.write(chunk)
-                    self.progress.update(task_id, advance=r.num_bytes_downloaded - downloaded)
+        try:
+            async with self.client.stream("GET", media_url, headers=range_header) as r:
+                async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'ab') as f:
                     downloaded = r.num_bytes_downloaded
+                    async for chunk in r.aiter_bytes():
+                        await f.write(chunk)
+                        self.progress.update(task_id, advance=r.num_bytes_downloaded - downloaded)
+                        downloaded = r.num_bytes_downloaded
+        except httpx.RemoteProtocolError:
+            start, end = range_header['Range'][6:].split('-')
+            start = int(start) + downloaded
+            range_header = {'Range': f'bytes={start}-{end}'}
+            await self._get_media_part(media_url, range_header, part_name, task_id)
+
+
+if __name__ == '__main__':
+    async def main():
+        d = Downloader(max_concurrency=2)
+        await d.get_series(
+            'https://www.bilibili.com/bangumi/play/ss20490?spm_id_from=333.337.0.0'
+            , quality=0)
+        await d.aclose()
+
+
+    asyncio.run(main())
