@@ -40,7 +40,7 @@ python bili_cmd.py get_video 'url'
 ```
 ## 进阶使用 Advance Guide
 请使用`python bili_cmd.py -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。
-###我是大会员🥸
+### 我是大会员🥸
 请在`-cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
 
 
