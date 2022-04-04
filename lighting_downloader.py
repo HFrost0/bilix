@@ -1,6 +1,6 @@
 """
 ffmpeg should be installed
-pip install 'httpx[http2]' bs4 rich
+pip install 'httpx[http2]' rich
 """
 import asyncio
 import anyio
@@ -11,7 +11,6 @@ import json
 import os
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
-from bs4 import BeautifulSoup
 
 
 class Downloader:
@@ -82,9 +81,11 @@ class Downloader:
         """
         await self.sema.acquire()
         res = await self.client.get(url)
-        soup = BeautifulSoup(res.text, 'html.parser')
-        title = re.sub(r"[/\\:*?\"<>|]", '',  # replace windows illegal character in title
-                       f"{soup.h1['title'].strip()}-{add_name}" if add_name else soup.h1['title'].strip())
+        title = re.search('<h1 title="([^"<]*)"', res.text).groups()[0].strip()
+        if add_name:
+            title += f'-{add_name.strip()}'
+        # replace windows illegal character in title
+        title = re.sub(r"[/\\:*?\"<>|]", '', title)
         if os.path.exists(f'{self.videos_dir}/{title}.mp4'):
             print(f'{title}.mp4 已经存在')
             self.sema.release()
@@ -96,11 +97,9 @@ class Downloader:
             # choose quality
             for q, (_, i) in enumerate(groupby(play_info['data']['dash']['video'], key=lambda x: x['id'])):
                 video_info = next(i)
-                video_urls = (video_info['base_url'], *video_info['backup_url'])
-                if quality == q:
-                    break
+                video_urls = (video_info['base_url'], *(video_info['backup_url'] if video_info['backup_url'] else ()))
             audio_info = play_info['data']['dash']['audio'][0]
-            audio_urls = (audio_info['base_url'], *audio_info['backup_url'])
+            audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
             print(f'{title} 需要大会员，或该地区不支持')
             self.sema.release()
@@ -163,7 +162,7 @@ if __name__ == '__main__':
     async def main():
         d = Downloader(max_concurrency=2)
         await d.get_series(
-            'https://www.bilibili.com/bangumi/play/ss20490?spm_id_from=333.337.0.0'
+            'https://www.bilibili.com/video/BV1y34y1s7J7?spm_id_from=333.337.search-card.all.click'
             , quality=0)
         await d.aclose()
 

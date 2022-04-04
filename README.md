@@ -9,9 +9,10 @@
 
 ## 特性 Features
 高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP 框架 [httpx](https://www.python-httpx.org/) ，和 [anyio](https://anyio.readthedocs.io/en/stable/) ：
-* 单个媒体文件（音频/视频）的分段异步下载
+* 单个媒体文件（音频/视频）的分段异步下载，以及备选服务器的同时利用
 * 单个视频的音视频异步下载
 * 多个视频的异步下载
+* 断点续传
 * 用户可控的并发量设置
 * 与高并发配合的很好的进度条
 * HTTP/2协议支持
@@ -21,7 +22,7 @@
 ## 依赖环境 Environment
 1. Python 相关依赖
 ```shell
-pip install 'httpx[http2]' bs4 rich
+pip install 'httpx[http2]' rich
 ```
 2. [FFmpeg](https://ffmpeg.org/contact.html#MailingLists) ：一个命令行视频工具，用于合成下载的音频和视频
 
