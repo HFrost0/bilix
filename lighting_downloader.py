@@ -100,7 +100,7 @@ class Downloader:
         """
         url = url.split('?')[0]
         res = await self.client.get(url, follow_redirects=True)
-        initial_state = re.search(r'<script>window.__INITIAL_STATE__=({[^;]*});', res.text).groups()[0]
+        initial_state = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
         initial_state = json.loads(initial_state)
         video_urls = []
         add_names = []
