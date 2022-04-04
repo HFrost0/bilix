@@ -8,8 +8,7 @@ import httpx
 import re
 import json
 import os
-import rich
-from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn
+from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
 from bs4 import BeautifulSoup
 
@@ -35,7 +34,7 @@ class Downloader:
             DownloadColumn(),
             TransferSpeedColumn(),
             'ETA',
-            rich.progress.TimeRemainingColumn())
+            TimeRemainingColumn())
         self.progress.start()
         self.sema = asyncio.Semaphore(max_concurrency)
 
@@ -129,10 +128,9 @@ class Downloader:
         for i in range(concurrency):
             start = i * part_length
             end = (i + 1) * part_length - 1 if i < concurrency - 1 else total - 1
-            range_header = {'Range': f'bytes={start}-{end}'}
             part_name = f'{media_name}-{start}-{end}'
             part_names.append(part_name)
-            cos.append(self._get_media_part(media_url, range_header, part_name, task_id))
+            cos.append(self._get_media_part(media_url, (start, end), part_name, task_id))
         await asyncio.gather(*cos)
         async with await anyio.open_file(f'{self.videos_dir}/{media_name}.m4s', 'wb') as f:
             for part_name in part_names:
@@ -140,20 +138,21 @@ class Downloader:
                     await f.write(await pf.read())
                 os.remove(f'{self.videos_dir}/{part_name}.m4s')
 
-    async def _get_media_part(self, media_url, range_header, part_name, task_id):
+    async def _get_media_part(self, media_url, bytes_range: tuple, part_name, task_id, exception=False):
+        start, end = bytes_range
+        if os.path.exists(f'{self.videos_dir}/{part_name}.m4s'):
+            downloaded = os.path.getsize(f'{self.videos_dir}/{part_name}.m4s')
+            start += downloaded
+            if not exception:
+                self.progress.update(task_id, advance=downloaded)
         try:
-            async with self.client.stream("GET", media_url, headers=range_header) as r:
+            async with self.client.stream("GET", media_url, headers={'Range': f'bytes={start}-{end}'}) as r:
                 async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'ab') as f:
-                    downloaded = r.num_bytes_downloaded
                     async for chunk in r.aiter_bytes():
                         await f.write(chunk)
-                        self.progress.update(task_id, advance=r.num_bytes_downloaded - downloaded)
-                        downloaded = r.num_bytes_downloaded
+                        self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
-            start, end = range_header['Range'][6:].split('-')
-            start = int(start) + downloaded
-            range_header = {'Range': f'bytes={start}-{end}'}
-            await self._get_media_part(media_url, range_header, part_name, task_id)
+            await self._get_media_part(media_url, (start, end), part_name, task_id, exception=True)
 
 
 if __name__ == '__main__':
