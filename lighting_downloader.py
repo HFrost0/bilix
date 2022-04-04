@@ -80,8 +80,8 @@ class Downloader:
         :return:
         """
         url = url.split('?')[0]
-        res = await self.client.get(url)
-        initial_state = re.search(r'<script>window.__INITIAL_STATE__=({.*});', res.text).groups()[0]
+        res = await self.client.get(url, follow_redirects=True)
+        initial_state = re.search(r'<script>window.__INITIAL_STATE__=({[^;]*});', res.text).groups()[0]
         initial_state = json.loads(initial_state)
         video_urls = []
         add_names = []
@@ -94,7 +94,8 @@ class Downloader:
                 video_urls.append(i['link'])
                 add_names.append(i['title'])
         else:
-            raise Exception('未知类型')
+            print(f'未知类型 {url}')
+            return
         await asyncio.gather(
             *[self.get_video(url, quality, add_name) for url, add_name in zip(video_urls, add_names)]
         )
@@ -192,10 +193,10 @@ class Downloader:
 if __name__ == '__main__':
     async def main():
         d = Downloader(max_concurrency=2)
-        # await d.get_series(
-        #     'https://www.bilibili.com/video/BV1y34y1s7J7?spm_id_from=333.337.search-card.all.click'
-        #     , quality=0)
-        await d.get_up_videos('672328094')
+        await d.get_series(
+            'https://www.bilibili.com/bangumi/play/ep451880?from_spmid=666.9.recommend.0'
+            , quality=0)
+        # await d.get_up_videos('18225678')
         await d.aclose()
 
 
