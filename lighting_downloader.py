@@ -42,6 +42,35 @@ class Downloader:
         self.progress.stop()
         await self.client.aclose()
 
+    async def get_up_videos(self, mid: str, total=10, order='pubdate', keyword='', quality=0):
+        ps = 30
+        params = {'mid': mid, 'order': order, 'ps': ps, 'pn': 1, 'keyword': keyword}
+        res = await self.client.get('https://api.bilibili.com/x/space/arc/search', params=params)
+        res.raise_for_status()
+        info = json.loads(res.text)
+        total = min(info['data']['page']['count'], total)
+        page_nums = total // ps + min(1, total % ps)
+        cors = []
+        for i in range(page_nums):
+            if i + 1 == page_nums:
+                num = total - (page_nums - 1) * ps
+            else:
+                num = ps
+            cors.append(self.get_up_videos_by_page(mid, i + 1, num, order, keyword, quality))
+        await asyncio.gather(*cors)
+
+    async def get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0):
+        ps = 30
+        num = min(ps, num)
+        params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
+        res = await self.client.get('https://api.bilibili.com/x/space/arc/search', params=params)
+        res.raise_for_status()
+        info = json.loads(res.text)
+        bv_ids = [i['bvid'] for i in info['data']['list']['vlist']][:num]
+        await asyncio.gather(
+            *[self.get_series(f'https://www.bilibili.com/video/{bv}', quality) for bv in bv_ids]
+        )
+
     async def get_series(self, url: str, quality: int = 0):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
@@ -163,9 +192,10 @@ class Downloader:
 if __name__ == '__main__':
     async def main():
         d = Downloader(max_concurrency=2)
-        await d.get_series(
-            'https://www.bilibili.com/video/BV1y34y1s7J7?spm_id_from=333.337.search-card.all.click'
-            , quality=0)
+        # await d.get_series(
+        #     'https://www.bilibili.com/video/BV1y34y1s7J7?spm_id_from=333.337.search-card.all.click'
+        #     , quality=0)
+        await d.get_up_videos('672328094')
         await d.aclose()
 
 
