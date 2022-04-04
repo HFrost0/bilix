@@ -42,23 +42,23 @@ class Downloader:
         self.progress.stop()
         await self.client.aclose()
 
-    async def get_series(self, front_url: str, quality: int = 0):
+    async def get_series(self, url: str, quality: int = 0):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
-        :param front_url: 系列中任意一个视频的url
+        :param url: 系列中任意一个视频的url
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
         :return:
         """
-        front_url = front_url.split('?')[0]
-        res = await self.client.get(front_url)
+        url = url.split('?')[0]
+        res = await self.client.get(url)
         initial_state = re.search(r'<script>window.__INITIAL_STATE__=({.*});', res.text).groups()[0]
         initial_state = json.loads(initial_state)
         video_urls = []
         add_names = []
         if 'videoData' in initial_state:  # bv视频
             for idx, i in enumerate(initial_state['videoData']['pages']):
-                video_urls.append(f"{front_url}?p={idx + 1}")
+                video_urls.append(f"{url}?p={idx + 1}")
                 add_names.append(i['part'] if len(initial_state['videoData']['pages']) > 1 else '')
         elif 'initEpList' in initial_state:  # 动漫，电视剧，电影
             for i in initial_state['initEpList']:
@@ -81,7 +81,7 @@ class Downloader:
         """
         await self.sema.acquire()
         res = await self.client.get(url)
-        title = re.search('<h1 title="([^"<]*)"', res.text).groups()[0].strip()
+        title = re.search('<h1 title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title += f'-{add_name.strip()}'
         # replace windows illegal character in title
@@ -98,6 +98,8 @@ class Downloader:
             for q, (_, i) in enumerate(groupby(play_info['data']['dash']['video'], key=lambda x: x['id'])):
                 video_info = next(i)
                 video_urls = (video_info['base_url'], *(video_info['backup_url'] if video_info['backup_url'] else ()))
+                if q == quality:
+                    break
             audio_info = play_info['data']['dash']['audio'][0]
             audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
