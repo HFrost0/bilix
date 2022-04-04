@@ -43,6 +43,15 @@ class Downloader:
         await self.client.aclose()
 
     async def get_up_videos(self, mid: str, total=10, order='pubdate', keyword='', quality=0):
+        """
+
+        :param mid: b站用户id，在空间页面的url中可以找到
+        :param total: 下载总数
+        :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
+        :param keyword: 过滤关键词
+        :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :return:
+        """
         ps = 30
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': 1, 'keyword': keyword}
         res = await self.client.get('https://api.bilibili.com/x/space/arc/search', params=params)
@@ -60,6 +69,16 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0):
+        """
+
+        :param mid: b站用户id，在空间页面的url中可以找到
+        :param pn: 页码
+        :param num: 下载数量
+        :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
+        :param keyword: 过滤关键词
+        :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :return:
+        """
         ps = 30
         num = min(ps, num)
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
