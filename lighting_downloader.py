@@ -6,6 +6,7 @@ import asyncio
 import anyio
 import httpx
 import re
+import random
 import json
 import os
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
@@ -94,10 +95,12 @@ class Downloader:
             play_info = json.loads(play_info)
             # choose quality
             for q, (_, i) in enumerate(groupby(play_info['data']['dash']['video'], key=lambda x: x['id'])):
-                video_url = next(i)['base_url']
+                video_info = next(i)
+                video_urls = (video_info['base_url'], *video_info['backup_url'])
                 if quality == q:
                     break
-            audio_url = play_info['data']['dash']['audio'][0]['base_url']
+            audio_info = play_info['data']['dash']['audio'][0]
+            audio_urls = (audio_info['base_url'], *audio_info['backup_url'])
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
             print(f'{title} 需要大会员，或该地区不支持')
             self.sema.release()
@@ -105,8 +108,8 @@ class Downloader:
         task_id = self.progress.add_task(total=1,
                                          description=title if len(title) < 43 else f'{title[:20]}...{title[-20:]}')
         await asyncio.gather(
-            self._get_media(video_url, f'{title}-video', task_id),
-            self._get_media(audio_url, f'{title}-audio', task_id)
+            self._get_media(video_urls, f'{title}-video', task_id),
+            self._get_media(audio_urls, f'{title}-audio', task_id)
         )
         self.sema.release()  # let next task begin
         await anyio.run_process(
@@ -118,8 +121,8 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
-    async def _get_media(self, media_url, media_name, task_id, concurrency=5):
-        res = await self.client.head(media_url)
+    async def _get_media(self, media_urls: tuple, media_name, task_id, concurrency=5):
+        res = await self.client.head(random.choice(media_urls))
         total = int(res.headers['Content-Length'])
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total)
         part_length = total // concurrency
@@ -130,7 +133,7 @@ class Downloader:
             end = (i + 1) * part_length - 1 if i < concurrency - 1 else total - 1
             part_name = f'{media_name}-{start}-{end}'
             part_names.append(part_name)
-            cos.append(self._get_media_part(media_url, (start, end), part_name, task_id))
+            cos.append(self._get_media_part(media_urls, (start, end), part_name, task_id))
         await asyncio.gather(*cos)
         async with await anyio.open_file(f'{self.videos_dir}/{media_name}.m4s', 'wb') as f:
             for part_name in part_names:
@@ -138,7 +141,7 @@ class Downloader:
                     await f.write(await pf.read())
                 os.remove(f'{self.videos_dir}/{part_name}.m4s')
 
-    async def _get_media_part(self, media_url, bytes_range: tuple, part_name, task_id, exception=False):
+    async def _get_media_part(self, media_urls: tuple, bytes_range: tuple, part_name, task_id, exception=False):
         start, end = bytes_range
         if os.path.exists(f'{self.videos_dir}/{part_name}.m4s'):
             downloaded = os.path.getsize(f'{self.videos_dir}/{part_name}.m4s')
@@ -146,13 +149,14 @@ class Downloader:
             if not exception:
                 self.progress.update(task_id, advance=downloaded)
         try:
-            async with self.client.stream("GET", media_url, headers={'Range': f'bytes={start}-{end}'}) as r:
+            async with self.client.stream("GET", random.choice(media_urls),
+                                          headers={'Range': f'bytes={start}-{end}'}) as r:
                 async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'ab') as f:
                     async for chunk in r.aiter_bytes():
                         await f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
-            await self._get_media_part(media_url, (start, end), part_name, task_id, exception=True)
+            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=True)
 
 
 if __name__ == '__main__':
