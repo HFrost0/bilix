@@ -28,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('-dir', type=str, default='videos', help='文件的下载目录，默认当前路径下的videos文件夹下，不存在会自动创建')
 
     parser.add_argument('-num', type=int, default=10, help='下载前多少个投稿，仅get_up时生效')
-    parser.add_argument('-order', type=int, default=10, help='何种排序，最新发布pubdate，最多播放click，最多收藏stow， 仅get_up时生效')
+    parser.add_argument('-order', type=str, default='pubdate', help='何种排序，最新发布pubdate，最多播放click，最多收藏stow， 仅get_up时生效')
+    parser.add_argument('-keyword', type=str, default='', help='搜索关键词， 仅get_up时生效')
 
     asyncio.run(main(parser.parse_args()))
