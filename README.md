@@ -1,11 +1,11 @@
 # Lighting-bilibili-download
 ⚡️快如闪电的 [bilibili](https://www.bilibili.com/) 视频下载工具，基于 Python 现代 Async 异步特性，高速批量下载整部动漫，电视剧，电影，up投稿...
 
-<div align="center"> <img src='imgs/lighting.gif'> </div>
+<div align="center"> <img src='imgs/lighting.gif' style="border-radius: 8px"> </div>
 
 ⚡️在200M宽带中实测可以拉满网速
 
-<div align="center"> <img src='imgs/speed.gif'> </div>
+<div align="center"> <img src='imgs/speed.gif' style="border-radius: 8px"> </div>
 
 ## 特性 Features
 高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP 框架 [httpx](https://www.python-httpx.org/) ，和 [anyio](https://anyio.readthedocs.io/en/stable/) ：
