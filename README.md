@@ -5,7 +5,7 @@
 
 ⚡️在200M宽带中实测可以拉满网速
 
-<div align="center"> <img src='imgs/speed.png'> </div>
+<div align="center"> <img src='imgs/speed.gif'> </div>
 
 ## 特性 Features
 高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP 框架 [httpx](https://www.python-httpx.org/) ，和 [anyio](https://anyio.readthedocs.io/en/stable/) ：
