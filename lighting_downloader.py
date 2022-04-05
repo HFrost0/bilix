@@ -14,12 +14,13 @@ from itertools import groupby
 
 
 class Downloader:
-    def __init__(self, videos_dir='videos', max_concurrency=2, sess_data=''):
+    def __init__(self, videos_dir='videos', sess_data='', max_concurrency=2, part_concurrency=5):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
-        :param max_concurrency: 限制最大同时下载的视频数量
         :param sess_data: 有条件的用户填写大会员凭证，填写后可下载大会员资源
+        :param max_concurrency: 限制最大同时下载的视频数量
+        :param part_concurrency: 每个媒体的分段并发数
         """
         self.videos_dir = videos_dir
         if not os.path.exists(self.videos_dir):
@@ -37,6 +38,7 @@ class Downloader:
             TimeRemainingColumn())
         self.progress.start()
         self.sema = asyncio.Semaphore(max_concurrency)
+        self.part_concurrency = part_concurrency
 
     async def aclose(self):
         self.progress.stop()
@@ -171,16 +173,16 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
-    async def _get_media(self, media_urls: tuple, media_name, task_id, concurrency=5):
+    async def _get_media(self, media_urls: tuple, media_name, task_id):
         res = await self.client.head(random.choice(media_urls))
         total = int(res.headers['Content-Length'])
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total)
-        part_length = total // concurrency
+        part_length = total // self.part_concurrency
         cos = []
         part_names = []
-        for i in range(concurrency):
+        for i in range(self.part_concurrency):
             start = i * part_length
-            end = (i + 1) * part_length - 1 if i < concurrency - 1 else total - 1
+            end = (i + 1) * part_length - 1 if i < self.part_concurrency - 1 else total - 1
             part_name = f'{media_name}-{start}-{end}'
             part_names.append(part_name)
             cos.append(self._get_media_part(media_urls, (start, end), part_name, task_id))

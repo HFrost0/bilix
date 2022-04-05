@@ -68,6 +68,26 @@ python bili_cmd.py get_up '672328094' -num 100
 请使用`python bili_cmd.py -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。
 ### 你是大会员？🥸
 请在`-cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
+### 在 python 中调用
+觉得命令行太麻烦，不够强大？想要直接调用模块？下面是一个小例子。
+```python
+import asyncio
+from lighting_downloader import Downloader
 
+
+async def main():
+    d = Downloader(max_concurrency=20, part_concurrency=10)
+    cor1 = d.get_series(
+        'https://www.bilibili.com/bangumi/play/ss28277?spm_id_from=333.337.0.0'
+        , quality=999)
+    cor2 = d.get_up_videos(mid='436482484')
+    cor3 = d.get_video('https://www.bilibili.com/bangumi/play/ep477122?from_spmid=666.4.0.0')
+    await asyncio.gather(cor1, cor2, cor3)
+    await d.aclose()
+
+asyncio.run(main())
+
+```
+`Downloader`类的下载方法都是异步的，所以你可以自由组合这些任务。同时我们把并发数调大，是时候挑战网速了。
 ## 声明
 
