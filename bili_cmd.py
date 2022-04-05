@@ -10,7 +10,7 @@ async def main(args):
     elif args.method == 'get_video':
         await d.get_video(args.key, quality=args.q)
     elif args.method == 'get_up':
-        await d.get_up_videos(args.key, quality=args.q, total=args.num, order=args.order)
+        await d.get_up_videos(args.key, quality=args.q, total=args.num, order=args.order, keyword=args.keyword)
     else:
         print('请使用 get_series 或者 get_video')
     await d.aclose()
