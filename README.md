@@ -63,6 +63,12 @@ python bili_cmd.py get_up '672328094' -num 100
 ```
 `672328094`是up主的id，在up空间首页的url中就可以找到哦，例如： https://space.bilibili.com/672328094
 
+### 下载分区视频
+假设你喜欢看舞蹈区👍，想要下载最近30天播放量最高的20个超级敏感宅舞视频，那么你可以使用
+```shell
+python bili_cmd.py get_cate 宅舞 -key 超级敏感 -order click -num 20 -days 30
+```
+`get_cate`支持大部分分区，可以使用排序，关键词搜索等，详细请参考`python bili_cmd.py -h`或代码注释
 
 ## 进阶使用 Advance Guide
 请使用`python bili_cmd.py -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。

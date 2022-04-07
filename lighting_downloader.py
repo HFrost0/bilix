@@ -76,7 +76,8 @@ class Downloader:
             print('未找到分区')
             return
         if 'subChannelId' not in self.cate_info[cate_name]:
-            print(f'{cate_name} 是主分区，仅支持子分区')
+            sub_names = [i['name'] for i in self.cate_info[cate_name]['sub']]
+            print(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
             return
         cate_id = self.cate_info[cate_name]['tid']
         time_to = datetime.now()
@@ -87,7 +88,7 @@ class Downloader:
         cors = []
         while num > 0:
             params = {'search_type': 'video', 'view_type': 'hot_rank', 'cate_id': cate_id, 'pagesize': pagesize,
-                      'keyword':keyword, 'page': page, 'order': order, 'time_from': time_from, 'time_to': time_to}
+                      'keyword': keyword, 'page': page, 'order': order, 'time_from': time_from, 'time_to': time_to}
             cors.append(self._get_cate_videos_by_page(num=min(pagesize, num), params=params, quality=quality))
             num -= pagesize
             page += 1
@@ -275,7 +276,7 @@ if __name__ == '__main__':
         #     'https://www.bilibili.com/bangumi/play/ep451880?from_spmid=666.9.recommend.0'
         #     , quality=0)
         # await d.get_up_videos('18225678')
-        await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感')
+        await d.get_cate_videos('舞蹈', order='stow', days=30, keyword='超级敏感')
         await d.aclose()
 
 
