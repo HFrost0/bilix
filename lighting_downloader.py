@@ -1,6 +1,6 @@
 """
 ffmpeg should be installed
-pip install 'httpx[http2]' rich
+pip install 'httpx[http2]' rich json5
 """
 import asyncio
 import anyio
@@ -8,18 +8,20 @@ import httpx
 import re
 import random
 import json
+import json5
+from datetime import datetime, timedelta
 import os
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
 
 
 class Downloader:
-    def __init__(self, videos_dir='videos', sess_data='', max_concurrency=2, part_concurrency=5):
+    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=2, part_concurrency=5):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
         :param sess_data: 有条件的用户填写大会员凭证，填写后可下载大会员资源
-        :param max_concurrency: 限制最大同时下载的视频数量
+        :param video_concurrency: 限制最大同时下载的视频数量
         :param part_concurrency: 每个媒体的分段并发数
         """
         self.videos_dir = videos_dir
@@ -37,12 +39,67 @@ class Downloader:
             'ETA',
             TimeRemainingColumn())
         self.progress.start()
-        self.sema = asyncio.Semaphore(max_concurrency)
+        self.sema = asyncio.Semaphore(video_concurrency)
         self.part_concurrency = part_concurrency
 
     async def aclose(self):
         self.progress.stop()
         await self.client.aclose()
+
+    async def _load_cate_info(self):
+        if 'cate_info' not in dir(self):
+            self.cate_info = {}
+            res = await self.client.get(
+                'https://s1.hdslb.com/bfs/static/laputa-channel/client/assets/index.c0ea30e6.js')
+            cate_data = re.search('Za=([^;]*);', res.text).groups()[0]
+            cate_data = json5.loads(cate_data)['channelList']
+            for i in cate_data:
+                if 'sub' in i:
+                    for j in i['sub']:
+                        self.cate_info[j['name']] = j
+                self.cate_info[i['name']] = i
+
+    async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0):
+        """
+        下载分区视频
+
+        :param cate_name: 分区名称
+        :param num: 下载数量
+        :param order: 何种排序，click播放数，scores评论数，stow收藏数，coin硬币数，dm弹幕数
+        :param keyword: 搜索关键词
+        :param quality: 画面质量
+        :param days: 过去days天中的结果
+        :return:
+        """
+        await self._load_cate_info()
+        if cate_name not in self.cate_info:
+            print('未找到分区')
+            return
+        if 'subChannelId' not in self.cate_info[cate_name]:
+            print(f'{cate_name} 是主分区，仅支持子分区')
+            return
+        cate_id = self.cate_info[cate_name]['tid']
+        time_to = datetime.now()
+        time_from = time_to - timedelta(days=days)
+        time_from, time_to = time_from.strftime('%Y%m%d'), time_to.strftime('%Y%m%d')
+        pagesize = 30
+        page = 1
+        cors = []
+        while num > 0:
+            params = {'search_type': 'video', 'view_type': 'hot_rank', 'cate_id': cate_id, 'pagesize': pagesize,
+                      'keyword':keyword, 'page': page, 'order': order, 'time_from': time_from, 'time_to': time_to}
+            cors.append(self._get_cate_videos_by_page(num=min(pagesize, num), params=params, quality=quality))
+            num -= pagesize
+            page += 1
+        await asyncio.gather(*cors)
+
+    async def _get_cate_videos_by_page(self, num, params, quality=0):
+        res = await self.client.get('https://s.search.bilibili.com/cate/search', params=params)
+        info = json.loads(res.text)
+        info = info['result'][:num]
+        cors = [self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality)
+                for i in info]
+        await asyncio.gather(*cors)
 
     async def get_up_videos(self, mid: str, total=10, order='pubdate', keyword='', quality=0):
         """
@@ -178,15 +235,15 @@ class Downloader:
         total = int(res.headers['Content-Length'])
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total)
         part_length = total // self.part_concurrency
-        cos = []
+        cors = []
         part_names = []
         for i in range(self.part_concurrency):
             start = i * part_length
             end = (i + 1) * part_length - 1 if i < self.part_concurrency - 1 else total - 1
             part_name = f'{media_name}-{start}-{end}'
             part_names.append(part_name)
-            cos.append(self._get_media_part(media_urls, (start, end), part_name, task_id))
-        await asyncio.gather(*cos)
+            cors.append(self._get_media_part(media_urls, (start, end), part_name, task_id))
+        await asyncio.gather(*cors)
         async with await anyio.open_file(f'{self.videos_dir}/{media_name}.m4s', 'wb') as f:
             for part_name in part_names:
                 async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'rb') as pf:
@@ -213,11 +270,12 @@ class Downloader:
 
 if __name__ == '__main__':
     async def main():
-        d = Downloader(max_concurrency=2)
-        await d.get_series(
-            'https://www.bilibili.com/bangumi/play/ep451880?from_spmid=666.9.recommend.0'
-            , quality=0)
+        d = Downloader()
+        # await d.get_series(
+        #     'https://www.bilibili.com/bangumi/play/ep451880?from_spmid=666.9.recommend.0'
+        #     , quality=0)
         # await d.get_up_videos('18225678')
+        await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感')
         await d.aclose()
 
 

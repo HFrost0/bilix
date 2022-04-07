@@ -4,7 +4,7 @@ from lighting_downloader import Downloader
 
 
 async def main(args):
-    d = Downloader(videos_dir=args.dir, max_concurrency=args.max_con, sess_data=args.cookie)
+    d = Downloader(videos_dir=args.dir, video_concurrency=args.max_con, sess_data=args.cookie)
     if args.method == 'get_series':
         await d.get_series(args.key, quality=args.q)
     elif args.method == 'get_video':

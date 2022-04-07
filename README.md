@@ -22,7 +22,7 @@
 ## 依赖环境 Environment
 1. Python 相关依赖（需要python3.8及以上）
 ```shell
-pip install 'httpx[http2]' rich
+pip install 'httpx[http2]' rich json5
 ```
 2. [FFmpeg](https://ffmpeg.org/contact.html#MailingLists) ：一个命令行视频工具，用于合成下载的音频和视频
 
@@ -76,7 +76,7 @@ from lighting_downloader import Downloader
 
 
 async def main():
-    d = Downloader(max_concurrency=20, part_concurrency=10)
+    d = Downloader(video_concurrency=20, part_concurrency=10)
     cor1 = d.get_series(
         'https://www.bilibili.com/bangumi/play/ss28277?spm_id_from=333.337.0.0'
         , quality=999)
