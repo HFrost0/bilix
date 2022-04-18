@@ -11,6 +11,7 @@ import json
 import json5
 from datetime import datetime, timedelta
 import os
+from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
 
@@ -76,7 +77,7 @@ class Downloader:
         """
         await self._load_cate_info()
         if cate_name not in self.cate_info:
-            print('未找到分区')
+            print(f'未找到分区 {cate_name}')
             return
         if 'subChannelId' not in self.cate_info[cate_name]:
             sub_names = [i['name'] for i in self.cate_info[cate_name]['sub']]
@@ -176,7 +177,7 @@ class Downloader:
                 video_urls.append(i['link'])
                 add_names.append(i['title'])
         else:
-            print(f'未知类型 {url}')
+            rprint(f'[red]未知类型 {url}')
             return
         await asyncio.gather(
             *[self.get_video(url, quality, add_name) for url, add_name in zip(video_urls, add_names)]
@@ -199,7 +200,7 @@ class Downloader:
         # replace windows illegal character in title
         title = re.sub(r"[/\\:*?\"<>|]", '', title)
         if os.path.exists(f'{self.videos_dir}/{title}.mp4'):
-            print(f'{title}.mp4 已经存在')
+            rprint(f'[green]{title}.mp4 已经存在')
             self.sema.release()
             return
         # find video and audio url
@@ -215,7 +216,7 @@ class Downloader:
             audio_info = play_info['data']['dash']['audio'][0]
             audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
-            print(f'{title} 需要大会员，或该地区不支持')
+            rprint(f'[pink1]{title} 需要大会员，或该地区不支持')
             self.sema.release()
             return
         task_id = self.progress.add_task(total=1,
@@ -270,16 +271,20 @@ class Downloader:
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=True)
+        except httpx.ReadTimeout as e:
+            rprint(f'[red]异常：{e.__class__}，该异常可能由于并发数过大导致，如果异常重复出现请考虑降低并发数')
+            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=True)
 
 
 if __name__ == '__main__':
     async def main():
-        d = Downloader()
+        d = Downloader(part_concurrency=10, video_concurrency=20)
         # await d.get_series(
         #     'https://www.bilibili.com/bangumi/play/ep451880?from_spmid=666.9.recommend.0'
         #     , quality=0)
-        # await d.get_up_videos('18225678')
-        await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感')
+        await d.get_up_videos('18225678')
+        await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
+        await d.get_video('https://www.bilibili.com/bangumi/play/ep471897?from_spmid=666.5.0.0')
         await d.aclose()
 
 
