@@ -16,7 +16,7 @@ from itertools import groupby
 
 
 class Downloader:
-    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=2, part_concurrency=5):
+    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=5, part_concurrency=10):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
@@ -58,6 +58,9 @@ class Downloader:
                     for j in i['sub']:
                         self.cate_info[j['name']] = j
                 self.cate_info[i['name']] = i
+
+    async def get_popular(self):
+        pass
 
     async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0):
         """
@@ -276,7 +279,7 @@ if __name__ == '__main__':
         #     'https://www.bilibili.com/bangumi/play/ep451880?from_spmid=666.9.recommend.0'
         #     , quality=0)
         # await d.get_up_videos('18225678')
-        await d.get_cate_videos('舞蹈', order='stow', days=30, keyword='超级敏感')
+        await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感')
         await d.aclose()
 
 

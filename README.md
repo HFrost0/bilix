@@ -66,7 +66,7 @@ python bili_cmd.py get_up '672328094' -num 100
 ### 下载分区视频
 假设你喜欢看舞蹈区👍，想要下载最近30天播放量最高的20个超级敏感宅舞视频，那么你可以使用
 ```shell
-python bili_cmd.py get_cate 宅舞 -keyword 超级敏感 -order click -num 20 -days 30
+python bili_cmd.py get_cate 宅舞 -key 超级敏感 -order click -num 20 -days 30
 ```
 `get_cate`支持大部分分区，可以使用排序，关键词搜索等，详细请参考`python bili_cmd.py -h`或代码注释
 
@@ -82,7 +82,7 @@ from lighting_downloader import Downloader
 
 
 async def main():
-    d = Downloader(video_concurrency=20, part_concurrency=10)
+    d = Downloader(video_concurrency=5, part_concurrency=10)
     cor1 = d.get_series(
         'https://www.bilibili.com/bangumi/play/ss28277?spm_id_from=333.337.0.0'
         , quality=999)
