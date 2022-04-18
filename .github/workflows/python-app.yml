@@ -31,7 +31,7 @@ jobs:
     - name: Intall ffmpeg
       run: |
         sudo apt-get update
-        sudo agt-get install ffmpeg
+        sudo apt-get install ffmpeg
     - name: Test with pytest
       run: |
         pytest
