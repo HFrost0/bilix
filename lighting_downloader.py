@@ -216,7 +216,7 @@ class Downloader:
             audio_info = play_info['data']['dash']['audio'][0]
             audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
-            rprint(f'[pink1]{title} 需要大会员，或该地区不支持')
+            rprint(f'[rgb(234,122,153)]{title} 需要大会员，或该地区不支持')
             self.sema.release()
             return
         task_id = self.progress.add_task(total=1,
