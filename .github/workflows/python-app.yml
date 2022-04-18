@@ -26,12 +26,13 @@ jobs:
     - name: Install python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest pytest-asyncio
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Intall ffmpeg
       run: |
         sudo apt-get update
         sudo apt-get install ffmpeg
-    - name: Test with pytest
+    - name: Test bili_cmd.py
       run: |
-        pytest
+        python bili_cmd.py get_series 'https://www.bilibili.com/video/BV1sa411b786'
+        python bili_cmd.py get_up '436482484' -num 1
+        python bili_cmd.py get_cate 宅舞 -num 1
