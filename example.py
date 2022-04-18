@@ -3,7 +3,7 @@ from lighting_downloader import Downloader
 
 
 async def main():
-    d = Downloader(video_concurrency=20, part_concurrency=10)
+    d = Downloader(video_concurrency=5, part_concurrency=10)
     cor1 = d.get_series(
         'https://www.bilibili.com/bangumi/play/ss28277?spm_id_from=333.337.0.0'
         , quality=999)

@@ -1,6 +1,5 @@
 """
-ffmpeg should be installed
-pip install 'httpx[http2]' rich json5
+b站直播间测试
 """
 import asyncio
 import anyio
@@ -16,6 +15,11 @@ from itertools import groupby
 
 
 def get_live(room_id):
+    """
+
+    :param room_id: 直播间id，支持短号和长号
+    :return: 直播间m3u8链接，部分播放器支持url播放
+    """
     cookies = {'SESSDATA': ''}
     headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
     client = httpx.Client(headers=headers, http2=True, cookies=cookies)

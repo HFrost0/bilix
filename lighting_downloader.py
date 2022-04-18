@@ -16,7 +16,7 @@ from itertools import groupby
 
 
 class Downloader:
-    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=5, part_concurrency=10):
+    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建

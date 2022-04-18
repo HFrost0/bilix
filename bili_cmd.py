@@ -28,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('key', type=str,
                         help='视频url，如果是获取整个系列，提供系列中任意一集视频的url即可，如果使用get_up，则在该位置填写b站用户id，如果使用get_cate，则在该位置填写分区名称')
     parser.add_argument('-q', type=int, default=0, help='视频画面质量，默认0为最高画质，越大画质越低，超出范围时自动选最低画质')
-    parser.add_argument('-max_con', type=int, default=5, help='控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高')
+    parser.add_argument('-max_con', type=int, default=3, help='控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高')
     parser.add_argument('-cookie', type=str, default='', help='有条件的用户可以提供大会员的SESSDATA来下载会员视频')
     parser.add_argument('-dir', type=str, default='videos', help='文件的下载目录，默认当前路径下的videos文件夹下，不存在会自动创建')
 
