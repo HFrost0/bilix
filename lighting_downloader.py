@@ -1,7 +1,3 @@
-"""
-ffmpeg should be installed
-pip install 'httpx[http2]' rich json5
-"""
 import asyncio
 import anyio
 import httpx
