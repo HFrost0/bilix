@@ -193,7 +193,7 @@ class Downloader:
         """
         await self.sema.acquire()
         res = await self.client.get(url)
-        title = re.search('<h1 title="([^"]*)"', res.text).groups()[0].strip()
+        title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title += f'-{add_name.strip()}'
         # replace windows illegal character in title
