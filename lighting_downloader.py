@@ -56,8 +56,38 @@ class Downloader:
                         self.cate_info[j['name']] = j
                 self.cate_info[i['name']] = i
 
-    async def get_popular(self):
-        pass
+    async def get_favour(self, fid, num=20, keyword='', quality=0):
+        ps = 20
+        params = {'media_id': fid, 'pn': 1, 'ps': ps, 'keyword': keyword, 'order': 'mtime'}
+        res = await self.client.get(url='https://api.bilibili.com/x/v3/fav/resource/list', params=params)
+        data = json.loads(res.text)['data']
+        # title = data['info']['title']
+        total = min(data['info']['media_count'], num)
+        page_nums = total // ps + min(1, total % ps)
+        cors = []
+        for i in range(page_nums):
+            if i + 1 == page_nums:
+                num = total - (page_nums - 1) * ps
+            else:
+                num = ps
+            cors.append(self.get_favor_by_page(fid, i + 1, num, keyword, quality))
+        await asyncio.gather(*cors)
+
+    async def get_favor_by_page(self, fid, pn=1, num=20, keyword='', quality=0):
+        ps = 20
+        num = min(ps, num)
+        params = {'media_id': fid, 'order': 'mtime', 'ps': ps, 'pn': pn, 'keyword': keyword}
+        res = await self.client.get('https://api.bilibili.com/x/v3/fav/resource/list', params=params)
+        res.raise_for_status()
+        info = json.loads(res.text)
+        cors = []
+        for i in info['data']['medias'][:num]:
+            bvid = i['bvid']
+            if i['title'] == '已失效视频':
+                rprint(f'[red]已失效视频 https://www.bilibili.com/video/{bvid}')
+            else:
+                cors.append(self.get_series(f'https://www.bilibili.com/video/{bvid}', quality))
+        await asyncio.gather(*cors)
 
     async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0):
         """
@@ -189,7 +219,16 @@ class Downloader:
         :return:
         """
         await self.sema.acquire()
-        res = await self.client.get(url)
+        for _ in range(5):  # repeat 5 times to handle ReadTimeout
+            try:
+                res = await self.client.get(url)
+            except httpx.ReadTimeout:
+                await asyncio.sleep(0.1)
+            else:
+                break
+        else:
+            rprint(f'[red]超过重复次数 {url}')
+            return
         title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title += f'-{add_name.strip()}'
@@ -212,6 +251,7 @@ class Downloader:
             audio_info = play_info['data']['dash']['audio'][0]
             audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
+            # todo https://www.bilibili.com/video/BV1Jx411r776?p=3 未处理，老视频mp4
             rprint(f'[rgb(234,122,153)]{title} 需要大会员，或该地区不支持')
             self.sema.release()
             return
@@ -274,13 +314,14 @@ class Downloader:
 
 if __name__ == '__main__':
     async def main():
-        d = Downloader(part_concurrency=10, video_concurrency=20)
+        d = Downloader(part_concurrency=10, video_concurrency=5)
         # await d.get_series(
-        #     'https://www.bilibili.com/bangumi/play/ep451880?from_spmid=666.9.recommend.0'
+        #     'https://www.bilibili.com/video/BV1Rx411B7oa?spm_id_from=333.999.0.0'
         #     , quality=0)
-        await d.get_up_videos('18225678')
-        await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
-        await d.get_video('https://www.bilibili.com/bangumi/play/ep471897?from_spmid=666.5.0.0')
+        # await d.get_up_videos('18225678')
+        # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
+        # await d.get_video('https://www.bilibili.com/bangumi/play/ep471897?from_spmid=666.5.0.0')
+        await d.get_favour('840276009', num=10)
         await d.aclose()
 
 

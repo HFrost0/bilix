@@ -70,6 +70,14 @@ python bili_cmd.py get_cate 宅舞 -keyword 超级敏感 -order click -num 20 -d
 ```
 `get_cate`支持大部分分区，可以使用排序，关键词搜索等，详细请参考`python bili_cmd.py -h`或代码注释
 
+### 下载收藏夹视频
+如果你需要下载自己或者其他人收藏夹中的视频，你可以使用`get_favour`方法
+```shell
+python bili_cmd.py get_favour '1445680654' -num 20
+```
+`1445680654`是收藏夹id，如果要知道一个收藏夹的id是什么，最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，然后浏览器的url就会出现该收藏夹的id，例如https://space.bilibili.com/11499954/favlist?fid=1445680654 ，其中url中的`fid`就是收藏夹id。
+
+
 ## 进阶使用 Advance Guide
 请使用`python bili_cmd.py -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。
 ### 你是大会员？🥸
@@ -100,5 +108,6 @@ asyncio.run(main())
 
 ## 未来工作
 * 自动测试（GitHub Action）
+* 支持合集collect下载
 * 支持直播录播
 
