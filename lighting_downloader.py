@@ -56,7 +56,17 @@ class Downloader:
                         self.cate_info[j['name']] = j
                 self.cate_info[i['name']] = i
 
-    async def get_favour(self, fid, num=20, keyword='', quality=0):
+    async def get_favour(self, fid, num=20, keyword='', quality=0, series=True):
+        """
+        下载收藏夹内的视频
+
+        :param fid: 收藏夹id
+        :param num: 下载数量
+        :param keyword: 搜索关键词
+        :param quality:
+        :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
+        :return:
+        """
         ps = 20
         params = {'media_id': fid, 'pn': 1, 'ps': ps, 'keyword': keyword, 'order': 'mtime'}
         res = await self.client.get(url='https://api.bilibili.com/x/v3/fav/resource/list', params=params)
@@ -70,10 +80,21 @@ class Downloader:
                 num = total - (page_nums - 1) * ps
             else:
                 num = ps
-            cors.append(self.get_favor_by_page(fid, i + 1, num, keyword, quality))
+            cors.append(self.get_favor_by_page(fid, i + 1, num, keyword, quality, series))
         await asyncio.gather(*cors)
 
-    async def get_favor_by_page(self, fid, pn=1, num=20, keyword='', quality=0):
+    async def get_favor_by_page(self, fid, pn=1, num=20, keyword='', quality=0, series=True):
+        """
+        下载收藏夹某一页的视频
+
+        :param fid: 收藏夹id
+        :param pn: 页号
+        :param num: 下载数量
+        :param keyword: 搜索关键词
+        :param quality:
+        :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
+        :return:
+        """
         ps = 20
         num = min(ps, num)
         params = {'media_id': fid, 'order': 'mtime', 'ps': ps, 'pn': pn, 'keyword': keyword}
@@ -86,10 +107,11 @@ class Downloader:
             if i['title'] == '已失效视频':
                 rprint(f'[red]已失效视频 https://www.bilibili.com/video/{bvid}')
             else:
-                cors.append(self.get_series(f'https://www.bilibili.com/video/{bvid}', quality))
+                cors.append(self.get_series(f'https://www.bilibili.com/video/{bvid}', quality) if series else
+                            self.get_video(f'https://www.bilibili.com/video/{bvid}', quality))
         await asyncio.gather(*cors)
 
-    async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0):
+    async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0, series=True):
         """
         下载分区视频
 
@@ -97,8 +119,9 @@ class Downloader:
         :param num: 下载数量
         :param order: 何种排序，click播放数，scores评论数，stow收藏数，coin硬币数，dm弹幕数
         :param keyword: 搜索关键词
-        :param quality: 画面质量
         :param days: 过去days天中的结果
+        :param quality: 画面质量
+        :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
         :return:
         """
         await self._load_cate_info()
@@ -119,20 +142,21 @@ class Downloader:
         while num > 0:
             params = {'search_type': 'video', 'view_type': 'hot_rank', 'cate_id': cate_id, 'pagesize': pagesize,
                       'keyword': keyword, 'page': page, 'order': order, 'time_from': time_from, 'time_to': time_to}
-            cors.append(self._get_cate_videos_by_page(num=min(pagesize, num), params=params, quality=quality))
+            cors.append(self._get_cate_videos_by_page(min(pagesize, num), params, quality, series))
             num -= pagesize
             page += 1
         await asyncio.gather(*cors)
 
-    async def _get_cate_videos_by_page(self, num, params, quality=0):
+    async def _get_cate_videos_by_page(self, num, params, quality=0, series=True):
         res = await self.client.get('https://s.search.bilibili.com/cate/search', params=params)
         info = json.loads(res.text)
         info = info['result'][:num]
-        cors = [self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality)
+        cors = [self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality) if series else
+                self.get_video(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality)
                 for i in info]
         await asyncio.gather(*cors)
 
-    async def get_up_videos(self, mid: str, total=10, order='pubdate', keyword='', quality=0):
+    async def get_up_videos(self, mid: str, total=10, order='pubdate', keyword='', quality=0, series=True):
         """
 
         :param mid: b站用户id，在空间页面的url中可以找到
@@ -140,6 +164,7 @@ class Downloader:
         :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
         :param keyword: 过滤关键词
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
         :return:
         """
         ps = 30
@@ -155,10 +180,10 @@ class Downloader:
                 num = total - (page_nums - 1) * ps
             else:
                 num = ps
-            cors.append(self.get_up_videos_by_page(mid, i + 1, num, order, keyword, quality))
+            cors.append(self.get_up_videos_by_page(mid, i + 1, num, order, keyword, quality, series))
         await asyncio.gather(*cors)
 
-    async def get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0):
+    async def get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0, series=True):
         """
 
         :param mid: b站用户id，在空间页面的url中可以找到
@@ -167,6 +192,7 @@ class Downloader:
         :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
         :param keyword: 过滤关键词
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
         :return:
         """
         ps = 30
@@ -177,7 +203,9 @@ class Downloader:
         info = json.loads(res.text)
         bv_ids = [i['bvid'] for i in info['data']['list']['vlist']][:num]
         await asyncio.gather(
-            *[self.get_series(f'https://www.bilibili.com/video/{bv}', quality) for bv in bv_ids]
+            *[self.get_series(f'https://www.bilibili.com/video/{bv}', quality) if series else
+              self.get_video(f'https://www.bilibili.com/video/{bv}', quality)
+              for bv in bv_ids]
         )
 
     async def get_series(self, url: str, quality: int = 0):
@@ -318,10 +346,10 @@ if __name__ == '__main__':
         # await d.get_series(
         #     'https://www.bilibili.com/video/BV1Rx411B7oa?spm_id_from=333.999.0.0'
         #     , quality=0)
-        # await d.get_up_videos('18225678')
+        # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
         # await d.get_video('https://www.bilibili.com/bangumi/play/ep471897?from_spmid=666.5.0.0')
-        await d.get_favour('840276009', num=10)
+        await d.get_favour('840297609', num=3, series=False)
         await d.aclose()
 
 

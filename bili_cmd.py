@@ -10,14 +10,14 @@ async def main(args):
     elif args.method == 'get_video':
         await d.get_video(args.key, quality=args.q)
     elif args.method == 'get_up':
-        await d.get_up_videos(args.key, quality=args.q, total=args.num, order=args.order, keyword=args.keyword)
+        await d.get_up_videos(
+            args.key, quality=args.q, total=args.num, order=args.order, keyword=args.keyword, series=args.no_series)
     elif args.method == 'get_cate':
         await d.get_cate_videos(
-            args.key, quality=args.q, num=args.num, order=args.order, keyword=args.keyword, days=args.days)
+            args.key, quality=args.q, num=args.num, order=args.order, keyword=args.keyword, days=args.days, series=args.no_series)
     elif args.method == 'get_favour':
         await d.get_favour(
-            args.key, quality=args.q, num=args.num, keyword=args.keyword,
-        )
+            args.key, quality=args.q, num=args.num, keyword=args.keyword, series=args.no_series)
     else:
         print(f'{args.method}不能识别，请使用正确的方法名')
     await d.aclose()
@@ -44,7 +44,8 @@ if __name__ == '__main__':
     parser.add_argument('-order', type=str, default='pubdate',
                         help='何种排序，click播放数，scores评论数，stow收藏数，coin硬币数，dm弹幕数, 仅get_up, get_cate时生效')
     parser.add_argument('-keyword', type=str, default='', help='搜索关键词， 仅get_up, get_cate，get_favor时生效')
-
     parser.add_argument('-days', type=int, default=7, help='过去days天中的结果，仅get_up, get_cate时生效')
+    parser.add_argument('--no_series', action='store_false', default=True,
+                        help='只下载搜索结果每个视频的第一p，仅get_up，get_cate，get_favour时生效')
 
     asyncio.run(main(parser.parse_args()))
