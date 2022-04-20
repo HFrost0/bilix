@@ -225,7 +225,7 @@ class Downloader:
         if 'videoData' in initial_state:  # bv视频
             for idx, i in enumerate(initial_state['videoData']['pages']):
                 video_urls.append(f"{url}?p={idx + 1}")
-                add_names.append(i['part'] if len(initial_state['videoData']['pages']) > 1 else '')
+                add_names.append(f"P{idx + 1}-{i['part']}" if len(initial_state['videoData']['pages']) > 1 else '')
         elif 'initEpList' in initial_state:  # 动漫，电视剧，电影
             for i in initial_state['initEpList']:
                 video_urls.append(i['link'])
@@ -336,7 +336,7 @@ class Downloader:
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=True)
         except httpx.ReadTimeout as e:
-            rprint(f'[red]异常：{e.__class__}，该异常可能由于并发数过大导致，如果异常重复出现请考虑降低并发数')
+            rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=True)
 
 
@@ -349,7 +349,7 @@ if __name__ == '__main__':
         # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
         # await d.get_video('https://www.bilibili.com/bangumi/play/ep471897?from_spmid=666.5.0.0')
-        await d.get_favour('840297609', num=3, series=False)
+        await d.get_favour('840297609', num=3, series=True)
         await d.aclose()
 
 
