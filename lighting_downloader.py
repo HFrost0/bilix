@@ -56,6 +56,23 @@ class Downloader:
                         self.cate_info[j['name']] = j
                 self.cate_info[i['name']] = i
 
+    async def get_collect(self, sid, quality=0):
+        """
+
+        :param sid: 合集id，暂时不支持列表
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质
+        :return:
+        """
+        params = {'season_id': sid}
+        res = await self.client.get('https://api.bilibili.com/x/space/fav/season/list', params=params)
+        data = json.loads(res.text)
+        info = data['data']['info']
+        print(f"合集：{info['title']}，数量：{info['media_count']}")
+        medias = data['data']['medias']
+        await asyncio.gather(
+            *[self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality) for i in medias]
+        )
+
     async def get_favour(self, fid, num=20, keyword='', quality=0, series=True):
         """
         下载收藏夹内的视频
@@ -349,7 +366,8 @@ if __name__ == '__main__':
         # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
         # await d.get_video('https://www.bilibili.com/bangumi/play/ep471897?from_spmid=666.5.0.0')
-        await d.get_favour('840297609', num=3, series=True)
+        # await d.get_favour('840297609', num=3, series=True)
+        await d.get_collect('1890862')
         await d.aclose()
 
 

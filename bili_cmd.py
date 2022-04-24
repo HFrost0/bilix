@@ -18,6 +18,8 @@ async def main(args):
     elif args.method == 'get_favour':
         await d.get_favour(
             args.key, quality=args.q, num=args.num, keyword=args.keyword, series=args.no_series)
+    elif args.method == 'get_collect':
+        await d.get_collect(args.key)
     else:
         print(f'{args.method}不能识别，请使用正确的方法名')
     await d.aclose()
@@ -29,12 +31,14 @@ if __name__ == '__main__':
                                                  'get_video：获取特定的单个视频，在用户不希望下载系列其他视频的时候可以使用'
                                                  'get_up：获取某个up的所有投稿视频，支持数量选择，关键词搜索，排序'
                                                  'get_cate：获取分区视频，支持数量选择，关键词搜索，排序'
-                                                 'get_favour：获取收藏夹内视频，支持数量选择，关键词搜索')
+                                                 'get_favour：获取收藏夹内视频，支持数量选择，关键词搜索'
+                                                 'get_collect：获取合集内视频')
     parser.add_argument('key', type=str,
                         help='视频url，如果是获取整个系列，提供系列中任意一集视频的url即可，'
                              '如果使用get_up，则在该位置填写b站用户id，'
                              '如果使用get_cate，则在该位置填写分区名称，'
-                             '如果使用get_favour，则在该位置填写收藏夹id')
+                             '如果使用get_favour，则在该位置填写收藏夹id'
+                             '如果使用get_collect，则在该位置填写合集id')
     parser.add_argument('-q', type=int, default=0, help='视频画面质量，默认0为最高画质，越大画质越低，超出范围时自动选最低画质')
     parser.add_argument('-max_con', type=int, default=3, help='控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高')
     parser.add_argument('-cookie', type=str, default='', help='有条件的用户可以提供大会员的SESSDATA来下载会员视频')

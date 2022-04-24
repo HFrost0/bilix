@@ -75,7 +75,14 @@ python bili_cmd.py get_cate 宅舞 -keyword 超级敏感 -order click -num 20 -d
 ```shell
 python bili_cmd.py get_favour '1445680654' -num 20
 ```
-`1445680654`是收藏夹id，如果要知道一个收藏夹的id是什么，最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，然后浏览器的url就会出现该收藏夹的id，例如https://space.bilibili.com/11499954/favlist?fid=1445680654 ，其中url中的`fid`就是收藏夹id。
+`1445680654`是收藏夹id，如果要知道一个收藏夹的id是什么，最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，然后浏览器的url就会出现该收藏夹的id，例如 https://space.bilibili.com/11499954/favlist?fid=1445680654 ，其中url中的`fid`就是收藏夹id。
+
+### 下载合集
+如果你需要下载up主发布的合集，你可以使用`get_collect`方法
+```shell
+python bili_cmd.py get_collect '630'
+```
+`630`是合集id，如果要知道一个合集的id是什么，最简单的办法是在该合集详情页的url找到`sid`参数，例如 https://space.bilibili.com/369750017/channel/collectiondetail?sid=630
 
 
 ## 进阶使用 Advance Guide
@@ -106,8 +113,10 @@ asyncio.run(main())
 ## 欢迎提问
 由于本项目受到b站接口或者网站前端变动的影响，如果你发现任何bug或者其他问题，欢迎提issue，作者会保证最新版本可以正常运行。
 
+如果觉得该项目对你有所帮助，给以给作者一个小小的Star🌟
+
 ## 未来工作
 * 自动测试（GitHub Action）
-* 支持合集collect下载
+* 添加视频封面
 * 支持直播录播
 
