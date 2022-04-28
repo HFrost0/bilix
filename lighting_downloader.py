@@ -254,13 +254,14 @@ class Downloader:
             *[self.get_video(url, quality, add_name) for url, add_name in zip(video_urls, add_names)]
         )
 
-    async def get_video(self, url, quality: int = 0, add_name='', ):
+    async def get_video(self, url, quality: int = 0, add_name='', image=False):
         """
         下载单个视频
 
         :param url: 视频的url
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
         :param add_name: 给文件的额外添加名，用户请直接保持默认
+        :param image: 是否下载封面
         :return:
         """
         await self.sema.acquire()
@@ -284,6 +285,9 @@ class Downloader:
             self.sema.release()
             return
         # find video and audio url
+        if image:  # todo 完善
+            img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
+            await self._get_img(img_url, title)
         try:
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
             play_info = json.loads(play_info)
@@ -316,6 +320,12 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
+    async def _get_img(self, url, img_name):
+        res = await self.client.get(url)
+        img_type = url.split('.')[-1]
+        async with await anyio.open_file(f'{self.videos_dir}/{img_name}.{img_type}', 'wb') as f:
+            await f.write(res.content)
+
     async def _get_media(self, media_urls: tuple, media_name, task_id):
         res = await self.client.head(random.choice(media_urls))
         total = int(res.headers['Content-Length'])
@@ -336,12 +346,14 @@ class Downloader:
                     await f.write(await pf.read())
                 os.remove(f'{self.videos_dir}/{part_name}.m4s')
 
-    async def _get_media_part(self, media_urls: tuple, bytes_range: tuple, part_name, task_id, exception=False):
+    async def _get_media_part(self, media_urls: tuple, bytes_range: tuple, part_name, task_id, exception=0):
+        if exception > 5:
+            raise Exception(f'{part_name}超过重试次数')
         start, end = bytes_range
         if os.path.exists(f'{self.videos_dir}/{part_name}.m4s'):
             downloaded = os.path.getsize(f'{self.videos_dir}/{part_name}.m4s')
             start += downloaded
-            if not exception:
+            if exception > 0:
                 self.progress.update(task_id, advance=downloaded)
         try:
             async with self.client.stream("GET", random.choice(media_urls),
@@ -351,10 +363,10 @@ class Downloader:
                         await f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
-            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=True)
+            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
         except httpx.ReadTimeout as e:
             rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
-            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=True)
+            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
 
 
 if __name__ == '__main__':
@@ -365,9 +377,9 @@ if __name__ == '__main__':
         #     , quality=0)
         # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
-        # await d.get_video('https://www.bilibili.com/bangumi/play/ep471897?from_spmid=666.5.0.0')
+        await d.get_video('https://www.bilibili.com/video/BV1pb4y197Pq?spm_id_from=333.999.0.0', image=True)
         # await d.get_favour('840297609', num=3, series=True)
-        await d.get_collect('1890862')
+        # await d.get_collect('1890862')
         await d.aclose()
 
 
