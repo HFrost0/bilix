@@ -366,22 +366,21 @@ class Downloader:
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
         except httpx.ReadTimeout as e:
             rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
-            if exception > 3:
-                await asyncio.sleep(.5)
+            await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
 
 
 if __name__ == '__main__':
     async def main():
-        d = Downloader(part_concurrency=10, video_concurrency=5)
+        d = Downloader(part_concurrency=10, video_concurrency=10)
         # await d.get_series(
         #     'https://www.bilibili.com/video/BV1Rx411B7oa?spm_id_from=333.999.0.0'
         #     , quality=0)
         # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
-        await d.get_video('https://www.bilibili.com/video/BV1pb4y197Pq?spm_id_from=333.999.0.0', image=True)
+        # await d.get_video('https://www.bilibili.com/video/BV1pb4y197Pq?spm_id_from=333.999.0.0', image=True)
         # await d.get_favour('840297609', num=3, series=True)
-        # await d.get_collect('1890862')
+        await d.get_collect('630')
         await d.aclose()
 
 
