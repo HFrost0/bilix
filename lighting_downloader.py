@@ -353,7 +353,7 @@ class Downloader:
         if os.path.exists(f'{self.videos_dir}/{part_name}.m4s'):
             downloaded = os.path.getsize(f'{self.videos_dir}/{part_name}.m4s')
             start += downloaded
-            if exception > 0:
+            if exception == 0:
                 self.progress.update(task_id, advance=downloaded)
         try:
             async with self.client.stream("GET", random.choice(media_urls),
@@ -366,6 +366,8 @@ class Downloader:
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
         except httpx.ReadTimeout as e:
             rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
+            if exception > 3:
+                await asyncio.sleep(.5)
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
 
 
