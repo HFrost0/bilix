@@ -225,34 +225,34 @@ class Downloader:
               for bv in bv_ids]
         )
 
-    async def get_series(self, url: str, quality: int = 0):
+    async def get_series(self, url: str, quality: int = 0, image=False):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
         :param url: 系列中任意一个视频的url
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :param image: 是否下载封面
         :return:
         """
         url = url.split('?')[0]
         res = await self.client.get(url, follow_redirects=True)
         initial_state = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
         initial_state = json.loads(initial_state)
-        video_urls = []
-        add_names = []
+        cors = []
         if 'videoData' in initial_state:  # bv视频
             for idx, i in enumerate(initial_state['videoData']['pages']):
-                video_urls.append(f"{url}?p={idx + 1}")
-                add_names.append(f"P{idx + 1}-{i['part']}" if len(initial_state['videoData']['pages']) > 1 else '')
+                url = f"{url}?p={idx + 1}"
+                add_name = f"P{idx + 1}-{i['part']}" if len(initial_state['videoData']['pages']) > 1 else ''
+                cors.append(self.get_video(url, quality, add_name, image=True if idx == 0 and image else False))
         elif 'initEpList' in initial_state:  # 动漫，电视剧，电影
-            for i in initial_state['initEpList']:
-                video_urls.append(i['link'])
-                add_names.append(i['title'])
+            for idx, i in enumerate(initial_state['initEpList']):
+                url = i['link']
+                add_name = i['title']
+                cors.append(self.get_video(url, quality, add_name, image=True if idx == 0 and image else False))
         else:
             rprint(f'[red]未知类型 {url}')
             return
-        await asyncio.gather(
-            *[self.get_video(url, quality, add_name) for url, add_name in zip(video_urls, add_names)]
-        )
+        await asyncio.gather(*cors)
 
     async def get_video(self, url, quality: int = 0, add_name='', image=False):
         """
@@ -280,14 +280,14 @@ class Downloader:
             title += f'-{add_name.strip()}'
         # replace windows illegal character in title
         title = re.sub(r"[/\\:*?\"<>|]", '', title)
+        if image:
+            img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
+            await self.get_img(img_url, title)
         if os.path.exists(f'{self.videos_dir}/{title}.mp4'):
             rprint(f'[green]{title}.mp4 已经存在')
             self.sema.release()
             return
         # find video and audio url
-        if image:  # todo 完善
-            img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
-            await self._get_img(img_url, title)
         try:
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
             play_info = json.loads(play_info)
@@ -320,11 +320,16 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
-    async def _get_img(self, url, img_name):
-        res = await self.client.get(url)
+    async def get_img(self, url, img_name):
         img_type = url.split('.')[-1]
-        async with await anyio.open_file(f'{self.videos_dir}/{img_name}.{img_type}', 'wb') as f:
+        file_name = f'{self.videos_dir}/{img_name}.{img_type}'
+        if os.path.exists(file_name):
+            rprint(f'[green]{img_name}.{img_type} 已经存在')
+            return
+        res = await self.client.get(url)
+        async with await anyio.open_file(file_name, 'wb') as f:
             await f.write(res.content)
+        print(f'{img_name}.{img_type} 完成')
 
     async def _get_media(self, media_urls: tuple, media_name, task_id):
         res = await self.client.head(random.choice(media_urls))
@@ -365,22 +370,23 @@ class Downloader:
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
         except httpx.ReadTimeout as e:
-            rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
+            rprint(f'[red]警告：{e.__class__}，'
+                   f'该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数 exc:{exception}')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
 
 
 if __name__ == '__main__':
     async def main():
-        d = Downloader(part_concurrency=10, video_concurrency=10)
-        # await d.get_series(
-        #     'https://www.bilibili.com/video/BV1Rx411B7oa?spm_id_from=333.999.0.0'
-        #     , quality=0)
+        d = Downloader(part_concurrency=10, video_concurrency=5)
+        await d.get_series(
+            'https://www.bilibili.com/video/BV1Rx411B7oa?spm_id_from=333.999.0.0'
+            , quality=999, image=True)
         # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
-        # await d.get_video('https://www.bilibili.com/video/BV1pb4y197Pq?spm_id_from=333.999.0.0', image=True)
+        await d.get_video('https://www.bilibili.com/video/BV1pb4y197Pq?spm_id_from=333.999.0.0', image=True)
         # await d.get_favour('840297609', num=3, series=True)
-        await d.get_collect('630')
+        # await d.get_collect('630')
         await d.aclose()
 
 
