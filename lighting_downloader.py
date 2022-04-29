@@ -248,7 +248,7 @@ class Downloader:
             for idx, i in enumerate(initial_state['initEpList']):
                 url = i['link']
                 add_name = i['title']
-                cors.append(self.get_video(url, quality, add_name, image=True if idx == 0 and image else False))
+                cors.append(self.get_video(url, quality, add_name, image=image))
         else:
             rprint(f'[red]未知类型 {url}')
             return
@@ -321,8 +321,10 @@ class Downloader:
         self.progress.update(task_id, visible=False)
 
     async def get_img(self, url, img_name):
+        if not os.path.exists(f'{self.videos_dir}/imgs'):
+            os.makedirs(f'{self.videos_dir}/imgs')
         img_type = url.split('.')[-1]
-        file_name = f'{self.videos_dir}/{img_name}.{img_type}'
+        file_name = f'{self.videos_dir}/imgs/{img_name}.{img_type}'
         if os.path.exists(file_name):
             rprint(f'[green]{img_name}.{img_type} 已经存在')
             return
@@ -368,12 +370,11 @@ class Downloader:
                         await f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
-            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
+            await self._get_media_part(media_urls, bytes_range, part_name, task_id, exception=exception + 1)
         except httpx.ReadTimeout as e:
-            rprint(f'[red]警告：{e.__class__}，'
-                   f'该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数 exc:{exception}')
+            rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
-            await self._get_media_part(media_urls, (start, end), part_name, task_id, exception=exception + 1)
+            await self._get_media_part(media_urls, bytes_range, part_name, task_id, exception=exception + 1)
 
 
 if __name__ == '__main__':
