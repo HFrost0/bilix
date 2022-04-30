@@ -20,6 +20,7 @@ class Downloader:
         :param sess_data: 有条件的用户填写大会员凭证，填写后可下载大会员资源
         :param video_concurrency: 限制最大同时下载的视频数量
         :param part_concurrency: 每个媒体的分段并发数
+        :param http2: 是否使用http2协议
         """
         self.videos_dir = videos_dir
         if not os.path.exists(self.videos_dir):
