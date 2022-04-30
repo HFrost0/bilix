@@ -241,14 +241,14 @@ class Downloader:
         cors = []
         if 'videoData' in initial_state:  # bv视频
             for idx, i in enumerate(initial_state['videoData']['pages']):
-                url = f"{url}?p={idx + 1}"
+                p_url = f"{url}?p={idx + 1}"
                 add_name = f"P{idx + 1}-{i['part']}" if len(initial_state['videoData']['pages']) > 1 else ''
-                cors.append(self.get_video(url, quality, add_name, image=True if idx == 0 and image else False))
+                cors.append(self.get_video(p_url, quality, add_name, image=True if idx == 0 and image else False))
         elif 'initEpList' in initial_state:  # 动漫，电视剧，电影
             for idx, i in enumerate(initial_state['initEpList']):
-                url = i['link']
+                p_url = i['link']
                 add_name = i['title']
-                cors.append(self.get_video(url, quality, add_name, image=image))
+                cors.append(self.get_video(p_url, quality, add_name, image=image))
         else:
             rprint(f'[red]未知类型 {url}')
             return
@@ -381,7 +381,7 @@ if __name__ == '__main__':
     async def main():
         d = Downloader(part_concurrency=10, video_concurrency=5)
         await d.get_series(
-            'https://www.bilibili.com/video/BV1Rx411B7oa?spm_id_from=333.999.0.0'
+            'https://www.bilibili.com/video/BV1JP4y1K774?p=2'
             , quality=999, image=True)
         # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
