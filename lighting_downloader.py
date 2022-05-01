@@ -272,16 +272,7 @@ class Downloader:
         :return:
         """
         await self.sema.acquire()
-        for _ in range(5):  # repeat 5 times to handle ReadTimeout
-            try:
-                res = await self.client.get(url)
-            except httpx.ReadTimeout:
-                await asyncio.sleep(0.1)
-            else:
-                break
-        else:
-            rprint(f'[red]超过重复次数 {url}')
-            return
+        res = await self._get_front(url)
         title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title = f'{title}-{add_name.strip()}'
@@ -324,10 +315,10 @@ class Downloader:
         # additional task
         if image:
             img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
-            cors.append(self._get_img(img_url, title))
+            cors.append(self._get_static(img_url, title))
         if subtitle:
             cid = audio_urls[0].split('/')[-2]
-            cors.append(self.get_subtitle(url, cid=cid))
+            cors.append(self.get_subtitle(url, extra={'bvid': '', 'cid': cid, 'title': title}))
 
         await asyncio.gather(*cors)
         self.sema.release()
@@ -346,27 +337,66 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
-    async def get_subtitle(self, url, cid=None):
-        """todo
+    async def get_subtitle(self, url, extra: dict = None):
+        """
+        获取某个视频的字幕文件
 
         :param url: 视频url
-        :param cid: 如果提供cid则省去一次请求的时间，不提供也没事
+        :param extra: {bvid:... cid:.. title:...}提供则不再请求前端
         :return:
         """
-        pass
+        if not extra:
+            res = await self._get_front(url)
+            init_state = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
+            bvid = init_state['bvid']
+            (p, cid), = init_state['cidMap'][bvid]['cids'].items()
+            title = init_state['videoData']['title'].strip()
+            if len(init_state['videoData']['pages']) > 1:
+                part_title = init_state['videoData']['pages'][int(p) - 1]['part'].strip()
+                title = f'{title}-P{p}-{part_title}'
+            title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
+        else:
+            bvid, cid, title = extra['bvid'], extra['cid'], extra['title']
+        params = {'bvid': bvid, 'cid': cid}
+        res = await self.client.get('https://api.bilibili.com/x/player/v2', params=params)
+        info = json.loads(res.text)
+        if info['code'] == -400:
+            rprint(f'[red]未找到字幕信息 {url}')
+            return
+        subtitles = info['data']['subtitle']['subtitles']
+        cors = []
+        for i in subtitles:
+            sub_url = f'http:{i["subtitle_url"]}'
+            sub_name = f"{title}-{i['lan_doc']}"
+            cors.append(self._get_static(sub_url, sub_name))
+        await asyncio.gather(*cors)
 
-    async def _get_img(self, url, img_name):
-        if not os.path.exists(f'{self.videos_dir}/imgs'):
-            os.makedirs(f'{self.videos_dir}/imgs')
-        img_type = url.split('.')[-1]
-        file_name = f'{self.videos_dir}/imgs/{img_name}.{img_type}'
-        if os.path.exists(file_name):
-            rprint(f'[green]{img_name}.{img_type} 已经存在')
+    async def _get_front(self, url) -> httpx.Response:
+        """get web front url response"""
+        for _ in range(5):  # repeat 5 times to handle ReadTimeout
+            try:
+                res = await self.client.get(url)
+            except httpx.ReadTimeout:
+                await asyncio.sleep(0.1)
+            else:
+                break
+        else:
+            raise Exception(f'[red]超过重复次数 {url}')
+        res.raise_for_status()
+        return res
+
+    async def _get_static(self, url, name):
+        if not os.path.exists(f'{self.videos_dir}/extra'):
+            os.makedirs(f'{self.videos_dir}/extra')
+        file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
+        file_path = f'{self.videos_dir}/extra/{name}' + file_type
+        if os.path.exists(file_path):
+            rprint(f'[green]{name}.{file_type} 已经存在')
             return
         res = await self.client.get(url)
-        async with await anyio.open_file(file_name, 'wb') as f:
+        async with await anyio.open_file(file_path, 'wb') as f:
             await f.write(res.content)
-        print(f'{img_name}.{img_type} 完成')
+        print(f'{name + file_type} 完成')
 
     async def _get_media(self, media_urls: tuple, media_name, task_id):
         res = await self.client.head(random.choice(media_urls))
@@ -413,17 +443,21 @@ class Downloader:
 
 
 if __name__ == '__main__':
+    # quick test and debug
     async def main():
-        d = Downloader(part_concurrency=10, video_concurrency=10)
-        await d.get_series(
-            'https://www.bilibili.com/video/BV1ts411D7mf?spm_id_from=333.999.0.0'
-            , quality=0, image=False, only_audio=True)
+        d = Downloader(part_concurrency=10, video_concurrency=5)
+        # await d.get_series(
+        #     'https://www.bilibili.com/video/BV1ts411D7mf?spm_id_from=333.999.0.0'
+        #     , quality=0, image=False, only_audio=True)
+
         # await d.get_up_videos('18225678', total=5)
         # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
         # await d.get_video('https://www.bilibili.com/video/BV1JP4y1K774?p=2', image=True)
         # await d.get_video('https://www.bilibili.com/bangumi/play/ep458494?from_spmid=666.25.episode.0', image=True)
         # await d.get_favour('840297609', num=3, series=True)
         # await d.get_collect('630')
+
+        await d.get_series('https://www.bilibili.com/video/BV1JP4y1K774?p=5', subtitle=True)
         await d.aclose()
 
 
