@@ -233,7 +233,7 @@ class Downloader:
         :param url: 系列中任意一个视频的url
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
         :param image: 是否下载封面
-        :param subtitle: 是否下载字幕 todo
+        :param subtitle: 是否下载字幕
         :param only_audio: 是否仅下载音频
         :return:
         """
@@ -267,7 +267,7 @@ class Downloader:
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
         :param add_name: 给文件的额外添加名，用户请直接保持默认
         :param image: 是否下载封面
-        :param subtitle: 是否下载字幕 todo
+        :param subtitle: 是否下载字幕
         :param only_audio: 是否仅下载音频
         :return:
         """
@@ -318,7 +318,7 @@ class Downloader:
             cors.append(self._get_static(img_url, title))
         if subtitle:
             cid = audio_urls[0].split('/')[-2]
-            cors.append(self.get_subtitle(url, extra={'bvid': '', 'cid': cid, 'title': title}))
+            cors.append(self.get_subtitle(url, extra={'cid': cid, 'title': title}))
 
         await asyncio.gather(*cors)
         self.sema.release()
@@ -342,7 +342,7 @@ class Downloader:
         获取某个视频的字幕文件
 
         :param url: 视频url
-        :param extra: {bvid:... cid:.. title:...}提供则不再请求前端
+        :param extra: {cid:.. title:...}提供则不再请求前端
         :return:
         """
         if not extra:
@@ -356,7 +356,8 @@ class Downloader:
                 title = f'{title}-P{p}-{part_title}'
             title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
         else:
-            bvid, cid, title = extra['bvid'], extra['cid'], extra['title']
+            bvid = url.split('?')[0].strip('/').split('/')[-1]
+            cid, title = extra['cid'], extra['title']
         params = {'bvid': bvid, 'cid': cid}
         res = await self.client.get('https://api.bilibili.com/x/player/v2', params=params)
         info = json.loads(res.text)
@@ -370,6 +371,7 @@ class Downloader:
             sub_name = f"{title}-{i['lan_doc']}"
             cors.append(self._get_static(sub_url, sub_name))
         await asyncio.gather(*cors)
+        # todo convert json
 
     async def _get_front(self, url) -> httpx.Response:
         """get web front url response"""
@@ -391,12 +393,12 @@ class Downloader:
         file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
         file_path = f'{self.videos_dir}/extra/{name}' + file_type
         if os.path.exists(file_path):
-            rprint(f'[green]{name}.{file_type} 已经存在')
+            rprint(f'[dark_green]{name}.{file_type} 已经存在')
             return
         res = await self.client.get(url)
         async with await anyio.open_file(file_path, 'wb') as f:
             await f.write(res.content)
-        print(f'{name + file_type} 完成')
+        rprint(f'[grey39]{name + file_type} 完成')
 
     async def _get_media(self, media_urls: tuple, media_name, task_id):
         res = await self.client.head(random.choice(media_urls))
@@ -457,7 +459,7 @@ if __name__ == '__main__':
         # await d.get_favour('840297609', num=3, series=True)
         # await d.get_collect('630')
 
-        await d.get_series('https://www.bilibili.com/video/BV1JP4y1K774?p=5', subtitle=True)
+        await d.get_series('https://www.bilibili.com/video/BV1JP4y1K774?p=5', subtitle=True, quality=999)
         await d.aclose()
 
 
