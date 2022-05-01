@@ -5,6 +5,7 @@ import re
 import random
 import json
 import json5
+import html
 from datetime import datetime, timedelta
 import os
 from rich import print as rprint
@@ -276,6 +277,7 @@ class Downloader:
         title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title = f'{title}-{add_name.strip()}'
+        title = html.unescape(title)  # handel & "...
         title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
         try:  # find video and audio url
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
@@ -354,6 +356,7 @@ class Downloader:
             if len(init_state['videoData']['pages']) > 1:
                 part_title = init_state['videoData']['pages'][int(p) - 1]['part'].strip()
                 title = f'{title}-P{p}-{part_title}'
+            title = html.unescape(title)  # handel & "...
             title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
         else:
             bvid = url.split('?')[0].strip('/').split('/')[-1]
