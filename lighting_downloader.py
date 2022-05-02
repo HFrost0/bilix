@@ -11,6 +11,7 @@ import os
 from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
+from subtitle_convert import json2srt
 
 
 class Downloader:
@@ -339,12 +340,13 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
-    async def get_subtitle(self, url, extra: dict = None):
+    async def get_subtitle(self, url, extra: dict = None, convert=True):
         """
         获取某个视频的字幕文件
 
         :param url: 视频url
         :param extra: {cid:.. title:...}提供则不再请求前端
+        :param convert: 是否转换成srt
         :return:
         """
         if not extra:
@@ -373,8 +375,14 @@ class Downloader:
             sub_url = f'http:{i["subtitle_url"]}'
             sub_name = f"{title}-{i['lan_doc']}"
             cors.append(self._get_static(sub_url, sub_name))
-        await asyncio.gather(*cors)
-        # todo convert json
+        file_paths = await asyncio.gather(*cors)
+        if convert:
+            for file_path in file_paths:
+                new_file_path = file_path.split('.')[0]+'.srt'
+                async with await anyio.open_file(file_path, 'r') as f, await anyio.open_file(new_file_path, 'w') as f2:
+                    srt = json2srt(await f.read())
+                    await f2.write(srt)
+                os.remove(file_path)
 
     async def _get_front(self, url) -> httpx.Response:
         """get web front url response"""
@@ -396,12 +404,13 @@ class Downloader:
         file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
         file_path = f'{self.videos_dir}/extra/{name}' + file_type
         if os.path.exists(file_path):
-            rprint(f'[dark_green]{name}.{file_type} 已经存在')
-            return
-        res = await self.client.get(url)
-        async with await anyio.open_file(file_path, 'wb') as f:
-            await f.write(res.content)
-        rprint(f'[grey39]{name + file_type} 完成')
+            rprint(f'[dark_green]{name + file_type} 已经存在')
+        else:
+            res = await self.client.get(url)
+            async with await anyio.open_file(file_path, 'wb') as f:
+                await f.write(res.content)
+            rprint(f'[grey39]{name + file_type} 完成')
+        return file_path
 
     async def _get_media(self, media_urls: tuple, media_name, task_id):
         res = await self.client.head(random.choice(media_urls))
@@ -450,7 +459,7 @@ class Downloader:
 if __name__ == '__main__':
     # quick test and debug
     async def main():
-        d = Downloader(part_concurrency=10, video_concurrency=5)
+        d = Downloader(part_concurrency=10, video_concurrency=200)
         # await d.get_series(
         #     'https://www.bilibili.com/video/BV1ts411D7mf?spm_id_from=333.999.0.0'
         #     , quality=0, image=False, only_audio=True)
@@ -462,7 +471,7 @@ if __name__ == '__main__':
         # await d.get_favour('840297609', num=3, series=True)
         # await d.get_collect('630')
 
-        await d.get_series('https://www.bilibili.com/video/BV1JP4y1K774?p=5', subtitle=True, quality=999)
+        await d.get_series('https://www.bilibili.com/video/BV1JP4y1K774?p=10', subtitle=True, quality=999)
         await d.aclose()
 
 

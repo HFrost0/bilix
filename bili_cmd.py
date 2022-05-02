@@ -56,7 +56,7 @@ if __name__ == '__main__':
                         help='只下载搜索结果每个视频的第一p，仅get_up，get_cate，get_favour时生效')
     # todo support in search
     parser.add_argument('--image', action='store_true', default=False, help='下载视频封面，暂时仅get_series，get_video时生效')
-    parser.add_argument('--subtitle', action='store_true', default=False, help='下载字幕，暂时仅get_series，get_video时生效')
+    parser.add_argument('--subtitle', action='store_true', default=False, help='下载srt字幕，暂时仅get_series，get_video时生效')
     parser.add_argument('--only_audio', action='store_true', default=False,
                         help='仅下载音频，下载的音质固定为最高音质，暂时仅get_series，get_video时生效')
 
