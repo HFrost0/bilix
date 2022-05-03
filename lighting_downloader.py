@@ -11,7 +11,8 @@ import os
 from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
-from subtitle_convert import json2srt
+from subtitle import json2srt
+from dm import parse_view
 
 
 class Downloader:
@@ -27,6 +28,8 @@ class Downloader:
         self.videos_dir = videos_dir
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
+        if not os.path.exists(f'{self.videos_dir}/extra'):
+            os.makedirs(f'{self.videos_dir}/extra')
         cookies = {'SESSDATA': sess_data}
         headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
         self.client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=http2)
@@ -41,6 +44,7 @@ class Downloader:
         self.progress.start()
         self.sema = asyncio.Semaphore(video_concurrency)
         self.part_concurrency = part_concurrency
+        # todo re compile
 
     async def aclose(self):
         self.progress.stop()
@@ -228,7 +232,7 @@ class Downloader:
               for bv in bv_ids]
         )
 
-    async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, only_audio=False):
+    async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, dm=False, only_audio=False):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
@@ -236,6 +240,7 @@ class Downloader:
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
+        :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
         :return:
         """
@@ -250,18 +255,20 @@ class Downloader:
                 add_name = f"P{idx + 1}-{i['part']}" if len(initial_state['videoData']['pages']) > 1 else ''
                 cors.append(self.get_video(p_url, quality, add_name,
                                            image=True if idx == 0 and image else False,
-                                           subtitle=subtitle, only_audio=only_audio))
+                                           subtitle=subtitle, dm=dm, only_audio=only_audio))
         elif 'initEpList' in initial_state:  # 动漫，电视剧，电影
             for idx, i in enumerate(initial_state['initEpList']):
                 p_url = i['link']
                 add_name = i['title']
-                cors.append(self.get_video(p_url, quality, add_name, image, subtitle, only_audio))
+                cors.append(self.get_video(p_url, quality, add_name, image=image,
+                                           subtitle=subtitle, dm=dm, only_audio=only_audio))
         else:
             rprint(f'[red]未知类型 {url}')
             return
         await asyncio.gather(*cors)
 
-    async def get_video(self, url, quality: int = 0, add_name='', image=False, subtitle=False, only_audio=False):
+    async def get_video(self, url, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,
+                        only_audio=False):
         """
         下载单个视频
 
@@ -270,16 +277,18 @@ class Downloader:
         :param add_name: 给文件的额外添加名，用户请直接保持默认
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
+        :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
         :return:
         """
         await self.sema.acquire()
-        res = await self._get_front(url)
+        res = await self._req_front(url)
         title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title = f'{title}-{add_name.strip()}'
         title = html.unescape(title)  # handel & "...
-        title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
+        title = re.sub(r"[/\\:*?\"<>|]", '', title)
+        # replace windows illegal character in title
         try:  # find video and audio url
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
             play_info = json.loads(play_info)
@@ -296,6 +305,7 @@ class Downloader:
             rprint(f'[rgb(234,122,153)]{title} 需要大会员，或该地区不支持')
             self.sema.release()
             return
+        cid = audio_urls[0].split('/')[-2]
 
         task_id = self.progress.add_task(
             total=0,
@@ -320,8 +330,12 @@ class Downloader:
             img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
             cors.append(self._get_static(img_url, title))
         if subtitle:
-            cid = audio_urls[0].split('/')[-2]
             cors.append(self.get_subtitle(url, extra={'cid': cid, 'title': title}))
+        if dm:
+            # todo 最后还是要读取init state，因为aid在里面，而弹幕的view需要aid，是否考虑合并get_video方法以及get_series方法呢
+            init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
+            aid = init_info['aid'] if 'aid' in init_info else init_info['epInfo']['aid']  # normal or ep video
+            cors.append(self.get_dm(cid, aid, title))
 
         await asyncio.gather(*cors)
         self.sema.release()
@@ -340,6 +354,25 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
+    async def get_dm(self, cid, aid, title):
+        file_path = f'{self.videos_dir}/extra/{title}-弹幕.bin'
+        # if os.path.exists(file_path):  # never skip let update
+        #     rprint(f'[dark_green]{title}-弹幕.bin 已经存在')
+        #     return
+        params = {'oid': cid, 'pid': aid, 'type': 1}
+        res = await self.client.get(f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
+        view = parse_view(res.content)
+        total = int(view['dmSge']['total'])
+        cors = []
+        for i in range(total):
+            url = f'https://api.bilibili.com/x/v2/dm/web/seg.so?oid={cid}&type=1&segment_index={i + 1}'
+            cors.append(self.client.get(url))
+        results = await asyncio.gather(*cors)
+        content = b''.join(res.content for res in results)
+        async with await anyio.open_file(file_path, 'wb') as f:
+            await f.write(content)
+        rprint(f'[grey39]{title}-弹幕.bin 完成')
+
     async def get_subtitle(self, url, extra: dict = None, convert=True):
         """
         获取某个视频的字幕文件
@@ -350,7 +383,7 @@ class Downloader:
         :return:
         """
         if not extra:
-            res = await self._get_front(url)
+            res = await self._req_front(url)
             init_state = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
             bvid = init_state['bvid']
             (p, cid), = init_state['cidMap'][bvid]['cids'].items()
@@ -378,17 +411,17 @@ class Downloader:
         file_paths = await asyncio.gather(*cors)
         if convert:
             for file_path in file_paths:
-                new_file_path = file_path.split('.')[0]+'.srt'
+                new_file_path = file_path.split('.')[0] + '.srt'
                 async with await anyio.open_file(file_path, 'r') as f, await anyio.open_file(new_file_path, 'w') as f2:
                     srt = json2srt(await f.read())
                     await f2.write(srt)
                 os.remove(file_path)
 
-    async def _get_front(self, url) -> httpx.Response:
+    async def _req_front(self, url) -> httpx.Response:
         """get web front url response"""
         for _ in range(5):  # repeat 5 times to handle ReadTimeout
             try:
-                res = await self.client.get(url)
+                res = await self.client.get(url, follow_redirects=True)  # b23.tv redirect
             except httpx.ReadTimeout:
                 await asyncio.sleep(0.1)
             else:
@@ -398,9 +431,7 @@ class Downloader:
         res.raise_for_status()
         return res
 
-    async def _get_static(self, url, name):
-        if not os.path.exists(f'{self.videos_dir}/extra'):
-            os.makedirs(f'{self.videos_dir}/extra')
+    async def _get_static(self, url, name) -> str:
         file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
         file_path = f'{self.videos_dir}/extra/{name}' + file_type
         if os.path.exists(file_path):
@@ -459,7 +490,7 @@ class Downloader:
 if __name__ == '__main__':
     # quick test and debug
     async def main():
-        d = Downloader(part_concurrency=10, video_concurrency=200)
+        d = Downloader(part_concurrency=10, video_concurrency=5)
         # await d.get_series(
         #     'https://www.bilibili.com/video/BV1ts411D7mf?spm_id_from=333.999.0.0'
         #     , quality=0, image=False, only_audio=True)
@@ -471,7 +502,14 @@ if __name__ == '__main__':
         # await d.get_favour('840297609', num=3, series=True)
         # await d.get_collect('630')
 
-        await d.get_series('https://www.bilibili.com/video/BV1JP4y1K774?p=10', subtitle=True, quality=999)
+        # await d.get_series('https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0', quality=999,
+        #                    dm=True)
+        # await d.get_series('https://www.bilibili.com/video/BV1u3411K7Ew?spm_id_from=333.851.b_7265636f6d6d656e64.1',
+        #                    quality=999,
+        #                    dm=True)
+        await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True, only_audio=True)
+        #
+        # await d._get_dm(36003632, 123)
         await d.aclose()
 
 
