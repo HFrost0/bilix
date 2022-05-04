@@ -249,7 +249,9 @@ class Downloader:
         initial_state = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
         initial_state = json.loads(initial_state)
         cors = []
-        if 'videoData' in initial_state:  # bv视频
+        if len(initial_state.get('error', {})) > 0:
+            rprint(f'[red]视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
+        elif 'videoData' in initial_state:  # bv视频
             for idx, i in enumerate(initial_state['videoData']['pages']):
                 p_url = f"{url}?p={idx + 1}"
                 add_name = f"P{idx + 1}-{i['part']}" if len(initial_state['videoData']['pages']) > 1 else ''
@@ -495,8 +497,8 @@ if __name__ == '__main__':
         #     'https://www.bilibili.com/video/BV1ts411D7mf?spm_id_from=333.999.0.0'
         #     , quality=0, image=False, only_audio=True)
 
-        # await d.get_up_videos('18225678', total=5)
-        # await d.get_cate_videos('宅舞', order='stow', days=30, keyword='超级敏感', num=100)
+        await d.get_up_videos('1176820618', total=123123123, order='click')
+        # await d.get_cate_videos('宅舞', num=1, order='click')
         # await d.get_video('https://www.bilibili.com/video/BV1JP4y1K774?p=2', image=True)
         # await d.get_video('https://www.bilibili.com/bangumi/play/ep458494?from_spmid=666.25.episode.0', image=True)
         # await d.get_favour('840297609', num=3, series=True)
@@ -507,7 +509,8 @@ if __name__ == '__main__':
         # await d.get_series('https://www.bilibili.com/video/BV1u3411K7Ew?spm_id_from=333.851.b_7265636f6d6d656e64.1',
         #                    quality=999,
         #                    dm=True)
-        await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True, only_audio=True)
+        # await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True,
+        #                    only_audio=True)
         #
         # await d._get_dm(36003632, 123)
         await d.aclose()
