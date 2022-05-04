@@ -1,5 +1,5 @@
 import asyncio
-from lighting_downloader import Downloader
+from bilix.downloader import Downloader
 
 
 async def main():

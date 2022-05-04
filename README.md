@@ -96,9 +96,10 @@ python bili_cmd.py get_collect '630'
 请在`-cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
 ### 在 python 中调用
 觉得命令行太麻烦，不够强大？想要直接调用模块？下面是一个小例子。
+
 ```python
 import asyncio
-from lighting_downloader import Downloader
+from bilix import Downloader
 
 
 async def main():
@@ -110,6 +111,7 @@ async def main():
     cor3 = d.get_video('https://www.bilibili.com/bangumi/play/ep477122?from_spmid=666.4.0.0')
     await asyncio.gather(cor1, cor2, cor3)
     await d.aclose()
+
 
 asyncio.run(main())
 
@@ -137,5 +139,5 @@ asyncio.run(main())
 - [ ] 支持用pip安装，并提供更简明的命令行调用方式
 ### 已知的bug 🤡
 * 出现未被正常捕捉的异常后断点重连可能导致视频画面或者音频部分缺失（例如突然拉闸😅）
-* 不支持部分没有音画分开下载方式的老视频
+* 不支持部分的没有音画分开下载方式的老视频
 * 当两个视频名字完全一样时，任务冲突但不会报错，可能导致视频缺胳膊少腿

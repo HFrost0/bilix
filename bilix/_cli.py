@@ -1,9 +1,9 @@
 import argparse
 import asyncio
-from lighting_downloader import Downloader
+from .downloader import Downloader
 
 
-async def main(args):
+async def download(args):
     d = Downloader(videos_dir=args.dir, video_concurrency=args.max_con, sess_data=args.cookie)
     if args.method == 'get_series':
         await d.get_series(args.key, quality=args.q, image=args.image, subtitle=args.subtitle, dm=args.dm,
@@ -28,7 +28,7 @@ async def main(args):
     await d.aclose()
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='⚡️Lighting-bilibili-download ⚡️快如闪电的bilibili下载工具')
     parser.add_argument('method', type=str, help='get_series：获取整个系列的视频（包括多p投稿，动漫，电视剧，电影，纪录片），也可以下载单个视频 '
                                                  'get_video：获取特定的单个视频，在用户不希望下载系列其他视频的时候可以使用 '
@@ -61,4 +61,4 @@ if __name__ == '__main__':
     parser.add_argument('--only_audio', action='store_true', default=False,
                         help='仅下载音频，下载的音质固定为最高音质，暂时仅get_series，get_video时生效')
 
-    asyncio.run(main(parser.parse_args()))
+    asyncio.run(download(parser.parse_args()))

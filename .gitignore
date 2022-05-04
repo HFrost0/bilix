@@ -1,3 +1,10 @@
 .idea
 .vscode
 videos
+*.pyc
+.pytest_cache
+__pycache__/
+*.egg-info/
+venv*/
+build/
+dist/

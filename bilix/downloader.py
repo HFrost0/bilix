@@ -11,8 +11,8 @@ import os
 from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
-from subtitle import json2srt
-from dm import parse_view
+from .subtitle import json2srt
+from .dm import parse_view
 
 
 class Downloader:
@@ -44,7 +44,6 @@ class Downloader:
         self.progress.start()
         self.sema = asyncio.Semaphore(video_concurrency)
         self.part_concurrency = part_concurrency
-        # todo re compile
 
     async def aclose(self):
         self.progress.stop()
@@ -74,7 +73,7 @@ class Downloader:
         res = await self.client.get('https://api.bilibili.com/x/space/fav/season/list', params=params)
         data = json.loads(res.text)
         info = data['data']['info']
-        print(f"合集：{info['title']}，数量：{info['media_count']}")
+        # print(f"合集：{info['title']}，数量：{info['media_count']}")
         medias = data['data']['medias']
         await asyncio.gather(
             *[self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality) for i in medias]
@@ -487,33 +486,3 @@ class Downloader:
             rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, bytes_range, part_name, task_id, exception=exception + 1)
-
-
-if __name__ == '__main__':
-    # quick test and debug
-    async def main():
-        d = Downloader(part_concurrency=10, video_concurrency=5)
-        # await d.get_series(
-        #     'https://www.bilibili.com/video/BV1ts411D7mf?spm_id_from=333.999.0.0'
-        #     , quality=0, image=False, only_audio=True)
-
-        await d.get_up_videos('1176820618', total=123123123, order='click')
-        # await d.get_cate_videos('宅舞', num=1, order='click')
-        # await d.get_video('https://www.bilibili.com/video/BV1JP4y1K774?p=2', image=True)
-        # await d.get_video('https://www.bilibili.com/bangumi/play/ep458494?from_spmid=666.25.episode.0', image=True)
-        # await d.get_favour('840297609', num=3, series=True)
-        # await d.get_collect('630')
-
-        # await d.get_series('https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0', quality=999,
-        #                    dm=True)
-        # await d.get_series('https://www.bilibili.com/video/BV1u3411K7Ew?spm_id_from=333.851.b_7265636f6d6d656e64.1',
-        #                    quality=999,
-        #                    dm=True)
-        # await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True,
-        #                    only_audio=True)
-        #
-        # await d._get_dm(36003632, 123)
-        await d.aclose()
-
-
-    asyncio.run(main())
