@@ -127,8 +127,8 @@ asyncio.run(main())
 - [x] 下载视频封面
 - [ ] 每日测试（GitHub Action），但目前Github Action不能正常访问b站？
 - [x] 支持下载字幕，目前已支持下载json，以及转换成srt格式
-- [ ] 支持弹幕下载，目前已支持下载protobuf的的弹幕文件，各位可以在[issue](https://github.com/HFrost0/Lighting-bilibili-download/issues/7)中讨论这个问题
-- [ ] 支持直播录播，在`live.py`中有获取m3u8的例子，但已考虑废弃，因为有更多专精的优质仓库解决此问题
+- [x] 支持弹幕下载，目前已支持下载protobuf的的弹幕文件，各位可以在[issue](https://github.com/HFrost0/Lighting-bilibili-download/issues/7)中讨论这个问题
+- [ ] 支持用pip安装，并提供更简明的命令行调用方式
 ### 已知的bug 🤡
 * 出现未被正常捕捉的异常后断点重连可能导致视频画面或者音频部分缺失（例如突然拉闸😅）
 * 不支持部分的没有音画分开下载方式的老视频
