@@ -1,4 +1,4 @@
-# Lighting-bilibili-download
+# Bilix
 ⚡️快如闪电的 [bilibili](https://www.bilibili.com/) 视频下载工具，基于 Python 现代 Async 异步特性，高速批量下载整部动漫，电视剧，电影，up投稿...
 
 <div align="center"> <img src='https://s1.ax1x.com/2022/05/03/OFh34O.gif' style="border-radius: 8px"> </div>
@@ -19,9 +19,9 @@
 * 异步文件I/O和异步视频合成
 
 ## 依赖环境 Environment
-1. Python 相关依赖（需要python3.8及以上）
+1. pip安装（需要python3.8及以上）
 ```shell
-pip install 'httpx[http2]' rich json5 protobuf
+pip install bilix
 ```
 2. [FFmpeg](https://ffmpeg.org/contact.html#MailingLists) ：一个命令行视频工具，用于合成下载的音频和视频
 
@@ -30,11 +30,12 @@ pip install 'httpx[http2]' rich json5 protobuf
     * 最终确保在命令行中可以调用`ffmpeg`命令即可。
 
 ## 快速上手 Quick Start
+bilix提供了简单的命令行使用方式，打开终端开始下载吧～
 ### 批量下载
 批量下载整部动漫，电视剧，电影，up投稿.....只需要把命令中的`url`替换成你要下载的系列中任意一个视频的网页链接。\
 到 bilibili 上找一个来试试吧～，比如这个李宏毅老师的机器学习视频：[链接](https://www.bilibili.com/video/BV1JE411g7XF)
 ```shell
-python bili_cmd.py get_series 'url'
+bilix get_series 'url'
 ```
 会下载文件至当前目录的`videos`文件夹中，默认自动创建。
 
@@ -52,46 +53,46 @@ python bili_cmd.py get_series 'url'
 ### 单个下载
 用户😨：我不想下载那么多，只想下载单个视频。没问题，试试这个，只需要提供那个视频的网页链接：
 ```shell
-python bili_cmd.py get_video 'url'
+bilix get_video 'url'
 ```
 ### 下载音频
 假设你喜欢音乐区，只想下载音频，那么可以使用可选参数`--only_audio`，例如下面是下载[A叔](https://space.bilibili.com/6075139)一个钢琴曲合集音频的例子
 ```shell
-python bili_cmd.py get_series 'https://www.bilibili.com/video/BV1ts411D7mf' --only_audio
+bilix get_series 'https://www.bilibili.com/video/BV1ts411D7mf' --only_audio
 ```
 
 ### 下载特定up主的投稿
 
 假设你是一个嘉心糖，想要下载嘉然小姐最新投稿的100个视频，那么你可以使用命令：
 ```shell
-python bili_cmd.py get_up '672328094' -num 100
+bilix get_up '672328094' -num 100
 ```
 `672328094`是up主的id，在up空间首页的url中就可以找到哦，例如： https://space.bilibili.com/672328094
 
 ### 下载分区视频
 假设你喜欢看舞蹈区👍，想要下载最近30天播放量最高的20个超级敏感宅舞视频，那么你可以使用
 ```shell
-python bili_cmd.py get_cate 宅舞 -keyword 超级敏感 -order click -num 20 -days 30
+bilix get_cate 宅舞 -keyword 超级敏感 -order click -num 20 -days 30
 ```
-`get_cate`支持大部分分区，可以使用排序，关键词搜索等，详细请参考`python bili_cmd.py -h`或代码注释
+`get_cate`支持大部分分区，可以使用排序，关键词搜索等，详细请参考`bilix -h`或代码注释
 
 ### 下载收藏夹视频
 如果你需要下载自己或者其他人收藏夹中的视频，你可以使用`get_favour`方法
 ```shell
-python bili_cmd.py get_favour '1445680654' -num 20
+bilix get_favour '1445680654' -num 20
 ```
 `1445680654`是收藏夹id，如果要知道一个收藏夹的id是什么，最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，然后浏览器的url就会出现该收藏夹的id，例如 https://space.bilibili.com/11499954/favlist?fid=1445680654 ，其中url中的`fid`就是收藏夹id。
 
 ### 下载合集
 如果你需要下载up主发布的合集，你可以使用`get_collect`方法
 ```shell
-python bili_cmd.py get_collect '630'
+bilix get_collect '630'
 ```
 `630`是合集id，如果要知道一个合集的id是什么，最简单的办法是在该合集详情页的url找到`sid`参数，例如 https://space.bilibili.com/369750017/channel/collectiondetail?sid=630
 
 
 ## 进阶使用 Advance Guide
-请使用`python bili_cmd.py -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。
+请使用`bilix -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。
 ### 你是大会员？🥸
 请在`-cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
 ### 在 python 中调用
@@ -121,7 +122,7 @@ asyncio.run(main())
 你要组合很多很多任务？不用担心！`d`对象执行这些任务的并发度受到初始化参数的严格控制🫡，`video_concurrency`控制了同时下载的视频数量，而`part_concurrency`则控制了每个媒体文件（音频/画面）的分段并发数，如果你不太明白可以在代码和注释中找到他们的详细作用，或者就让他们保持默认吧。
 
 ### 关于断点重连
-用户可以通过Ctrl+C中断任务，对于未完成的文件，重新执行命令会在之前的进度基础上下载，已完成的文件会进行跳过。特别的，对于未完成文件，以下情况不能使用断点重连，建议清除未完成任务的临时文件再执行命令
+用户可以通过Ctrl+C中断任务，对于未完成的文件，重新执行命令会在之前的进度基础上下载，已完成的文件会进行跳过。但是对于未完成的文件，以下情况不能使用断点重连，建议清除未完成任务的临时文件再执行命令
 
 - 中断后改变画面质量
 - 中断后改变分段并发数`part_concurrency`
@@ -135,8 +136,8 @@ asyncio.run(main())
 - [x] 下载视频封面
 - [ ] 每日测试（GitHub Action），但目前Github Action不能正常访问b站？
 - [x] 支持下载字幕，目前已支持下载json，以及转换成srt格式
-- [x] 支持弹幕下载，目前已支持下载protobuf的的弹幕文件，各位可以在[issue](https://github.com/HFrost0/Lighting-bilibili-download/issues/7)中讨论这个问题
-- [ ] 支持用pip安装，并提供更简明的命令行调用方式
+- [x] 支持弹幕下载，目前已支持下载protobuf的的弹幕文件，各位可以在[issue](https://github.com/HFrost0/bilix/issues/7)中讨论这个问题
+- [x] 支持用pip安装，并提供更简明的命令行调用方式
 ### 已知的bug 🤡
 * 出现未被正常捕捉的异常后断点重连可能导致视频画面或者音频部分缺失（例如突然拉闸😅）
 * 不支持部分的没有音画分开下载方式的老视频
