@@ -1,5 +1,5 @@
 import asyncio
-from bilix.downloader import Downloader
+from bilix import Downloader
 
 
 async def main():

@@ -5,23 +5,23 @@ from .downloader import Downloader
 
 async def download(args):
     d = Downloader(videos_dir=args.dir, video_concurrency=args.max_con, sess_data=args.cookie)
-    if args.method == 'get_series':
+    if args.method == 'get_series' or 's':
         await d.get_series(args.key, quality=args.q, image=args.image, subtitle=args.subtitle, dm=args.dm,
                            only_audio=args.only_audio)
-    elif args.method == 'get_video':
+    elif args.method == 'get_video' or 'v':
         await d.get_video(args.key, quality=args.q, image=args.image, subtitle=args.subtitle, dm=args.dm,
                           only_audio=args.only_audio)
-    elif args.method == 'get_up':
+    elif args.method == 'get_up' or 'up':
         await d.get_up_videos(
             args.key, quality=args.q, total=args.num, order=args.order, keyword=args.keyword, series=args.no_series)
-    elif args.method == 'get_cate':
+    elif args.method == 'get_cate' or 'cate':
         await d.get_cate_videos(
             args.key, quality=args.q, num=args.num, order=args.order, keyword=args.keyword, days=args.days,
             series=args.no_series)
-    elif args.method == 'get_favour':
+    elif args.method == 'get_favour' or 'fav':
         await d.get_favour(
             args.key, quality=args.q, num=args.num, keyword=args.keyword, series=args.no_series)
-    elif args.method == 'get_collect':
+    elif args.method == 'get_collect' or 'col':
         await d.get_collect(args.key)
     else:
         print(f'{args.method}不能识别，请使用正确的方法名')
@@ -30,12 +30,12 @@ async def download(args):
 
 def main():
     parser = argparse.ArgumentParser(description='⚡️bilix⚡️快如闪电的bilibili下载工具')
-    parser.add_argument('method', type=str, help='get_series：获取整个系列的视频（包括多p投稿，动漫，电视剧，电影，纪录片），也可以下载单个视频 '
-                                                 'get_video：获取特定的单个视频，在用户不希望下载系列其他视频的时候可以使用 '
-                                                 'get_up：获取某个up的所有投稿视频，支持数量选择，关键词搜索，排序 '
-                                                 'get_cate：获取分区视频，支持数量选择，关键词搜索，排序 '
-                                                 'get_favour：获取收藏夹内视频，支持数量选择，关键词搜索 '
-                                                 'get_collect：获取合集内视频')
+    parser.add_argument('method', type=str, help='get_series 或 s：获取整个系列的视频（包括多p投稿，动漫，电视剧，电影，纪录片），也可以下载单个视频 '
+                                                 'get_video 或 v：获取特定的单个视频，在用户不希望下载系列其他视频的时候可以使用 '
+                                                 'get_up 或 up：获取某个up的所有投稿视频，支持数量选择，关键词搜索，排序 '
+                                                 'get_cate 或 cate：获取分区视频，支持数量选择，关键词搜索，排序 '
+                                                 'get_favour 或 fav：获取收藏夹内视频，支持数量选择，关键词搜索 '
+                                                 'get_collect 或 col：获取合集内视频')
     parser.add_argument('key', type=str,
                         help='视频url，如果是获取整个系列，提供系列中任意一集视频的url即可，'
                              '如果使用get_up，则在该位置填写b站用户id '
