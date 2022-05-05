@@ -5,23 +5,23 @@ from .downloader import Downloader
 
 async def download(args):
     d = Downloader(videos_dir=args.dir, video_concurrency=args.max_con, sess_data=args.cookie)
-    if args.method == 'get_series' or 's':
+    if args.method == 'get_series' or args.method == 's':
         await d.get_series(args.key, quality=args.q, image=args.image, subtitle=args.subtitle, dm=args.dm,
                            only_audio=args.only_audio)
-    elif args.method == 'get_video' or 'v':
+    elif args.method == 'get_video' or args.method == 'v':
         await d.get_video(args.key, quality=args.q, image=args.image, subtitle=args.subtitle, dm=args.dm,
                           only_audio=args.only_audio)
-    elif args.method == 'get_up' or 'up':
+    elif args.method == 'get_up' or args.method == 'up':
         await d.get_up_videos(
             args.key, quality=args.q, total=args.num, order=args.order, keyword=args.keyword, series=args.no_series)
-    elif args.method == 'get_cate' or 'cate':
+    elif args.method == 'get_cate' or args.method == 'cate':
         await d.get_cate_videos(
             args.key, quality=args.q, num=args.num, order=args.order, keyword=args.keyword, days=args.days,
             series=args.no_series)
-    elif args.method == 'get_favour' or 'fav':
+    elif args.method == 'get_favour' or args.method == 'fav':
         await d.get_favour(
             args.key, quality=args.q, num=args.num, keyword=args.keyword, series=args.no_series)
-    elif args.method == 'get_collect' or 'col':
+    elif args.method == 'get_collect' or args.method == 'col':
         await d.get_collect(args.key)
     else:
         print(f'{args.method}不能识别，请使用正确的方法名')
