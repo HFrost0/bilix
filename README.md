@@ -100,7 +100,7 @@ bilix get_series 'url' --subtile --dm --image
 ## 进阶使用 Advance Guide
 请使用`bilix -h`查看更多参数提示，包括方法名简写，视频画面质量选择，并发量控制，下载目录等。
 ### 你是大会员？🥸
-请在`-cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
+请在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
 ### 在 python 中调用
 觉得命令行太麻烦，不够强大？想要直接调用模块？下面是一个小例子。
 
