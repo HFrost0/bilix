@@ -11,8 +11,8 @@ import os
 from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
-from .subtitle import json2srt
-from .dm import parse_view
+from bilix.subtitle import json2srt
+from bilix.dm import parse_view
 
 
 class Downloader:
@@ -72,7 +72,7 @@ class Downloader:
         params = {'season_id': sid}
         res = await self.client.get('https://api.bilibili.com/x/space/fav/season/list', params=params)
         data = json.loads(res.text)
-        info = data['data']['info']
+        # info = data['data']['info']
         # print(f"合集：{info['title']}，数量：{info['media_count']}")
         medias = data['data']['medias']
         await asyncio.gather(
@@ -179,11 +179,11 @@ class Downloader:
                 for i in info]
         await asyncio.gather(*cors)
 
-    async def get_up_videos(self, mid: str, total=10, order='pubdate', keyword='', quality=0, series=True):
+    async def get_up_videos(self, mid: str, num=10, order='pubdate', keyword='', quality=0, series=True):
         """
 
         :param mid: b站用户id，在空间页面的url中可以找到
-        :param total: 下载总数
+        :param num: 下载总数
         :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
         :param keyword: 过滤关键词
         :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
@@ -195,15 +195,15 @@ class Downloader:
         res = await self.client.get('https://api.bilibili.com/x/space/arc/search', params=params)
         res.raise_for_status()
         info = json.loads(res.text)
-        total = min(info['data']['page']['count'], total)
-        page_nums = total // ps + min(1, total % ps)
+        num = min(info['data']['page']['count'], num)
+        page_nums = num // ps + min(1, num % ps)
         cors = []
         for i in range(page_nums):
             if i + 1 == page_nums:
-                num = total - (page_nums - 1) * ps
+                p_num = num - (page_nums - 1) * ps
             else:
-                num = ps
-            cors.append(self.get_up_videos_by_page(mid, i + 1, num, order, keyword, quality, series))
+                p_num = ps
+            cors.append(self.get_up_videos_by_page(mid, i + 1, p_num, order, keyword, quality, series))
         await asyncio.gather(*cors)
 
     async def get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0, series=True):

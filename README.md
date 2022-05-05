@@ -56,30 +56,30 @@ bilix get_series 'url'
 bilix get_video 'url'
 ```
 ### 下载音频
-假设你喜欢音乐区，只想下载音频，那么可以使用可选参数`--only_audio`，例如下面是下载[A叔](https://space.bilibili.com/6075139)一个钢琴曲合集音频的例子
+假设你喜欢音乐区，只想下载音频，那么可以使用可选参数`--only-audio`，例如下面是下载[A叔](https://space.bilibili.com/6075139)一个钢琴曲合集音频的例子
 ```shell
-bilix get_series 'https://www.bilibili.com/video/BV1ts411D7mf' --only_audio
+bilix get_series 'https://www.bilibili.com/video/BV1ts411D7mf' --only-audio
 ```
 
 ### 下载特定up主的投稿
 
 假设你是一个嘉心糖，想要下载嘉然小姐最新投稿的100个视频，那么你可以使用命令：
 ```shell
-bilix get_up '672328094' -num 100
+bilix get_up '672328094' --num 100
 ```
 `672328094`是up主的id，在up空间首页的url中就可以找到哦，例如： https://space.bilibili.com/672328094
 
 ### 下载分区视频
 假设你喜欢看舞蹈区👍，想要下载最近30天播放量最高的20个超级敏感宅舞视频，那么你可以使用
 ```shell
-bilix get_cate 宅舞 -keyword 超级敏感 -order click -num 20 -days 30
+bilix get_cate 宅舞 --keyword 超级敏感 --order click --num 20 --days 30
 ```
 `get_cate`支持大部分分区，可以使用排序，关键词搜索等，详细请参考`bilix -h`或代码注释
 
 ### 下载收藏夹视频
 如果你需要下载自己或者其他人收藏夹中的视频，你可以使用`get_favour`方法
 ```shell
-bilix get_favour '1445680654' -num 20
+bilix get_favour '1445680654' --num 20
 ```
 `1445680654`是收藏夹id，如果要知道一个收藏夹的id是什么，最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，然后浏览器的url就会出现该收藏夹的id，例如 https://space.bilibili.com/11499954/favlist?fid=1445680654 ，其中url中的`fid`就是收藏夹id。
 
@@ -98,9 +98,9 @@ bilix get_series 'url' --subtile --dm --image
 
 
 ## 进阶使用 Advance Guide
-请使用`bilix -h`查看更多参数提示，视频画面质量选择，包括并发量控制，下载目录等。
+请使用`bilix -h`查看更多参数提示，包括方法名简写，视频画面质量选择，并发量控制，下载目录等。
 ### 你是大会员？🥸
-请在`-cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
+请在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
 ### 在 python 中调用
 觉得命令行太麻烦，不够强大？想要直接调用模块？下面是一个小例子。
 

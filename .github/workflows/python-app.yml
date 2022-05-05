@@ -34,5 +34,5 @@ jobs:
     - name: Test bili_cmd.py
       run: |
         bilix get_series 'https://www.bilibili.com/video/BV1sa411b786'
-        bilix get_up '2989565' -num 1
-        bilix get_cate 宅舞 -num 1
+        bilix get_up '2989565' --num 1
+        bilix get_cate 宅舞 --num 1
