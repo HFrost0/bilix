@@ -94,19 +94,19 @@ def print_help():
     )
     table.add_row(
         "--image", '',
-        '下载视频封面，暂时仅get_series，get_video时生效'
+        '下载视频封面'
     )
     table.add_row(
         "--subtitle", '',
-        '下载srt字幕，暂时仅get_series，get_video时生效',
+        '下载srt字幕',
     )
     table.add_row(
         "--dm", '',
-        '下载弹幕，暂时仅get_series，get_video时生效',
+        '下载弹幕',
     )
     table.add_row(
         "--only-audio", '',
-        '仅下载音频，下载的音质固定为最高音质，暂时仅get_series，get_video时生效',
+        '仅下载音频，下载的音质固定为最高音质',
     )
     table.add_row("-h --help", '', "帮助信息")
     console.print(Panel(table, border_style="dim", title="Options", title_align="left"))
@@ -132,23 +132,26 @@ async def download(
 ):
     d = Downloader(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
     if method == 'get_series' or method == 's':
-        await d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm,
-                           only_audio=only_audio)
+        await d.get_series(key, quality=quality,
+                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     elif method == 'get_video' or method == 'v':
-        await d.get_video(key, quality=quality, image=image, subtitle=subtitle, dm=dm,
-                          only_audio=only_audio)
+        await d.get_video(key, quality=quality,
+                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     elif method == 'get_up' or method == 'up':
         await d.get_up_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, series=no_series)
+            key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio
+        )
     elif method == 'get_cate' or method == 'cate':
         await d.get_cate_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, days=days,
-            series=no_series)
+            key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     elif method == 'get_favour' or method == 'fav':
-        await d.get_favour(
-            key, quality=quality, num=num, keyword=keyword, series=no_series)
+        await d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
+                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     elif method == 'get_collect' or method == 'col':
-        await d.get_collect(key, quality=quality)
+        await d.get_collect(key, quality=quality,
+                            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     else:
         print(f'{method}不能识别，请使用正确的方法名')
     await d.aclose()
