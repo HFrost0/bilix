@@ -5,7 +5,6 @@ import re
 import random
 import json
 import json5
-import html
 from datetime import datetime, timedelta
 import os
 from rich import print as rprint
@@ -13,6 +12,7 @@ from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColu
 from itertools import groupby
 from bilix.subtitle import json2srt
 from bilix.dm import parse_view
+from bilix.utils import legal_title
 
 
 class Downloader:
@@ -25,6 +25,7 @@ class Downloader:
         :param part_concurrency: 每个媒体的分段并发数
         :param http2: 是否使用http2协议
         """
+        # assert video_concurrency * part_concurrency <= 100  # todo 是否限制
         self.videos_dir = videos_dir
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
@@ -306,11 +307,8 @@ class Downloader:
         if len(init_info.get('error', {})) > 0:
             rprint(f'[red]视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
             return
-        title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
-        if add_name:
-            title = f'{title}-{add_name.strip()}'
-        title = html.unescape(title)  # handel & "...
-        title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
+        title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0]
+        title = legal_title(title, add_name)
         try:  # find video and audio url
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
             play_info = json.loads(play_info)
@@ -374,7 +372,7 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
-    async def get_dm(self, cid, aid, title, update=True):
+    async def get_dm(self, cid, aid, title, update=False):
         """
 
         :param cid:
@@ -415,12 +413,12 @@ class Downloader:
             init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
             bvid = init_info['bvid']
             (p, cid), = init_info['cidMap'][bvid]['cids'].items()
-            title = init_info['videoData']['title'].strip()
+            title = init_info['videoData']['title']
+            add_name = ''
             if len(init_info['videoData']['pages']) > 1:
-                part_title = init_info['videoData']['pages'][int(p) - 1]['part'].strip()
-                title = f'{title}-P{p}-{part_title}'
-            title = html.unescape(title)  # handel & "...
-            title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
+                part_title = init_info['videoData']['pages'][int(p) - 1]['part']
+                add_name = f'P{p}-{part_title}'
+            title = legal_title(title, add_name)
         else:
             bvid = url.split('?')[0].strip('/').split('/')[-1]
             cid, title = extra['cid'], extra['title']
@@ -446,6 +444,9 @@ class Downloader:
             except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
                 rprint(f'[red]警告：{e.__class__} 可能由于网络不佳 {method} {url}')
                 await asyncio.sleep(0.1)
+            except Exception as e:
+                rprint(f'[red]警告：未知异常{e.__class__} {method} {url}')
+                await asyncio.sleep(0.5)
             else:
                 break
         else:
@@ -517,6 +518,10 @@ class Downloader:
         except httpx.ReadTimeout as e:
             rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数 {part_name}')
             await asyncio.sleep(.1 * exception)
+            await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1)
+        except Exception as e:
+            rprint(f'[red]警告：未知异常{e.__class__} {part_name}')
+            await asyncio.sleep(.5 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1)
 
 
