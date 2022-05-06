@@ -250,7 +250,8 @@ class Downloader:
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio) for bv in bv_ids]
         )
 
-    async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, dm=False, only_audio=False):
+    async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, dm=False, only_audio=False,
+                         p_range: tuple = None):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
@@ -260,6 +261,7 @@ class Downloader:
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
+        :param p_range: 下载集数范围，例如(1, 3)：P1至P3
         :return:
         """
         url = url.split('?')[0]
@@ -285,6 +287,11 @@ class Downloader:
         else:
             rprint(f'[red]未知类型 {url}')
             return
+        if p_range:
+            h, t = p_range[0] - 1, p_range[1]
+            assert 0 <= h <= t
+            [cor.close() for idx, cor in enumerate(cors) if idx < h or idx >= t]  # avoid runtime warning
+            cors = cors[h:t]
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,
@@ -540,11 +547,13 @@ if __name__ == '__main__':
 
         # await d.get_series('https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0', quality=999,
         #                    dm=True)
-        await d.get_series('https://www.bilibili.com/video/BV1JE411N7UD',
+        await d.get_series('https://www.bilibili.com/video/BV1hS4y1m7Ma',
                            subtitle=True,
                            quality=999,
                            only_audio=False,
-                           dm=True)
+                           dm=True,
+                           p_range=(100, 105)
+                           )
         # await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True,
         #                    only_audio=True, subtitle=True)
         await d.aclose()

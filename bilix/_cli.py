@@ -108,6 +108,10 @@ def print_help():
         "--only-audio", '',
         '仅下载音频，下载的音质固定为最高音质',
     )
+    table.add_row(
+        "-p", '[dark_cyan]int, int',
+        '下载集数范围，例如-p 1 3 只下载P1至P3，仅get_series时生效',
+    )
     table.add_row("-h --help", '', "帮助信息")
     console.print(Panel(table, border_style="dim", title="Options", title_align="left"))
 
@@ -129,11 +133,13 @@ async def download(
         subtitle: bool,
         dm: bool,
         only_audio: bool,
+        p_range: tuple[int]
 ):
+    print(p_range)
     d = Downloader(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
     if method == 'get_series' or method == 's':
         await d.get_series(key, quality=quality,
-                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, p_range=p_range)
     elif method == 'get_video' or method == 'v':
         await d.get_video(key, quality=quality,
                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
@@ -236,6 +242,11 @@ async def download(
     'only_audio',
     is_flag=True,
     default=False,
+)
+@click.option(
+    '-p',
+    'p_range',
+    type=(int, int),
 )
 @click.option(
     '-h',
