@@ -286,6 +286,23 @@ class Downloader:
             return
         await asyncio.gather(*cors)
 
+    def truncation(self, title, add_name):
+        """
+        对标题长度进行判断裁剪
+        :param title:
+        :param add_name:
+        :return:
+        """
+        if len(f'{title}-{add_name.strip()}'.encode('utf8')) < 233:
+             return f'{title}-{add_name.strip()}'
+        if len(title.encode('utf8')) >= len(add_name.encode('utf8')):
+            title_l = len(title)
+            title = title[:int(0.4 * title_l)] + '--' + title[-int(0.4 * title_l):]
+        else:
+            name_l = len(add_name)
+            add_name = add_name[:int(0.4 * name_l)] + "--" + add_name[-int(0.4 * name_l):]
+        return self.truncation(title, add_name)
+
     async def get_video(self, url: str, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,
                         only_audio=False):
         """
@@ -309,6 +326,7 @@ class Downloader:
         title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title = f'{title}-{add_name.strip()}'
+        title = self.truncation(title, add_name)
         title = html.unescape(title)  # handel & "...
         title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
         try:  # find video and audio url
