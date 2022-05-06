@@ -1,7 +1,12 @@
 import json
+from typing import Union
 
 
-def json2srt(data):
+def json2srt(data: Union[bytes, str, dict]):
+    b = False
+    if type(data) is bytes:
+        data = data.decode('utf-8')
+        b = True
     if type(data) is str:
         data = json.loads(data)
 
@@ -19,4 +24,4 @@ def json2srt(data):
         from_time, to_time = t2str(i['from']), t2str(i['to'])
         content = i['content']
         res += f"{idx + 1}\n{from_time} --> {to_time}\n{content}\n\n"
-    return res
+    return res.encode('utf-8') if b else res

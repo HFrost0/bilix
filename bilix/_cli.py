@@ -4,7 +4,7 @@ import click
 import rich
 from rich.panel import Panel
 from rich.table import Table
-from bilix.downloader import Downloader
+from bilix.download import Downloader
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -61,7 +61,7 @@ def print_help():
     table.add_row(
         "--max-con",
         '[dark_cyan]int',
-        "控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高",
+        "控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高，默认3",
     )
     table.add_row(
         '--cookie',

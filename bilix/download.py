@@ -52,8 +52,7 @@ class Downloader:
     async def _load_cate_info(self):
         if 'cate_info' not in dir(self):
             self.cate_info = {}
-            res = await self.client.get(
-                'https://s1.hdslb.com/bfs/static/laputa-channel/client/assets/index.c0ea30e6.js')
+            res = await self._req('https://s1.hdslb.com/bfs/static/laputa-channel/client/assets/index.c0ea30e6.js')
             cate_data = re.search('Za=([^;]*);', res.text).groups()[0]
             cate_data = json5.loads(cate_data)['channelList']
             for i in cate_data:
@@ -70,7 +69,7 @@ class Downloader:
         :return:
         """
         params = {'season_id': sid}
-        res = await self.client.get('https://api.bilibili.com/x/space/fav/season/list', params=params)
+        res = await self._req('https://api.bilibili.com/x/space/fav/season/list', params=params)
         data = json.loads(res.text)
         # info = data['data']['info']
         # print(f"合集：{info['title']}，数量：{info['media_count']}")
@@ -92,7 +91,7 @@ class Downloader:
         """
         ps = 20
         params = {'media_id': fid, 'pn': 1, 'ps': ps, 'keyword': keyword, 'order': 'mtime'}
-        res = await self.client.get(url='https://api.bilibili.com/x/v3/fav/resource/list', params=params)
+        res = await self._req(url='https://api.bilibili.com/x/v3/fav/resource/list', params=params)
         data = json.loads(res.text)['data']
         # title = data['info']['title']
         total = min(data['info']['media_count'], num)
@@ -121,7 +120,7 @@ class Downloader:
         ps = 20
         num = min(ps, num)
         params = {'media_id': fid, 'order': 'mtime', 'ps': ps, 'pn': pn, 'keyword': keyword}
-        res = await self.client.get('https://api.bilibili.com/x/v3/fav/resource/list', params=params)
+        res = await self._req('https://api.bilibili.com/x/v3/fav/resource/list', params=params)
         res.raise_for_status()
         info = json.loads(res.text)
         cors = []
@@ -171,7 +170,7 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def _get_cate_videos_by_page(self, num, params, quality=0, series=True):
-        res = await self.client.get('https://s.search.bilibili.com/cate/search', params=params)
+        res = await self._req('https://s.search.bilibili.com/cate/search', params=params)
         info = json.loads(res.text)
         info = info['result'][:num]
         cors = [self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality) if series else
@@ -192,7 +191,7 @@ class Downloader:
         """
         ps = 30
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': 1, 'keyword': keyword}
-        res = await self.client.get('https://api.bilibili.com/x/space/arc/search', params=params)
+        res = await self._req('https://api.bilibili.com/x/space/arc/search', params=params)
         res.raise_for_status()
         info = json.loads(res.text)
         num = min(info['data']['page']['count'], num)
@@ -221,7 +220,7 @@ class Downloader:
         ps = 30
         num = min(ps, num)
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
-        res = await self.client.get('https://api.bilibili.com/x/space/arc/search', params=params)
+        res = await self._req('https://api.bilibili.com/x/space/arc/search', params=params)
         res.raise_for_status()
         info = json.loads(res.text)
         bv_ids = [i['bvid'] for i in info['data']['list']['vlist']][:num]
@@ -244,21 +243,21 @@ class Downloader:
         :return:
         """
         url = url.split('?')[0]
-        res = await self.client.get(url, follow_redirects=True)
-        initial_state = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
-        initial_state = json.loads(initial_state)
+        res = await self._req(url, follow_redirects=True)
+        init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
+        init_info = json.loads(init_info)
         cors = []
-        if len(initial_state.get('error', {})) > 0:
+        if len(init_info.get('error', {})) > 0:
             rprint(f'[red]视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
-        elif 'videoData' in initial_state:  # bv视频
-            for idx, i in enumerate(initial_state['videoData']['pages']):
+        elif 'videoData' in init_info:  # bv视频
+            for idx, i in enumerate(init_info['videoData']['pages']):
                 p_url = f"{url}?p={idx + 1}"
-                add_name = f"P{idx + 1}-{i['part']}" if len(initial_state['videoData']['pages']) > 1 else ''
+                add_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
                 cors.append(self.get_video(p_url, quality, add_name,
                                            image=True if idx == 0 and image else False,
                                            subtitle=subtitle, dm=dm, only_audio=only_audio))
-        elif 'initEpList' in initial_state:  # 动漫，电视剧，电影
-            for idx, i in enumerate(initial_state['initEpList']):
+        elif 'initEpList' in init_info:  # 动漫，电视剧，电影
+            for idx, i in enumerate(init_info['initEpList']):
                 p_url = i['link']
                 add_name = i['title']
                 cors.append(self.get_video(p_url, quality, add_name, image=image,
@@ -283,13 +282,16 @@ class Downloader:
         :return:
         """
         await self.sema.acquire()
-        res = await self._req_front(url)
+        res = await self._req(url, follow_redirects=True)
+        init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
+        if len(init_info.get('error', {})) > 0:
+            rprint(f'[red]视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
+            return
         title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0].strip()
         if add_name:
             title = f'{title}-{add_name.strip()}'
         title = html.unescape(title)  # handel & "...
-        title = re.sub(r"[/\\:*?\"<>|]", '', title)
-        # replace windows illegal character in title
+        title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
         try:  # find video and audio url
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
             play_info = json.loads(play_info)
@@ -333,8 +335,6 @@ class Downloader:
         if subtitle:
             cors.append(self.get_subtitle(url, extra={'cid': cid, 'title': title}))
         if dm:
-            # todo 最后还是要读取init state，因为aid在里面，而弹幕的view需要aid，是否考虑合并get_video方法以及get_series方法呢
-            init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
             aid = init_info['aid'] if 'aid' in init_info else init_info['epInfo']['aid']  # normal or ep video
             cors.append(self.get_dm(cid, aid, title))
 
@@ -355,19 +355,27 @@ class Downloader:
         print(f'{title} 完成')
         self.progress.update(task_id, visible=False)
 
-    async def get_dm(self, cid, aid, title):
+    async def get_dm(self, cid, aid, title, update=True):
+        """
+
+        :param cid:
+        :param aid:
+        :param title: 弹幕文件名
+        :param update: 是否更新覆盖之前下载的弹幕文件
+        :return:
+        """
         file_path = f'{self.videos_dir}/extra/{title}-弹幕.bin'
-        # if os.path.exists(file_path):  # never skip let update
-        #     rprint(f'[dark_green]{title}-弹幕.bin 已经存在')
-        #     return
+        if not update and os.path.exists(file_path):
+            rprint(f'[dark_green]{title}-弹幕.bin 已经存在')
+            return
         params = {'oid': cid, 'pid': aid, 'type': 1}
-        res = await self.client.get(f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
+        res = await self._req(f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
         view = parse_view(res.content)
         total = int(view['dmSge']['total'])
         cors = []
         for i in range(total):
             url = f'https://api.bilibili.com/x/v2/dm/web/seg.so?oid={cid}&type=1&segment_index={i + 1}'
-            cors.append(self.client.get(url))
+            cors.append(self._req(url))
         results = await asyncio.gather(*cors)
         content = b''.join(res.content for res in results)
         async with await anyio.open_file(file_path, 'wb') as f:
@@ -384,13 +392,13 @@ class Downloader:
         :return:
         """
         if not extra:
-            res = await self._req_front(url)
-            init_state = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
-            bvid = init_state['bvid']
-            (p, cid), = init_state['cidMap'][bvid]['cids'].items()
-            title = init_state['videoData']['title'].strip()
-            if len(init_state['videoData']['pages']) > 1:
-                part_title = init_state['videoData']['pages'][int(p) - 1]['part'].strip()
+            res = await self._req(url)
+            init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
+            bvid = init_info['bvid']
+            (p, cid), = init_info['cidMap'][bvid]['cids'].items()
+            title = init_info['videoData']['title'].strip()
+            if len(init_info['videoData']['pages']) > 1:
+                part_title = init_info['videoData']['pages'][int(p) - 1]['part'].strip()
                 title = f'{title}-P{p}-{part_title}'
             title = html.unescape(title)  # handel & "...
             title = re.sub(r"[/\\:*?\"<>|]", '', title)  # replace windows illegal character in title
@@ -398,7 +406,7 @@ class Downloader:
             bvid = url.split('?')[0].strip('/').split('/')[-1]
             cid, title = extra['cid'], extra['title']
         params = {'bvid': bvid, 'cid': cid}
-        res = await self.client.get('https://api.bilibili.com/x/player/v2', params=params)
+        res = await self._req('https://api.bilibili.com/x/player/v2', params=params)
         info = json.loads(res.text)
         if info['code'] == -400:
             rprint(f'[red]未找到字幕信息 {url}')
@@ -408,22 +416,16 @@ class Downloader:
         for i in subtitles:
             sub_url = f'http:{i["subtitle_url"]}'
             sub_name = f"{title}-{i['lan_doc']}"
-            cors.append(self._get_static(sub_url, sub_name))
-        file_paths = await asyncio.gather(*cors)
-        if convert:
-            for file_path in file_paths:
-                new_file_path = file_path.split('.')[0] + '.srt'
-                async with await anyio.open_file(file_path, 'r') as f, await anyio.open_file(new_file_path, 'w') as f2:
-                    srt = json2srt(await f.read())
-                    await f2.write(srt)
-                os.remove(file_path)
+            cors.append(self._get_static(sub_url, sub_name, convert_func=json2srt if convert else None))
+        await asyncio.gather(*cors)
 
-    async def _req_front(self, url) -> httpx.Response:
-        """get web front url response"""
-        for _ in range(5):  # repeat 5 times to handle ReadTimeout
+    async def _req(self, url, method='GET', follow_redirects=False, **kwargs) -> httpx.Response:
+        """Client request with retry"""
+        for _ in range(3):  # repeat 3 times to handle Exception
             try:
-                res = await self.client.get(url, follow_redirects=True)  # b23.tv redirect
-            except httpx.ReadTimeout:
+                res = await self.client.request(method, url, follow_redirects=follow_redirects, **kwargs)
+            except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
+                rprint(f'[red]警告：{e.__class__} 可能由于网络不佳 {method} {url}')
                 await asyncio.sleep(0.1)
             else:
                 break
@@ -432,20 +434,31 @@ class Downloader:
         res.raise_for_status()
         return res
 
-    async def _get_static(self, url, name) -> str:
-        file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
+    async def _get_static(self, url, name, convert_func=None) -> str:
+        """
+
+        :param url:
+        :param name:
+        :param convert_func: function used to convert res.content, must be named like ...2...
+        :return:
+        """
+        if convert_func:
+            file_type = '.' + convert_func.__name__.split('2')[-1]  #
+        else:
+            file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
         file_path = f'{self.videos_dir}/extra/{name}' + file_type
         if os.path.exists(file_path):
-            rprint(f'[dark_green]{name + file_type} 已经存在')
+            rprint(f'[dark_green]{name + file_type} 已经存在')  # extra file use different color
         else:
-            res = await self.client.get(url)
+            res = await self._req(url)
+            content = convert_func(res.content) if convert_func else res.content
             async with await anyio.open_file(file_path, 'wb') as f:
-                await f.write(res.content)
-            rprint(f'[grey39]{name + file_type} 完成')
+                await f.write(content)
+            rprint(f'[grey39]{name + file_type} 完成')  # extra file use different color
         return file_path
 
     async def _get_media(self, media_urls: tuple, media_name, task_id):
-        res = await self.client.head(random.choice(media_urls))
+        res = await self._req(media_urls[0], method='HEAD')
         total = int(res.headers['Content-Length'])
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total)
         part_length = total // self.part_concurrency
@@ -456,7 +469,7 @@ class Downloader:
             end = (i + 1) * part_length - 1 if i < self.part_concurrency - 1 else total - 1
             part_name = f'{media_name}-{start}-{end}'
             part_names.append(part_name)
-            cors.append(self._get_media_part(media_urls, (start, end), part_name, task_id))
+            cors.append(self._get_media_part(media_urls, part_name, task_id))
         await asyncio.gather(*cors)
         async with await anyio.open_file(f'{self.videos_dir}/{media_name}.m4s', 'wb') as f:
             for part_name in part_names:
@@ -464,10 +477,10 @@ class Downloader:
                     await f.write(await pf.read())
                 os.remove(f'{self.videos_dir}/{part_name}.m4s')
 
-    async def _get_media_part(self, media_urls: tuple, bytes_range: tuple, part_name, task_id, exception=0):
+    async def _get_media_part(self, media_urls: tuple, part_name, task_id, exception=0):
         if exception > 5:
             raise Exception(f'{part_name}超过重试次数')
-        start, end = bytes_range
+        start, end = map(int, part_name.split('-')[-2:])
         if os.path.exists(f'{self.videos_dir}/{part_name}.m4s'):
             downloaded = os.path.getsize(f'{self.videos_dir}/{part_name}.m4s')
             start += downloaded
@@ -481,8 +494,36 @@ class Downloader:
                         await f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
-            await self._get_media_part(media_urls, bytes_range, part_name, task_id, exception=exception + 1)
+            await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1)
         except httpx.ReadTimeout as e:
-            rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
+            rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数 {part_name}')
             await asyncio.sleep(.1 * exception)
-            await self._get_media_part(media_urls, bytes_range, part_name, task_id, exception=exception + 1)
+            await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1)
+
+
+if __name__ == '__main__':
+    async def down():
+        d = Downloader(part_concurrency=10, video_concurrency=1, videos_dir='../videos')
+        # await d.get_series(
+        #     'https://www.bilibili.com/video/BV1CR4y1P7N5?spm_id_from=333.851.b_7265636f6d6d656e64.4'
+        #     , quality=0, image=True, only_audio=False, dm=True)
+
+        # await d.get_cate_videos('宅舞', num=1, order='click')
+        # await d.get_video('https://www.bilibili.com/video/BV1JP4y1K774?p=2', image=True)
+        # await d.get_video('https://www.bilibili.com/bangumi/play/ep458494?from_spmid=666.25.episode.0', image=True)
+        # await d.get_favour('840297609', num=3, series=False)
+        # await d.get_collect('630')
+
+        # await d.get_series('https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0', quality=999,
+        #                    dm=True)
+        await d.get_series('https://www.bilibili.com/video/BV1JE411N7UD',
+                           subtitle=True,
+                           quality=999,
+                           only_audio=False,
+                           dm=True)
+        await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True,
+                           only_audio=True, subtitle=True)
+        await d.aclose()
+
+
+    asyncio.run(down())
