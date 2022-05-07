@@ -17,8 +17,7 @@ def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Para
 
 def print_help():
     console = rich.console.Console()
-
-    console.print("\n[bold]Bilix️", justify="center")
+    console.print("\n[bold]Bilix", justify="center")
     console.print("⚡️快如闪电的bilibili下载工具，基于Python现代Async特性，高速批量下载整部动漫，电视剧，up投稿等\n", justify="center")
     console.print("使用方法： bilix [cyan]<method> <key> [OPTIONS][/cyan] ", justify="left")
     table = Table.grid(padding=1, pad_edge=False)
@@ -135,7 +134,6 @@ async def download(
         only_audio: bool,
         p_range: tuple[int]
 ):
-    print(p_range)
     d = Downloader(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
     if method == 'get_series' or method == 's':
         await d.get_series(key, quality=quality,
