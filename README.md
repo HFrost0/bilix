@@ -93,9 +93,9 @@ bilix get_collect '630'
 `630`是合集id，如果要知道一个合集的id是什么，最简单的办法是在该合集详情页的url找到`sid`参数，例如 https://space.bilibili.com/369750017/channel/collectiondetail?sid=630
 
 ### 下载字幕，弹幕，封面...
-在命令中加入可选参数`--subtile`（字幕） `--dm`（弹幕） `--image`（封面），即可下载这些附属文件
+在命令中加入可选参数`--subtitle`（字幕） `--dm`（弹幕） `--image`（封面），即可下载这些附属文件
 ```shell
-bilix get_series 'url' --subtile --dm --image
+bilix get_series 'url' --subtitle --dm --image
 ```
 
 
