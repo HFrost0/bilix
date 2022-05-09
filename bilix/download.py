@@ -62,10 +62,53 @@ class Downloader:
                         self.cate_info[j['name']] = j
                 self.cate_info[i['name']] = i
 
+    async def get_collect_or_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False):
+        """
+        下载合集或视频列表
+
+        :param url: 合集或视频列表详情页url
+        :param quality:
+        :param image:
+        :param subtitle:
+        :param dm:
+        :param only_audio:
+        :return:
+        """
+        sid = re.search(r'sid=(\d+)', url).groups()[0]
+        if 'seriesdetail' in url:
+            await self.get_list(sid, quality, image, subtitle, dm, only_audio)
+        elif 'collectiondetail' in url:
+            await self.get_collect(sid, quality, image, subtitle, dm, only_audio)
+        else:
+            raise Exception(f'未知的详情页 {url}')
+
+    async def get_list(self, sid, quality=0, image=False, subtitle=False, dm=False, only_audio=False):
+        """
+        下载视频列表
+
+        :param sid: 列表id
+        :param quality:
+        :param image:
+        :param subtitle:
+        :param dm:
+        :param only_audio:
+        :return:
+        """
+        res = await self._req(f'https://api.bilibili.com/x/series/series?series_id={sid}')  # meta api
+        meta = json.loads(res.text)
+        params = {'mid': meta['data']['meta']['mid'], 'series_id': sid, 'ps': meta['data']['meta']['total']}
+        res = await self._req('https://api.bilibili.com/x/series/archives', params=params)
+        data = json.loads(res.text)
+        await asyncio.gather(
+            *[self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality,
+                              image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+              for i in data['data']['archives']])
+
     async def get_collect(self, sid, quality=0, image=False, subtitle=False, dm=False, only_audio=False):
         """
+        下载合集
 
-        :param sid: 合集id，暂时不支持列表
+        :param sid: 合集id
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
@@ -225,17 +268,6 @@ class Downloader:
 
     async def _get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0, series=True,
                                      image=False, subtitle=False, dm=False, only_audio=False):
-        """
-
-        :param mid: b站用户id，在空间页面的url中可以找到
-        :param pn: 页码
-        :param num: 下载数量
-        :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
-        :param keyword: 过滤关键词
-        :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
-        :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
-        :return:
-        """
         ps = 30
         num = min(ps, num)
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
@@ -534,7 +566,7 @@ class Downloader:
 
 if __name__ == '__main__':
     async def down():
-        d = Downloader(part_concurrency=10, video_concurrency=1, videos_dir='../videos')
+        d = Downloader(part_concurrency=10, video_concurrency=3, videos_dir='../videos')
         # await d.get_series(
         #     'https://www.bilibili.com/video/BV1CR4y1P7N5?spm_id_from=333.851.b_7265636f6d6d656e64.4'
         #     , quality=0, image=True, only_audio=False, dm=True)
@@ -547,13 +579,15 @@ if __name__ == '__main__':
 
         # await d.get_series('https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0', quality=999,
         #                    dm=True)
-        await d.get_series('https://www.bilibili.com/video/BV1hS4y1m7Ma',
-                           subtitle=True,
-                           quality=999,
-                           only_audio=False,
-                           dm=True,
-                           p_range=(100, 105)
-                           )
+
+        await d.get_collect_or_list('https://space.bilibili.com/481361060/channel/seriesdetail?sid=2143493')
+        # await d.get_series('https://www.bilibili.com/video/BV1hS4y1m7Ma',
+        #                    subtitle=True,
+        #                    quality=999,
+        #                    only_audio=False,
+        #                    dm=True,
+        #                    p_range=(100, 105)
+        #                    )
         # await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True,
         #                    only_audio=True, subtitle=True)
         await d.aclose()

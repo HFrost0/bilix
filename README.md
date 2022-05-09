@@ -85,12 +85,15 @@ bilix get_favour '1445680654' --num 20
 ```
 `1445680654`是收藏夹id，如果要知道一个收藏夹的id是什么，最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，然后浏览器的url就会出现该收藏夹的id，例如 https://space.bilibili.com/11499954/favlist?fid=1445680654 ，其中url中的`fid`就是收藏夹id。
 
-### 下载合集
-如果你需要下载up主发布的合集，你可以使用`get_collect`方法
+### 下载合集或视频列表
+如果你需要下载up主发布的合集或视频列表，你可以使用`get_collect`方法
 ```shell
-bilix get_collect '630'
+bilix get_collect 'url'
 ```
-`630`是合集id，如果要知道一个合集的id是什么，最简单的办法是在该合集详情页的url找到`sid`参数，例如 https://space.bilibili.com/369750017/channel/collectiondetail?sid=630
+将`url`替换为某个合集或视频列表详情页的url（例如[这个](https://space.bilibili.com/369750017/channel/collectiondetail?sid=630)）即可下载合集或列表内所有视频
+
+💡合集和视频列表有什么区别？b站的合集可以订阅，列表则没有这个功能，但是他们都在up主空间页面的合集和列表菜单中，例如[这个](https://space.bilibili.com/369750017/channel/series)，`get_collect`则会根据详情页url中的信息判断这个链接是合集还是列表
+
 
 ### 下载字幕，弹幕，封面...
 在命令中加入可选参数`--subtitle`（字幕） `--dm`（弹幕） `--image`（封面），即可下载这些附属文件
@@ -143,6 +146,7 @@ asyncio.run(main())
 ## 未来工作
 - [x] 下载视频封面
 - [ ] 每日测试（GitHub Action），但目前Github Action不能正常访问b站？
+- [ ] 支持文件夹层级
 - [x] 支持下载字幕，目前已支持下载json，以及转换成srt格式
 - [x] 支持弹幕下载，目前已支持下载protobuf的的弹幕文件，各位可以在[issue](https://github.com/HFrost0/bilix/issues/7)中讨论这个问题
 - [x] 支持用pip安装，并提供更简明的命令行调用方式

@@ -31,7 +31,7 @@ def print_help():
         'get_up 或 up：获取某个up的所有投稿视频，支持数量选择，关键词搜索，排序\n'
         'get_cate 或 cate：获取分区视频，支持数量选择，关键词搜索，排序\n'
         'get_favour 或 fav：获取收藏夹内视频，支持数量选择，关键词搜索\n'
-        'get_collect 或 col：获取合集内视频'
+        'get_collect 或 col：获取合集或视频列表内视频'
     )
     table.add_row(
         "[cyan]<key>",
@@ -39,7 +39,7 @@ def print_help():
         '如果使用get_up，则在该位置填写b站用户id\n'
         '如果使用get_cate，则在该位置填写分区名称\n'
         '如果使用get_favour，则在该位置填写收藏夹id\n'
-        '如果使用get_collect，则在该位置填写合集id'
+        '如果使用get_collect，则在该位置填写合集或者视频列表详情页url'
     )
     console.print(table)
     # console.rule("OPTIONS参数")
@@ -154,8 +154,8 @@ async def download(
         await d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
                            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     elif method == 'get_collect' or method == 'col':
-        await d.get_collect(key, quality=quality,
-                            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+        await d.get_collect_or_list(key, quality=quality,
+                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     else:
         print(f'{method}不能识别，请使用正确的方法名')
     await d.aclose()
