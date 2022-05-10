@@ -1,5 +1,14 @@
 import html
 import re
+import signal
+from contextlib import contextmanager
+
+
+@contextmanager
+def no_interrupt():
+    s = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    yield
+    signal.signal(signal.SIGINT, s)
 
 
 def legal_title(title, add_name=''):

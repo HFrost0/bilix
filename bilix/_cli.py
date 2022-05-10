@@ -256,7 +256,3 @@ async def download(
 )
 def main(**kwargs):
     asyncio.run(download(**kwargs))
-
-
-if __name__ == '__main__':
-    main()

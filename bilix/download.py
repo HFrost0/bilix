@@ -12,7 +12,7 @@ from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColu
 from itertools import groupby
 from bilix.subtitle import json2srt
 from bilix.dm import parse_view
-from bilix.utils import legal_title
+from bilix.utils import legal_title, no_interrupt
 
 
 class Downloader:
@@ -367,7 +367,7 @@ class Downloader:
         cid = audio_urls[0].split('/')[-2]
 
         task_id = self.progress.add_task(
-            total=0,
+            total=1,
             description=title if len(title) < 43 else f'{title[:20]}...{title[-20:]}', visible=False)
         cors = []
         # add cor according to params
@@ -378,12 +378,7 @@ class Downloader:
                 cors.append(self._get_media(video_urls, f'{title}-video', task_id))
                 cors.append(self._get_media(audio_urls, f'{title}-audio', task_id))
         else:
-            if os.path.exists(f'{self.videos_dir}/{title}.mp3'):
-                rprint(f'[green]{title}.mp3 已经存在')
-            else:
-                cors.append(self._get_media(audio_urls, f'{title}-audio', task_id))
-        if len(cors) > 0:
-            self.progress.update(task_id, total=1, visible=True)
+            cors.append(self._get_media(audio_urls, f'{title}.mp3', task_id))
         # additional task
         if image:
             img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
@@ -397,19 +392,18 @@ class Downloader:
         await asyncio.gather(*cors)
         self.sema.release()
 
-        if only_audio and not os.path.exists(f'{self.videos_dir}/{title}.mp3'):
-            os.rename(f'{self.videos_dir}/{title}-audio.m4s', f'{self.videos_dir}/{title}.mp3')
-        elif not only_audio and not os.path.exists(f'{self.videos_dir}/{title}.mp4'):
+        if not only_audio and not os.path.exists(f'{self.videos_dir}/{title}.mp4'):
             await anyio.run_process(
-                ['ffmpeg', '-i', f'{self.videos_dir}/{title}-video.m4s', '-i', f'{self.videos_dir}/{title}-audio.m4s',
+                ['ffmpeg', '-i', f'{self.videos_dir}/{title}-video', '-i', f'{self.videos_dir}/{title}-audio',
                  '-codec', 'copy', f'{self.videos_dir}/{title}.mp4', '-loglevel', 'quiet'])
-            os.remove(f'{self.videos_dir}/{title}-video.m4s')
-            os.remove(f'{self.videos_dir}/{title}-audio.m4s')
-        else:
-            return
-        self.progress.update(task_id, advance=1)
-        print(f'{title} 完成')
-        self.progress.update(task_id, visible=False)
+            os.remove(f'{self.videos_dir}/{title}-video')
+            os.remove(f'{self.videos_dir}/{title}-audio')
+        # make progress invisible and print
+        if self.progress.tasks[task_id].visible:
+            self.progress.update(task_id, advance=1)
+            print(f'{title}{".mp3" if only_audio else ".mp4"} 完成')
+            self.progress.update(task_id, visible=False)
+        # todo return file path
 
     async def get_dm(self, cid, aid, title, update=False):
         """
@@ -423,7 +417,7 @@ class Downloader:
         file_path = f'{self.videos_dir}/extra/{title}-弹幕.bin'
         if not update and os.path.exists(file_path):
             rprint(f'[dark_green]{title}-弹幕.bin 已经存在')
-            return
+            return file_path
         params = {'oid': cid, 'pid': aid, 'type': 1}
         res = await self._req(f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
         view = parse_view(res.content)
@@ -437,6 +431,7 @@ class Downloader:
         async with await anyio.open_file(file_path, 'wb') as f:
             await f.write(content)
         rprint(f'[grey39]{title}-弹幕.bin 完成')
+        return file_path
 
     async def get_subtitle(self, url, extra: dict = None, convert=True):
         """
@@ -473,7 +468,8 @@ class Downloader:
             sub_url = f'http:{i["subtitle_url"]}'
             sub_name = f"{title}-{i['lan_doc']}"
             cors.append(self._get_static(sub_url, sub_name, convert_func=json2srt if convert else None))
-        await asyncio.gather(*cors)
+        paths = await asyncio.gather(*cors)
+        return paths
 
     async def _req(self, url, method='GET', follow_redirects=False, **kwargs) -> httpx.Response:
         """Client request with retry"""
@@ -517,9 +513,12 @@ class Downloader:
         return file_path
 
     async def _get_media(self, media_urls: tuple, media_name, task_id):
+        if os.path.exists(f'{self.videos_dir}/{media_name}'):
+            rprint(f'[green]{media_name} 已经存在')
+            return f'{self.videos_dir}/{media_name}'
         res = await self._req(media_urls[0], method='HEAD')
         total = int(res.headers['Content-Length'])
-        self.progress.update(task_id, total=self.progress.tasks[task_id].total + total)
+        self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
         part_names = []
@@ -530,32 +529,34 @@ class Downloader:
             part_names.append(part_name)
             cors.append(self._get_media_part(media_urls, part_name, task_id))
         await asyncio.gather(*cors)
-        async with await anyio.open_file(f'{self.videos_dir}/{media_name}.m4s', 'wb') as f:
-            for part_name in part_names:
-                async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'rb') as pf:
-                    await f.write(await pf.read())
-                os.remove(f'{self.videos_dir}/{part_name}.m4s')
+        with no_interrupt():
+            async with await anyio.open_file(f'{self.videos_dir}/{media_name}', 'wb') as f:
+                for part_name in part_names:
+                    async with await anyio.open_file(f'{self.videos_dir}/{part_name}', 'rb') as pf:
+                        await f.write(await pf.read())
+                    os.remove(f'{self.videos_dir}/{part_name}')
+        return f'{self.videos_dir}/{media_name}'
 
     async def _get_media_part(self, media_urls: tuple, part_name, task_id, exception=0):
         if exception > 5:
-            raise Exception(f'{part_name}超过重试次数')
+            raise Exception(f'{part_name} 超过重试次数')
         start, end = map(int, part_name.split('-')[-2:])
-        if os.path.exists(f'{self.videos_dir}/{part_name}.m4s'):
-            downloaded = os.path.getsize(f'{self.videos_dir}/{part_name}.m4s')
+        if os.path.exists(f'{self.videos_dir}/{part_name}'):
+            downloaded = os.path.getsize(f'{self.videos_dir}/{part_name}')
             start += downloaded
             if exception == 0:
                 self.progress.update(task_id, advance=downloaded)
         try:
             async with self.client.stream("GET", random.choice(media_urls),
                                           headers={'Range': f'bytes={start}-{end}'}) as r:
-                async with await anyio.open_file(f'{self.videos_dir}/{part_name}.m4s', 'ab') as f:
+                async with await anyio.open_file(f'{self.videos_dir}/{part_name}', 'ab') as f:
                     async for chunk in r.aiter_bytes():
                         await f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1)
         except httpx.ReadTimeout as e:
-            rprint(f'[red]警告：{e.__class__}，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数 {part_name}')
+            rprint(f'[red]警告：{e.__class__} in streaming，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1)
         except Exception as e:
@@ -572,7 +573,7 @@ if __name__ == '__main__':
         #     , quality=0, image=True, only_audio=False, dm=True)
 
         # await d.get_cate_videos('宅舞', num=1, order='click')
-        # await d.get_video('https://www.bilibili.com/video/BV1JP4y1K774?p=2', image=True)
+        # await d.get_video('https://www.bilibili.com/video/BV1JP4y1K774?p=2', image=True, dm=True, subtitle=True)
         # await d.get_video('https://www.bilibili.com/bangumi/play/ep458494?from_spmid=666.25.episode.0', image=True)
         # await d.get_favour('840297609', num=3, series=True, only_audio=True, image=True, dm=True, subtitle=True)
         # await d.get_collect('630')
@@ -580,14 +581,15 @@ if __name__ == '__main__':
         # await d.get_series('https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0', quality=999,
         #                    dm=True)
 
-        await d.get_collect_or_list('https://space.bilibili.com/481361060/channel/seriesdetail?sid=2143493')
-        # await d.get_series('https://www.bilibili.com/video/BV1hS4y1m7Ma',
-        #                    subtitle=True,
-        #                    quality=999,
-        #                    only_audio=False,
-        #                    dm=True,
-        #                    p_range=(100, 105)
-        #                    )
+        # await d.get_collect_or_list('https://space.bilibili.com/481361060/channel/seriesdetail?sid=2143493')
+        await d.get_series('https://www.bilibili.com/video/BV1hS4y1m7Ma',
+                           subtitle=True,
+                           quality=0,
+                           only_audio=False,
+                           dm=True,
+                           image=True,
+                           p_range=(1, 1)
+                           )
         # await d.get_series('https://www.bilibili.com/bangumi/play/ss41689?from_spmid=666.9.producer.2', dm=True,
         #                    only_audio=True, subtitle=True)
         await d.aclose()
