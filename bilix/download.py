@@ -12,7 +12,7 @@ from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColu
 from itertools import groupby
 from bilix.subtitle import json2srt
 from bilix.dm import parse_view
-from bilix.utils import legal_title, no_interrupt
+from bilix.utils import legal_title
 
 
 class Downloader:
@@ -341,8 +341,8 @@ class Downloader:
         elif 'videoData' in init_info:  # bv视频
             if hierarchy:
                 title = legal_title(init_info['videoData']['title'])
-                if len(init_info['videoData']['pages']) > 1:
-                    hierarchy = self._make_hierarchy_dir(hierarchy, title)
+                hierarchy = self._make_hierarchy_dir(hierarchy, title) \
+                    if len(init_info['videoData']['pages']) > 1 else None
             for idx, i in enumerate(init_info['videoData']['pages']):
                 p_url = f"{url}?p={idx + 1}"
                 add_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
@@ -352,8 +352,8 @@ class Downloader:
         elif 'initEpList' in init_info:  # 动漫，电视剧，电影
             if hierarchy:
                 title = legal_title(re.search('property="og:title" content="([^"]*)"', res.text).groups()[0])
-                if len(init_info['initEpList']) > 1:
-                    hierarchy = self._make_hierarchy_dir(hierarchy, title)
+                hierarchy = self._make_hierarchy_dir(hierarchy, title) \
+                    if len(init_info['initEpList']) > 1 else None
             for idx, i in enumerate(init_info['initEpList']):
                 p_url = i['link']
                 add_name = i['title']
@@ -586,12 +586,12 @@ class Downloader:
             part_names.append(part_name)
             cors.append(self._get_media_part(media_urls, part_name, task_id, hierarchy=hierarchy))
         await asyncio.gather(*cors)
-        with no_interrupt():
-            async with await anyio.open_file(f'{file_dir}/{media_name}', 'wb') as f:
-                for part_name in part_names:
-                    async with await anyio.open_file(f'{file_dir}/{part_name}', 'rb') as pf:
-                        await f.write(await pf.read())
-                    os.remove(f'{file_dir}/{part_name}')
+        # todo 可能被中断
+        async with await anyio.open_file(f'{file_dir}/{media_name}', 'wb') as f:
+            for part_name in part_names:
+                async with await anyio.open_file(f'{file_dir}/{part_name}', 'rb') as pf:
+                    await f.write(await pf.read())
+                os.remove(f'{file_dir}/{part_name}')
         return f'{file_dir}/{media_name}'
 
     async def _get_media_part(self, media_urls: tuple, part_name, task_id, exception=0, hierarchy=None):
