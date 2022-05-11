@@ -1,5 +1,4 @@
 import asyncio
-import anyio
 import httpx
 import re
 import random
@@ -7,6 +6,7 @@ import json
 import json5
 from datetime import datetime, timedelta
 import os
+from anyio import run_process
 from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
@@ -440,7 +440,7 @@ class Downloader:
         self.sema.release()
 
         if not only_audio and not os.path.exists(f'{file_dir}/{title}.mp4'):
-            await anyio.run_process(
+            await run_process(
                 ['ffmpeg', '-i', f'{file_dir}/{title}-video', '-i', f'{file_dir}/{title}-audio',
                  '-codec', 'copy', f'{file_dir}/{title}.mp4', '-loglevel', 'quiet'])
             os.remove(f'{file_dir}/{title}-video')
@@ -479,8 +479,8 @@ class Downloader:
             cors.append(self._req(url))
         results = await asyncio.gather(*cors)
         content = b''.join(res.content for res in results)
-        async with await anyio.open_file(file_path, 'wb') as f:
-            await f.write(content)
+        with open(file_path, 'wb') as f:
+            f.write(content)
         rprint(f'[grey39]{title}-弹幕.bin 完成')
         return file_path
 
@@ -563,8 +563,8 @@ class Downloader:
         else:
             res = await self._req(url)
             content = convert_func(res.content) if convert_func else res.content
-            async with await anyio.open_file(file_path, 'wb') as f:
-                await f.write(content)
+            with open(file_path, 'wb') as f:
+                f.write(content)
             rprint(f'[grey39]{name + file_type} 完成')  # extra file use different color
         return file_path
 
@@ -586,12 +586,19 @@ class Downloader:
             part_names.append(part_name)
             cors.append(self._get_media_part(media_urls, part_name, task_id, hierarchy=hierarchy))
         await asyncio.gather(*cors)
-        # todo 可能被中断
-        async with await anyio.open_file(f'{file_dir}/{media_name}', 'wb') as f:
-            for part_name in part_names:
-                async with await anyio.open_file(f'{file_dir}/{part_name}', 'rb') as pf:
-                    await f.write(await pf.read())
-                os.remove(f'{file_dir}/{part_name}')
+
+        def merge():
+            try:  # make sure merge will not interrupt by user
+                with open(f'{file_dir}/{media_name}', 'wb') as f:
+                    for part in part_names:
+                        with open(f'{file_dir}/{part}', 'rb') as pf:
+                            f.write(pf.read())
+                [os.remove(f'{file_dir}/{part}') for part in part_names]
+            except KeyboardInterrupt:
+                print('Interrupt, but waiting for file merge, please try again later')
+                merge()
+
+        merge()
         return f'{file_dir}/{media_name}'
 
     async def _get_media_part(self, media_urls: tuple, part_name, task_id, exception=0, hierarchy=None):
@@ -607,9 +614,9 @@ class Downloader:
         try:
             async with self.client.stream("GET", random.choice(media_urls),
                                           headers={'Range': f'bytes={start}-{end}'}) as r:
-                async with await anyio.open_file(f'{file_dir}/{part_name}', 'ab') as f:
+                with open(f'{file_dir}/{part_name}', 'ab') as f:
                     async for chunk in r.aiter_bytes():
-                        await f.write(chunk)
+                        f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)

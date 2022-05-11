@@ -119,53 +119,6 @@ def print_help():
     console.print(Panel(table, border_style="dim", title="Options", title_align="left"))
 
 
-async def download(
-        method: str,
-        key: str,
-        videos_dir: str,
-        video_concurrency: int,
-        cookie: str,
-        quality: int,
-        days: int,
-        num: int,
-        order: str,
-        keyword: str,
-
-        no_series: bool,
-        hierarchy: bool,
-        image: bool,
-        subtitle: bool,
-        dm: bool,
-        only_audio: bool,
-        p_range
-):
-    d = Downloader(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
-    if method == 'get_series' or method == 's':
-        await d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                           p_range=p_range, hierarchy=hierarchy)
-    elif method == 'get_video' or method == 'v':
-        await d.get_video(key, quality=quality,
-                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
-    elif method == 'get_up' or method == 'up':
-        await d.get_up_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy
-        )
-    elif method == 'get_cate' or method == 'cate':
-        await d.get_cate_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-    elif method == 'get_favour' or method == 'fav':
-        await d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
-                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-    elif method == 'get_collect' or method == 'col':
-        await d.get_collect_or_list(key, quality=quality,
-                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-    else:
-        print(f'{method}不能识别，请使用正确的方法名')
-    await d.aclose()
-
-
 @click.command(add_help_option=False)
 @click.argument("method", type=str)
 @click.argument("key", type=str)
@@ -265,5 +218,60 @@ async def download(
     expose_value=False,
     callback=handle_help,
 )
-def main(**kwargs):
-    asyncio.run(download(**kwargs))
+def main(method: str,
+         key: str,
+         videos_dir: str,
+         video_concurrency: int,
+         cookie: str,
+         quality: int,
+         days: int,
+         num: int,
+         order: str,
+         keyword: str,
+
+         no_series: bool,
+         hierarchy: bool,
+         image: bool,
+         subtitle: bool,
+         dm: bool,
+         only_audio: bool,
+         p_range,
+         ):
+    loop = asyncio.get_event_loop()
+    d = Downloader(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
+    if method == 'get_series' or method == 's':
+        cor = d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
+                           p_range=p_range, hierarchy=hierarchy)
+    elif method == 'get_video' or method == 'v':
+        cor = d.get_video(key, quality=quality,
+                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+    elif method == 'get_up' or method == 'up':
+        cor = d.get_up_videos(
+            key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy
+        )
+    elif method == 'get_cate' or method == 'cate':
+        cor = d.get_cate_videos(
+            key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
+    elif method == 'get_favour' or method == 'fav':
+        cor = d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
+                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
+    elif method == 'get_collect' or method == 'col':
+        cor = d.get_collect_or_list(key, quality=quality,
+                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
+    else:
+        print(f'{method}不能识别，请使用正确的方法名')
+        return
+    task = loop.create_task(cor)
+    try:
+        loop.run_until_complete(task)
+    except KeyboardInterrupt:
+        # print('用户中断')
+        tasks = [t for t in asyncio.all_tasks(loop)]
+        [t.cancel() for t in tasks]
+        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
+    finally:
+        loop.run_until_complete(d.aclose())
+        loop.close()
+
