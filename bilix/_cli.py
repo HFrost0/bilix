@@ -92,6 +92,10 @@ def print_help():
         '只下载搜索结果每个视频的第一p，仅get_up，get_cate，get_favour时生效',
     )
     table.add_row(
+        "--no-hierarchy", '',
+        '不使用层次目录，所有视频统一保存在下载目录下'
+    )
+    table.add_row(
         "--image", '',
         '下载视频封面'
     )
@@ -128,6 +132,7 @@ async def download(
         keyword: str,
 
         no_series: bool,
+        hierarchy: bool,
         image: bool,
         subtitle: bool,
         dm: bool,
@@ -136,26 +141,26 @@ async def download(
 ):
     d = Downloader(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
     if method == 'get_series' or method == 's':
-        await d.get_series(key, quality=quality,
-                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, p_range=p_range)
+        await d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
+                           p_range=p_range, hierarchy=hierarchy)
     elif method == 'get_video' or method == 'v':
         await d.get_video(key, quality=quality,
                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
     elif method == 'get_up' or method == 'up':
         await d.get_up_videos(
             key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy
         )
     elif method == 'get_cate' or method == 'cate':
         await d.get_cate_videos(
             key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
     elif method == 'get_favour' or method == 'fav':
         await d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
-                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
     elif method == 'get_collect' or method == 'col':
         await d.get_collect_or_list(key, quality=quality,
-                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
     else:
         print(f'{method}不能识别，请使用正确的方法名')
     await d.aclose()
@@ -214,6 +219,12 @@ async def download(
 @click.option(
     '--no-series',
     'no_series',
+    is_flag=True,
+    default=True,
+)
+@click.option(
+    '--no-hierarchy',
+    'hierarchy',
     is_flag=True,
     default=True,
 )
