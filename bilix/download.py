@@ -341,8 +341,10 @@ class Downloader:
         elif 'videoData' in init_info:  # bv视频
             if hierarchy:
                 title = legal_title(init_info['videoData']['title'])
-                hierarchy = self._make_hierarchy_dir(hierarchy, title) \
-                    if len(init_info['videoData']['pages']) > 1 else None
+                if len(init_info['videoData']['pages']) > 1:
+                    hierarchy = self._make_hierarchy_dir(hierarchy, title)
+                else:
+                    hierarchy = hierarchy if type(hierarchy) is str else None
             for idx, i in enumerate(init_info['videoData']['pages']):
                 p_url = f"{url}?p={idx + 1}"
                 add_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
@@ -352,8 +354,10 @@ class Downloader:
         elif 'initEpList' in init_info:  # 动漫，电视剧，电影
             if hierarchy:
                 title = legal_title(re.search('property="og:title" content="([^"]*)"', res.text).groups()[0])
-                hierarchy = self._make_hierarchy_dir(hierarchy, title) \
-                    if len(init_info['initEpList']) > 1 else None
+                if len(init_info['initEpList']) > 1:
+                    hierarchy = self._make_hierarchy_dir(hierarchy, title)
+                else:
+                    hierarchy = hierarchy if type(hierarchy) is str else None
             for idx, i in enumerate(init_info['initEpList']):
                 p_url = i['link']
                 add_name = i['title']
@@ -410,7 +414,7 @@ class Downloader:
             return
         cid = audio_urls[0].split('/')[-2]
 
-        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
+        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy and len(hierarchy) > 0 else self.videos_dir
         task_id = self.progress.add_task(
             total=1,
             description=title if len(title) < 43 else f'{title[:20]}...{title[-20:]}', visible=False)
