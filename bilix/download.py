@@ -615,9 +615,12 @@ class Downloader:
             start += downloaded
             if exception == 0:
                 self.progress.update(task_id, advance=downloaded)
+        if start > end:
+            return  # skip already finished
         try:
             async with self.client.stream("GET", random.choice(media_urls),
                                           headers={'Range': f'bytes={start}-{end}'}) as r:
+                r.raise_for_status()
                 with open(f'{file_dir}/{part_name}', 'ab') as f:
                     async for chunk in r.aiter_bytes():
                         f.write(chunk)
