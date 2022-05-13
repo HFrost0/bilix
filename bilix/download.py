@@ -11,7 +11,7 @@ from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
 from bilix.subtitle import json2srt
-from bilix.dm import parse_view
+from bilix.dm import parse_view, dm2ass_factory
 from bilix.utils import legal_title
 
 
@@ -45,6 +45,8 @@ class Downloader:
         self.part_concurrency = part_concurrency
 
     async def aclose(self):
+        for t in self.progress.tasks:
+            t.visible = False
         self.progress.stop()
         await self.client.aclose()
 
@@ -399,6 +401,7 @@ class Downloader:
         try:  # find video and audio url
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
             play_info = json.loads(play_info)
+            video_info, video_urls = None, None  # avoid ide warning
             # choose quality
             for q, (_, i) in enumerate(groupby(play_info['data']['dash']['video'], key=lambda x: x['id'])):
                 video_info = next(i)
@@ -438,8 +441,8 @@ class Downloader:
                 cors.append(self.get_subtitle(url, extra={'cid': cid, 'title': title}, hierarchy=extra_hierarchy))
             if dm:
                 aid = init_info['aid'] if 'aid' in init_info else init_info['epInfo']['aid']  # normal or ep video
-                cors.append(self.get_dm(cid, aid, title, hierarchy=extra_hierarchy))
-
+                w, h = video_info['width'], video_info['height']
+                cors.append(self.get_dm(cid, aid, title, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy))
         await asyncio.gather(*cors)
         self.sema.release()
 
@@ -456,22 +459,22 @@ class Downloader:
             self.progress.update(task_id, visible=False)
         # todo return file path
 
-    async def get_dm(self, cid, aid, title, update=False, hierarchy=None):
+    async def get_dm(self, cid, aid, title, update=False, convert_func=None, hierarchy=None):
         """
 
         :param cid:
         :param aid:
         :param title: 弹幕文件名
         :param update: 是否更新覆盖之前下载的弹幕文件
+        :param convert_func:
         :param hierarchy:
         :return:
         """
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
-        file_path = f'{file_dir}/{title}-弹幕.bin'
+        file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
+        file_path = f'{file_dir}/{title}-弹幕{file_type}'
         if not update and os.path.exists(file_path):
-            rprint(f'[dark_green]{title}-弹幕.bin 已经存在')
+            rprint(f'[dark_green]{title}-弹幕{file_type} 已经存在')
             return file_path
         params = {'oid': cid, 'pid': aid, 'type': 1}
         res = await self._req(f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
@@ -483,9 +486,10 @@ class Downloader:
             cors.append(self._req(url))
         results = await asyncio.gather(*cors)
         content = b''.join(res.content for res in results)
+        content = await convert_func(content) if convert_func else content
         with open(file_path, 'wb') as f:
             f.write(content)
-        rprint(f'[grey39]{title}-弹幕.bin 完成')
+        rprint(f'[grey39]{title}-弹幕{file_type} 完成')
         return file_path
 
     async def get_subtitle(self, url, extra: dict = None, convert=True, hierarchy=None):
@@ -542,7 +546,8 @@ class Downloader:
             else:
                 break
         else:
-            raise Exception(f'[red]超过重复次数 {url}')
+            rprint(f'[red]超过重复次数 {url}')
+            raise Exception('超过重复次数')
         res.raise_for_status()
         return res
 
@@ -555,8 +560,6 @@ class Downloader:
         :return:
         """
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
         if convert_func:
             file_type = '.' + convert_func.__name__.split('2')[-1]  #
         else:
@@ -597,10 +600,10 @@ class Downloader:
                     for part in part_names:
                         with open(f'{file_dir}/{part}', 'rb') as pf:
                             f.write(pf.read())
-                [os.remove(f'{file_dir}/{part}') for part in part_names]
             except KeyboardInterrupt:
                 print('Interrupt, but waiting for file merge, please try again later')
                 merge()
+            [os.remove(f'{file_dir}/{part}') for part in part_names]
 
         merge()
         return f'{file_dir}/{media_name}'
@@ -608,7 +611,8 @@ class Downloader:
     async def _get_media_part(self, media_urls: tuple, part_name, task_id, exception=0, hierarchy=None):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if exception > 5:
-            raise Exception(f'{part_name} 超过重试次数')
+            rprint(f'[red]超过重试次数 {part_name}')
+            raise Exception('超过重试次数')
         start, end = map(int, part_name.split('-')[-2:])
         if os.path.exists(f'{file_dir}/{part_name}'):
             downloaded = os.path.getsize(f'{file_dir}/{part_name}')

@@ -267,7 +267,7 @@ def main(method: str,
     try:
         loop.run_until_complete(task)
     except KeyboardInterrupt:
-        # print('用户中断')
+        rich.print('[cyan]提示：用户中断，重复执行命令可继续下载')
         tasks = [t for t in asyncio.all_tasks(loop)]
         [t.cancel() for t in tasks]
         loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))

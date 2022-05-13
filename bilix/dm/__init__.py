@@ -1,7 +1,11 @@
+import asyncio
 import json
+import functools
+from concurrent.futures import ProcessPoolExecutor
 from google.protobuf.json_format import MessageToJson
 from .reply_pb2 import DmSegMobileReply
 from .view_pb2 import DmWebViewReply
+from biliass import Danmaku2ASS
 
 
 def parse_view(content: bytes) -> dict:
@@ -18,8 +22,34 @@ def parse_seg(content: bytes) -> dict:
     return seg
 
 
-def seg2json(content: bytes) -> bytes:
+def dm2json(content: bytes) -> bytes:
     seg = DmSegMobileReply()
     seg.ParseFromString(content)
     seg = MessageToJson(seg)
     return seg.encode('utf-8')
+
+
+p_executor = ProcessPoolExecutor()
+
+
+def dm2ass_factory(width, height):
+    async def dm2ass(protobuf_bytes: bytes) -> bytes:
+        loop = asyncio.get_event_loop()
+        f = functools.partial(Danmaku2ASS,
+                              protobuf_bytes,
+                              width,
+                              height,
+                              input_format="protobuf",
+                              reserve_blank=0,
+                              font_face="sans-serif",
+                              font_size=width / 40,
+                              text_opacity=0.8,
+                              duration_marquee=15.0,
+                              duration_still=10.0,
+                              comment_filter=None,
+                              is_reduce_comments=False,
+                              progress_callback=None, )
+        content = await loop.run_in_executor(p_executor, f)
+        return content.encode('utf-8')
+
+    return dm2ass
