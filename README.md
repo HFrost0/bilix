@@ -1,4 +1,9 @@
 # Bilix
+[![GitHub license](https://img.shields.io/github/license/HFrost0/bilix?style=flat-square)](https://github.com/HFrost0/bilix/blob/master/LICENSE)
+![PyPI](https://img.shields.io/pypi/v/bilix?style=flat-square&color=blue)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/HFrost0/bilix)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/bilix?label=pypi%20downloads&style=flat-square)
+
 ⚡️快如闪电的 [bilibili](https://www.bilibili.com/) 视频下载工具，基于 Python 现代 Async 异步特性，高速批量下载整部动漫，电视剧，电影，up投稿...
 
 <div align="center"> <img src='https://s1.ax1x.com/2022/05/03/OFh34O.gif' style="border-radius: 8px"> </div>
@@ -102,7 +107,7 @@ bilix get_series 'url' --subtitle --dm --image
 
 
 ## 进阶使用 Advance Guide
-请使用`bilix -h`查看更多参数提示，包括方法名简写，视频画面质量选择，并发量控制，下载目录等。
+请使用`bilix -h`查看更多参数提示，包括方法名简写（例如`get_series`简写为`s`），视频画面质量选择，并发量控制，下载目录等。
 ### 你是大会员？🥸
 请在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
 ### 在 python 中调用
