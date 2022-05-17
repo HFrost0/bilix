@@ -39,14 +39,12 @@ class Downloader:
             DownloadColumn(),
             TransferSpeedColumn(),
             'ETA',
-            TimeRemainingColumn())
+            TimeRemainingColumn(), transient=True)
         self.progress.start()
         self.sema = asyncio.Semaphore(video_concurrency)
         self.part_concurrency = part_concurrency
 
     async def aclose(self):
-        for t in self.progress.tasks:
-            t.visible = False
         self.progress.stop()
         await self.client.aclose()
 
@@ -193,7 +191,6 @@ class Downloader:
         num = min(ps, num)
         params = {'media_id': fid, 'order': 'mtime', 'ps': ps, 'pn': pn, 'keyword': keyword}
         res = await self._req('https://api.bilibili.com/x/v3/fav/resource/list', params=params)
-        res.raise_for_status()
         info = json.loads(res.text)
         cors = []
         for i in info['data']['medias'][:num]:
@@ -228,11 +225,11 @@ class Downloader:
         """
         await self._load_cate_info()
         if cate_name not in self.cate_info:
-            print(f'未找到分区 {cate_name}')
+            rprint(f'未找到分区 {cate_name}')
             return
         if 'subChannelId' not in self.cate_info[cate_name]:
             sub_names = [i['name'] for i in self.cate_info[cate_name]['sub']]
-            print(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
+            rprint(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
             return
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【分区】{cate_name}"))
@@ -285,7 +282,6 @@ class Downloader:
         ps = 30
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': 1, 'keyword': keyword}
         res = await self._req('https://api.bilibili.com/x/space/arc/search', params=params)
-        res.raise_for_status()
         info = json.loads(res.text)
         if hierarchy:
             name = info['data']['list']['vlist'][0]['author']
@@ -309,7 +305,6 @@ class Downloader:
         num = min(ps, num)
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
         res = await self._req('https://api.bilibili.com/x/space/arc/search', params=params)
-        res.raise_for_status()
         info = json.loads(res.text)
         bv_ids = [i['bvid'] for i in info['data']['list']['vlist']][:num]
         func = self.get_series if series else self.get_video
@@ -420,7 +415,7 @@ class Downloader:
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy and len(hierarchy) > 0 else self.videos_dir
         task_id = self.progress.add_task(
             total=1,
-            description=title if len(title) < 43 else f'{title[:20]}...{title[-20:]}', visible=False)
+            description=title if len(title) < 33 else f'{title[:15]}...{title[-15:]}', visible=False)
         cors = []
         # add cor according to params
         if not only_audio:
@@ -454,9 +449,8 @@ class Downloader:
             os.remove(f'{file_dir}/{title}-audio')
         # make progress invisible and print
         if self.progress.tasks[task_id].visible:
-            self.progress.update(task_id, advance=1)
-            print(f'{title}{".mp3" if only_audio else ".mp4"} 完成')
-            self.progress.update(task_id, visible=False)
+            self.progress.update(task_id, advance=1, visible=False)
+            rprint(f'{title}{".mp3" if only_audio else ".mp4"} 完成')
         # todo return file path
 
     async def get_dm(self, cid, aid, title, update=False, convert_func=None, hierarchy=None):
@@ -601,7 +595,7 @@ class Downloader:
                         with open(f'{file_dir}/{part}', 'rb') as pf:
                             f.write(pf.read())
             except KeyboardInterrupt:
-                print('Interrupt, but waiting for file merge, please try again later')
+                rprint('Interrupt, but waiting for file merge, please try again later')
                 merge()
             [os.remove(f'{file_dir}/{part}') for part in part_names]
 
@@ -632,7 +626,7 @@ class Downloader:
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except httpx.ReadTimeout as e:
-            rprint(f'[red]警告：{e.__class__} in streaming，该异常可能由于网络条件不佳或并发数过大导致，如果异常重复出现请考虑降低并发数')
+            rprint(f'[red]警告：{e.__class__} in streaming，该异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except Exception as e:

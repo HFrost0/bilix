@@ -5,6 +5,7 @@ import rich
 from rich.panel import Panel
 from rich.table import Table
 from bilix.download import Downloader
+from bilix.dm import p_executor
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -268,10 +269,13 @@ def main(method: str,
         loop.run_until_complete(task)
     except KeyboardInterrupt:
         rich.print('[cyan]提示：用户中断，重复执行命令可继续下载')
-        tasks = [t for t in asyncio.all_tasks(loop)]
-        [t.cancel() for t in tasks]
-        loop.run_until_complete(asyncio.gather(*tasks, return_exceptions=True))
-    finally:
-        loop.run_until_complete(d.aclose())
-        loop.close()
-
+    finally:  # similar to asyncio.run
+        try:
+            tasks = [t for t in asyncio.all_tasks(loop)]
+            [t.cancel() for t in tasks]
+            loop.run_until_complete(asyncio.gather(*tasks, d.aclose(), return_exceptions=True))
+            loop.run_until_complete(loop.shutdown_asyncgens())
+            p_executor.shutdown()
+        finally:
+            asyncio.set_event_loop(None)
+            loop.close()
