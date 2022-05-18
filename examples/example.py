@@ -12,4 +12,6 @@ async def main():
     await asyncio.gather(cor1, cor2, cor3)
     await d.aclose()
 
-asyncio.run(main())
+
+if __name__ == '__main__':
+    asyncio.run(main())

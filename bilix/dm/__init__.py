@@ -4,7 +4,7 @@ import functools
 from google.protobuf.json_format import MessageToJson
 from .reply_pb2 import DmSegMobileReply
 from .view_pb2 import DmWebViewReply
-from bilix.utils import _p_executor
+from bilix.process import SingletonPPE
 from biliass import Danmaku2ASS
 
 
@@ -46,7 +46,7 @@ def dm2ass_factory(width, height):
                               comment_filter=None,
                               is_reduce_comments=False,
                               progress_callback=None, )
-        content = await loop.run_in_executor(_p_executor, f)
+        content = await loop.run_in_executor(SingletonPPE(), f)
         return content.encode('utf-8')
 
     return dm2ass

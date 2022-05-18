@@ -1,6 +1,5 @@
 import html
 import re
-from concurrent.futures import ProcessPoolExecutor
 
 
 def legal_title(title, add_name=''):
@@ -26,6 +25,3 @@ def _truncate(s: str, target=150):
     while len(s.encode('utf8')) > target - 3:
         s = s[:-1]
     return s
-
-
-_p_executor = ProcessPoolExecutor()  # global executor obj
