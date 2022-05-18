@@ -1,13 +1,9 @@
+# -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 
 
 def get_long_description():
-    with open('README.md', 'r') as f:
-        return f.read()
-
-
-def get_license():
-    with open('LICENSE', 'r') as f:
+    with open('README.md', 'r', encoding='utf8') as f:
         return f.read()
 
 
