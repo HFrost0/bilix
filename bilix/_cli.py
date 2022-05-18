@@ -5,7 +5,7 @@ import rich
 from rich.panel import Panel
 from rich.table import Table
 from bilix.download import Downloader
-from bilix.dm import p_executor
+from bilix.utils import _p_executor
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -275,7 +275,7 @@ def main(method: str,
             [t.cancel() for t in tasks]
             loop.run_until_complete(asyncio.gather(*tasks, d.aclose(), return_exceptions=True))
             loop.run_until_complete(loop.shutdown_asyncgens())
-            p_executor.shutdown()
+            _p_executor.shutdown()
         finally:
             asyncio.set_event_loop(None)
             loop.close()

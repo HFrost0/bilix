@@ -1,5 +1,6 @@
 import html
 import re
+from concurrent.futures import ProcessPoolExecutor
 
 
 def legal_title(title, add_name=''):
@@ -9,7 +10,6 @@ def legal_title(title, add_name=''):
     :param add_name: 分P名
     :return:
     """
-
     title, add_name = _replace(title), _replace(add_name)
     title = _truncate(title)  # avoid OSError caused by title too long
     return f'{title}-{add_name}' if add_name else title
@@ -28,7 +28,4 @@ def _truncate(s: str, target=150):
     return s
 
 
-if __name__ == '__main__':
-    a = legal_title("【Udemy付费课程】Node JS 高级概念-进阶课程 学习使用 Redis 进行缓存，通过集群加速，使用 S3 和 Node 添加图片上传！（中英文字幕）",
-                    "P80-082 Solving Authentication Issues with")
-    print(a)
+_p_executor = ProcessPoolExecutor()  # global executor obj

@@ -1,10 +1,10 @@
 import asyncio
 import json
 import functools
-from concurrent.futures import ProcessPoolExecutor
 from google.protobuf.json_format import MessageToJson
 from .reply_pb2 import DmSegMobileReply
 from .view_pb2 import DmWebViewReply
+from bilix.utils import _p_executor
 from biliass import Danmaku2ASS
 
 
@@ -29,9 +29,6 @@ def dm2json(content: bytes) -> bytes:
     return seg.encode('utf-8')
 
 
-p_executor = ProcessPoolExecutor()
-
-
 def dm2ass_factory(width, height):
     async def dm2ass(protobuf_bytes: bytes) -> bytes:
         loop = asyncio.get_event_loop()
@@ -49,7 +46,7 @@ def dm2ass_factory(width, height):
                               comment_filter=None,
                               is_reduce_comments=False,
                               progress_callback=None, )
-        content = await loop.run_in_executor(p_executor, f)
+        content = await loop.run_in_executor(_p_executor, f)
         return content.encode('utf-8')
 
     return dm2ass
