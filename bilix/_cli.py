@@ -5,7 +5,6 @@ import rich
 from rich.panel import Panel
 from rich.table import Table
 from bilix.download import Downloader
-from bilix.process import SingletonPPE
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -270,12 +269,31 @@ def main(method: str,
     except KeyboardInterrupt:
         rich.print('[cyan]提示：用户中断，重复执行命令可继续下载')
     finally:  # similar to asyncio.run
+        tasks = [t for t in asyncio.all_tasks(loop)]
+        [t.cancel() for t in tasks]
         try:
-            tasks = [t for t in asyncio.all_tasks(loop)]
-            [t.cancel() for t in tasks]
             loop.run_until_complete(asyncio.gather(*tasks, d.aclose(), return_exceptions=True))
             loop.run_until_complete(loop.shutdown_asyncgens())
-            SingletonPPE().shutdown()
+            # print('normal out')
+        except KeyboardInterrupt:
+            pass  # todo bug due to KeyboardInterrupt in python3.9.../asyncio/events.py line 78-95
+            # try:
+            #     self._context.run(self._callback, *self._args)
+            # except (SystemExit, KeyboardInterrupt):  # 💦 always raise these two kind of error regrad
+            #     raise
+            # except BaseException as exc:
+            #     cb = format_helpers._format_callback_source(
+            #         self._callback, self._args)
+            #     msg = f'Exception in callback {cb}'
+            #     context = {
+            #         'message': msg,
+            #         'exception': exc,
+            #         'handle': self,
+            #     }
+            #     if self._source_traceback:
+            #         context['source_traceback'] = self._source_traceback
+            #     self._loop.call_exception_handler(context)
         finally:
+            # SingletonPPE().shutdown()
             asyncio.set_event_loop(None)
             loop.close()
