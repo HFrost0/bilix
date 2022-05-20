@@ -483,7 +483,7 @@ class Downloader:
         content = await convert_func(content) if convert_func else content
         with open(file_path, 'wb') as f:
             f.write(content)
-        print(f'[grey39]{title}-弹幕{file_type} 完成')
+        rprint(f'[grey39]{title}-弹幕{file_type} 完成')
         return file_path
 
     async def get_subtitle(self, url, extra: dict = None, convert=True, hierarchy=None):
@@ -566,7 +566,7 @@ class Downloader:
             content = convert_func(res.content) if convert_func else res.content
             with open(file_path, 'wb') as f:
                 f.write(content)
-            print(f'[grey39]{name + file_type} 完成')  # extra file use different color
+            rprint(f'[grey39]{name + file_type} 完成')  # extra file use different color
         return file_path
 
     async def _get_media(self, media_urls: tuple, media_name, task_id, hierarchy=None):
