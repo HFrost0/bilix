@@ -12,7 +12,7 @@ async def test_get_series():
 @pytest.mark.asyncio
 async def test_get_up():
     d = Downloader()
-    await d.get_up_videos('436482484', total=1)
+    await d.get_up_videos('436482484', num=1)
     await d.aclose()
 
 

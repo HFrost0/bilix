@@ -450,7 +450,7 @@ class Downloader:
         # make progress invisible and print
         if self.progress.tasks[task_id].visible:
             self.progress.update(task_id, advance=1, visible=False)
-            rprint(f'{title}{".mp3" if only_audio else ".mp4"} 完成')
+            print(f'{title}{".mp3" if only_audio else ".mp4"} 完成')
         # todo return file path
 
     async def get_dm(self, cid, aid, title, update=False, convert_func=None, hierarchy=None):
@@ -483,7 +483,7 @@ class Downloader:
         content = await convert_func(content) if convert_func else content
         with open(file_path, 'wb') as f:
             f.write(content)
-        rprint(f'[grey39]{title}-弹幕{file_type} 完成')
+        print(f'[grey39]{title}-弹幕{file_type} 完成')
         return file_path
 
     async def get_subtitle(self, url, extra: dict = None, convert=True, hierarchy=None):
@@ -566,7 +566,7 @@ class Downloader:
             content = convert_func(res.content) if convert_func else res.content
             with open(file_path, 'wb') as f:
                 f.write(content)
-            rprint(f'[grey39]{name + file_type} 完成')  # extra file use different color
+            print(f'[grey39]{name + file_type} 完成')  # extra file use different color
         return file_path
 
     async def _get_media(self, media_urls: tuple, media_name, task_id, hierarchy=None):
