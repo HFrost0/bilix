@@ -25,7 +25,7 @@ class Downloader:
         :param part_concurrency: 每个媒体的分段并发数
         :param http2: 是否使用http2协议
         """
-        # assert video_concurrency * part_concurrency <= 100  # todo 是否限制
+        # assert video_concurrency * part_concurrency <= 100
         self.videos_dir = videos_dir
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
@@ -406,7 +406,7 @@ class Downloader:
             audio_info = play_info['data']['dash']['audio'][0]
             audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
-            # todo https://www.bilibili.com/video/BV1Jx411r776?p=3 未处理，老视频mp4
+            # todo https://www.bilibili.com/video/BV1Jx411r776?p=3 未处理，没有dash下载方式的视频
             rprint(f'[rgb(234,122,153)]{title} 需要大会员，或该地区不支持')
             self.sema.release()
             return

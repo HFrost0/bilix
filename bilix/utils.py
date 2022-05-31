@@ -16,7 +16,7 @@ def legal_title(title, add_name=''):
 
 def _replace(s: str):
     s = s.strip()
-    s = html.unescape(s)  # handel & "... # todo remove
+    s = html.unescape(s)  # handel & "...
     s = re.sub(r"[/\\:*?\"<>|]", '', s)  # replace illegal filename character
     return s
 
