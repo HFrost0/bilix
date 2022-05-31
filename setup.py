@@ -36,9 +36,9 @@ setup(
         'anyio',
         'rich',
         'json5',
-        'protobuf',
         'click',
-        'biliass==1.3.4'
+        'protobuf>=4.21.1',
+        'biliass==1.3.5'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
