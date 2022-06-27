@@ -1,4 +1,5 @@
 import asyncio
+from typing import Union, Sequence
 import httpx
 import re
 import random
@@ -167,7 +168,7 @@ class Downloader:
         """
         ps = 20
         params = {'media_id': fid, 'pn': 1, 'ps': ps, 'keyword': keyword, 'order': 'mtime'}
-        res = await self._req(url='https://api.bilibili.com/x/v3/fav/resource/list', params=params)
+        res = await self._req('https://api.bilibili.com/x/v3/fav/resource/list', params=params)
         data = json.loads(res.text)['data']
         if hierarchy:
             fav_name, up_name = data['info']['title'], data['info']['upper']['name']
@@ -314,7 +315,7 @@ class Downloader:
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bv_ids])
 
     async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, dm=False, only_audio=False,
-                         p_range: tuple = None, hierarchy=None):
+                         p_range: Sequence[int] = None, hierarchy=None):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
@@ -526,11 +527,14 @@ class Downloader:
         paths = await asyncio.gather(*cors)
         return paths
 
-    async def _req(self, url, method='GET', follow_redirects=False, **kwargs) -> httpx.Response:
+    async def _req(self, url_or_urls: Union[str, Sequence[str]], method='GET', follow_redirects=False,
+                   **kwargs) -> httpx.Response:
         """Client request with retry"""
         for _ in range(3):  # repeat 3 times to handle Exception
+            url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
             try:
                 res = await self.client.request(method, url, follow_redirects=follow_redirects, **kwargs)
+                res.raise_for_status()
             except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
                 rprint(f'[red]警告：{e.__class__} 可能由于网络不佳 {method} {url}')
                 await asyncio.sleep(0.1)
@@ -540,9 +544,8 @@ class Downloader:
             else:
                 break
         else:
-            rprint(f'[red]超过重复次数 {url}')
+            rprint(f'[red]超过重复次数 {url_or_urls}')
             raise Exception('超过重复次数')
-        res.raise_for_status()
         return res
 
     async def _get_static(self, url, name, convert_func=None, hierarchy=None) -> str:
@@ -569,12 +572,12 @@ class Downloader:
             rprint(f'[grey39]{name + file_type} 完成')  # extra file use different color
         return file_path
 
-    async def _get_media(self, media_urls: tuple, media_name, task_id, hierarchy=None):
+    async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy=None):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if os.path.exists(f'{file_dir}/{media_name}'):
             rprint(f'[green]{media_name} 已经存在')
             return f'{file_dir}/{media_name}'
-        res = await self._req(media_urls[0], method='HEAD')
+        res = await self._req(media_urls, method='HEAD')
         total = int(res.headers['Content-Length'])
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         part_length = total // self.part_concurrency
@@ -602,7 +605,7 @@ class Downloader:
         merge()
         return f'{file_dir}/{media_name}'
 
-    async def _get_media_part(self, media_urls: tuple, part_name, task_id, exception=0, hierarchy=None):
+    async def _get_media_part(self, media_urls: Sequence[str], part_name, task_id, exception=0, hierarchy=None):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if exception > 5:
             rprint(f'[red]超过重试次数 {part_name}')
