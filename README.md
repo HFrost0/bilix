@@ -199,16 +199,16 @@ pip install bilix --upgrade
 ## 未来工作
 
 - [x] 下载视频封面
-- [ ] 每日测试（GitHub Action），但目前Github Action不能正常访问b站？
+- [ ] 每日测试（GitHub Action），但目前Github Action不能正常访问b站？单元测试。
 - [x] 支持下载字幕，目前已支持下载json，以及转换成srt格式
 - [x] 支持弹幕下载，目前已支持下载protobuf的的弹幕文件，以及基于[biliass](https://github.com/yutto-dev/biliass)
   的ass格式转换 [issue](https://github.com/HFrost0/bilix/issues/7)
 - [x] 支持用pip安装，并提供更简明的命令行调用方式
 - [x] 支持层级文件夹
 - [x] 支持更可控的中断（包含弹幕合成中断）
+- [ ] 支持切片下载
 
 ### 已知的bug 🤡
 
-* 出现未被正常捕捉的异常后断点重连可能导致视频画面或者音频部分缺失（例如突然拉闸😅）
 * 当两个视频名字完全一样时，任务冲突但不会报错，可能导致视频缺胳膊少腿
 * 暂不支持少数没有音画分开下载方式（dash）的视频
