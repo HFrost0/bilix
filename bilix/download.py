@@ -335,12 +335,17 @@ class Downloader:
         """
         url = url.split('?')[0]
         res = await self._req(url, follow_redirects=True)
-        init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
-        init_info = json.loads(init_info)
-        cors = []
+        try:
+            init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
+            init_info = json.loads(init_info)
+            cors = []
+        except AttributeError:
+            rprint(f'[red]视频已失效 {url}')  # 啊叻？视频不见了？在分区下载的时候可能产生
+            return
         if len(init_info.get('error', {})) > 0:
             rprint(f'[red]视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
-        elif 'videoData' in init_info:  # bv视频
+            return
+        if 'videoData' in init_info:  # bv视频
             if hierarchy:
                 title = legal_title(init_info['videoData']['title'])
                 if len(init_info['videoData']['pages']) > 1:
