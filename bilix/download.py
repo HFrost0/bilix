@@ -1,5 +1,5 @@
 import asyncio
-from typing import Union, Sequence
+from typing import Union, Sequence, Optional
 import httpx
 import re
 import random
@@ -49,7 +49,7 @@ class Downloader:
         self.progress.stop()
         await self.client.aclose()
 
-    def _make_hierarchy_dir(self, hierarchy, add_name: str):
+    def _make_hierarchy_dir(self, hierarchy: Optional[Union[bool, str]], add_name: str):
         """Make and return new hierarchy according to old hierarchy and add name"""
         assert hierarchy is True or (type(hierarchy) is str and len(hierarchy) > 0)
         hierarchy = add_name if hierarchy is True else f'{hierarchy}/{add_name}'
@@ -70,7 +70,7 @@ class Downloader:
                 self.cate_info[i['name']] = i
 
     async def get_collect_or_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                                  hierarchy=None):
+                                  hierarchy: Optional[Union[bool, str]] = None):
         """
         下载合集或视频列表
 
@@ -92,7 +92,7 @@ class Downloader:
             raise Exception(f'未知的详情页 {url}')
 
     async def get_list(self, sid, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                       hierarchy=None):
+                       hierarchy: Optional[Union[bool, str]] = None):
         """
         下载视频列表
 
@@ -122,7 +122,7 @@ class Downloader:
               for i in list_info['data']['archives']])
 
     async def get_collect(self, sid, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                          hierarchy=None):
+                          hierarchy: Optional[Union[bool, str]] = None):
         """
         下载合集
 
@@ -150,7 +150,7 @@ class Downloader:
               for i in medias])
 
     async def get_favour(self, fid, num=20, keyword='', quality=0, series=True, image=False, subtitle=False, dm=False,
-                         only_audio=False, hierarchy=None):
+                         only_audio=False, hierarchy: Optional[Union[bool, str]] = None):
         """
         下载收藏夹内的视频
 
@@ -206,7 +206,8 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0, series=True,
-                              image=False, subtitle=False, dm=False, only_audio=False, hierarchy=None):
+                              image=False, subtitle=False, dm=False, only_audio=False,
+                              hierarchy: Optional[Union[bool, str]] = None):
         """
         下载分区视频
 
@@ -264,7 +265,8 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def get_up_videos(self, mid: str, num=10, order='pubdate', keyword='', quality=0, series=True,
-                            image=False, subtitle=False, dm=False, only_audio=False, hierarchy=None):
+                            image=False, subtitle=False, dm=False, only_audio=False,
+                            hierarchy: Optional[Union[bool, str]] = None):
         """
 
         :param mid: b站用户id，在空间页面的url中可以找到
@@ -301,7 +303,8 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def _get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0, series=True,
-                                     image=False, subtitle=False, dm=False, only_audio=False, hierarchy=None):
+                                     image=False, subtitle=False, dm=False, only_audio=False,
+                                     hierarchy=None):
         ps = 30
         num = min(ps, num)
         params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
@@ -315,7 +318,8 @@ class Downloader:
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bv_ids])
 
     async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, dm=False, only_audio=False,
-                         p_range: Sequence[int] = None, hierarchy=None):
+                         p_range: Sequence[int] = None,
+                         hierarchy: Optional[Union[bool, str]] = None):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
@@ -372,7 +376,8 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,
-                        only_audio=False, hierarchy=None):
+                        only_audio=False,
+                        hierarchy: Optional[Union[bool, str]] = None):
         """
         下载单个视频
 
@@ -454,7 +459,8 @@ class Downloader:
             print(f'{title}{".mp3" if only_audio else ".mp4"} 完成')
         # todo return file path
 
-    async def get_dm(self, cid, aid, title, update=False, convert_func=None, hierarchy=None):
+    async def get_dm(self, cid, aid, title, update=False, convert_func=None,
+                     hierarchy: Optional[Union[bool, str]] = None):
         """
 
         :param cid:
@@ -487,7 +493,7 @@ class Downloader:
         rprint(f'[grey39]{title}-弹幕{file_type} 完成')
         return file_path
 
-    async def get_subtitle(self, url, extra: dict = None, convert=True, hierarchy=None):
+    async def get_subtitle(self, url, extra: dict = None, convert=True, hierarchy: Optional[Union[bool, str]] = None):
         """
         获取某个视频的字幕文件
 
