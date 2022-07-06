@@ -49,7 +49,7 @@ class Downloader:
         self.progress.stop()
         await self.client.aclose()
 
-    def _make_hierarchy_dir(self, hierarchy: Optional[Union[bool, str]], add_name: str):
+    def _make_hierarchy_dir(self, hierarchy: Union[bool, str], add_name: str):
         """Make and return new hierarchy according to old hierarchy and add name"""
         assert hierarchy is True or (type(hierarchy) is str and len(hierarchy) > 0)
         hierarchy = add_name if hierarchy is True else f'{hierarchy}/{add_name}'
