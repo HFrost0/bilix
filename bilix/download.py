@@ -541,7 +541,7 @@ class Downloader:
     async def _req(self, url_or_urls: Union[str, Sequence[str]], method='GET', follow_redirects=False,
                    **kwargs) -> httpx.Response:
         """Client request with retry"""
-        for _ in range(3):  # repeat 3 times to handle Exception
+        for rp in range(3):  # repeat 3 times to handle Exception
             url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
             try:
                 res = await self.client.request(method, url, follow_redirects=follow_redirects, **kwargs)
@@ -549,6 +549,12 @@ class Downloader:
             except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
                 rprint(f'[red]警告：{e.__class__} 可能由于网络不佳 {method} {url}')
                 await asyncio.sleep(0.1)
+            except httpx.HTTPStatusError:
+                rprint(f'[red]警告：状态码异常{res.status_code} {method} {url}')
+                # deal with HEAD 404 bug https://github.com/HFrost0/bilix/issues/16
+                if method == 'HEAD' and rp >= 1:
+                    method = 'GET'
+                    kwargs['headers'] = {'Range': 'bytes=0-1'}
             except Exception as e:
                 rprint(f'[red]警告：未知异常{e.__class__} {method} {url}')
                 await asyncio.sleep(0.5)
@@ -639,7 +645,7 @@ class Downloader:
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
-        except httpx.ReadTimeout as e:
+        except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
             rprint(f'[red]警告：{e.__class__} in streaming，该异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
