@@ -595,7 +595,10 @@ class Downloader:
             rprint(f'[green]{media_name} 已经存在')
             return f'{file_dir}/{media_name}'
         res = await self._req(media_urls, method='HEAD')
-        total = int(res.headers['Content-Length'])
+        if res.request.method == "HEAD":
+            total = int(res.headers['Content-Length'])
+        else:  # method has been change by _req to GET and total length now in Content-Range instead of Content-Length
+            total = int(res.headers['Content-Range'].split('/')[-1])
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
