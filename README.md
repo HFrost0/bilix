@@ -13,6 +13,25 @@
 
 <div align="center"> <img src='https://s1.ax1x.com/2022/05/03/OANTvF.gif' style="border-radius: 8px"> </div>
 
+- [特性 Features](#%E7%89%B9%E6%80%A7-features)
+- [依赖环境 Environment](#%E4%BE%9D%E8%B5%96%E7%8E%AF%E5%A2%83-environment)
+- [快速上手 Quick Start](#%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B-quick-start)
+  - [批量下载](#%E6%89%B9%E9%87%8F%E4%B8%8B%E8%BD%BD)
+  - [单个下载](#%E5%8D%95%E4%B8%AA%E4%B8%8B%E8%BD%BD)
+  - [下载音频](#%E4%B8%8B%E8%BD%BD%E9%9F%B3%E9%A2%91)
+  - [下载特定up主的投稿](#%E4%B8%8B%E8%BD%BD%E7%89%B9%E5%AE%9Aup%E4%B8%BB%E7%9A%84%E6%8A%95%E7%A8%BF)
+  - [下载分区视频](#%E4%B8%8B%E8%BD%BD%E5%88%86%E5%8C%BA%E8%A7%86%E9%A2%91)
+  - [下载收藏夹视频](#%E4%B8%8B%E8%BD%BD%E6%94%B6%E8%97%8F%E5%A4%B9%E8%A7%86%E9%A2%91)
+  - [下载合集或视频列表](#%E4%B8%8B%E8%BD%BD%E5%90%88%E9%9B%86%E6%88%96%E8%A7%86%E9%A2%91%E5%88%97%E8%A1%A8)
+  - [下载字幕，弹幕，封面...](#%E4%B8%8B%E8%BD%BD%E5%AD%97%E5%B9%95%E5%BC%B9%E5%B9%95%E5%B0%81%E9%9D%A2)
+- [进阶使用 Advance Guide](#%E8%BF%9B%E9%98%B6%E4%BD%BF%E7%94%A8-advance-guide)
+  - [你是大会员？🥸](#%E4%BD%A0%E6%98%AF%E5%A4%A7%E4%BC%9A%E5%91%98%F0%9F%A5%B8)
+  - [在 python 中调用](#%E5%9C%A8-python-%E4%B8%AD%E8%B0%83%E7%94%A8)
+  - [关于断点重连](#%E5%85%B3%E4%BA%8E%E6%96%AD%E7%82%B9%E9%87%8D%E8%BF%9E)
+- [欢迎提问](#%E6%AC%A2%E8%BF%8E%E6%8F%90%E9%97%AE)
+- [未来工作](#%E6%9C%AA%E6%9D%A5%E5%B7%A5%E4%BD%9C)
+  - [已知的bug 🤡](#%E5%B7%B2%E7%9F%A5%E7%9A%84bug-)
+
 ## 特性 Features
 
 高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP 框架 [httpx](https://www.python-httpx.org/)
