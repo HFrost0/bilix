@@ -231,7 +231,7 @@ pip install bilix --upgrade
 ### 工程
 
 - [ ] 每日测试（GitHub Action），重构download.py以支持更好的单元测试
-- [ ] logging
+- [x] logging
 
 ### 已知的bug 🤡
 

@@ -8,12 +8,12 @@ import json5
 from datetime import datetime, timedelta
 import os
 from anyio import run_process
-from rich import print as rprint
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
 from bilix.subtitle import json2srt
 from bilix.dm import parse_view, dm2ass_factory
 from bilix.utils import legal_title
+from bilix.log import log
 
 
 class Downloader:
@@ -197,7 +197,7 @@ class Downloader:
         for i in info['data']['medias'][:num]:
             bvid = i['bvid']
             if i['title'] == '已失效视频':
-                rprint(f'[red]已失效视频 https://www.bilibili.com/video/{bvid}')
+                log.warning(f"已失效视频 https://www.bilibili.com/video/{bvid}")
             else:
                 func = self.get_series if series else self.get_video
                 # noinspection PyArgumentList
@@ -227,11 +227,11 @@ class Downloader:
         """
         await self._load_cate_info()
         if cate_name not in self.cate_info:
-            rprint(f'未找到分区 {cate_name}')
+            log.error(f'未找到分区 {cate_name}')
             return
         if 'subChannelId' not in self.cate_info[cate_name]:
             sub_names = [i['name'] for i in self.cate_info[cate_name]['sub']]
-            rprint(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
+            log.error(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
             return
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【分区】{cate_name}"))
@@ -340,10 +340,10 @@ class Downloader:
             init_info = json.loads(init_info)
             cors = []
         except AttributeError:
-            rprint(f'[red]视频已失效 {url}')  # 啊叻？视频不见了？在分区下载的时候可能产生
+            log.warning(f'视频已失效 {url}')  # 啊叻？视频不见了？在分区下载的时候可能产生
             return
         if len(init_info.get('error', {})) > 0:
-            rprint(f'[red]视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
+            log.warning(f'视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
             return
         if 'videoData' in init_info:  # bv视频
             if hierarchy:
@@ -371,7 +371,7 @@ class Downloader:
                 cors.append(self.get_video(p_url, quality, add_name, image=image,
                                            subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy))
         else:
-            rprint(f'[red]未知类型 {url}')
+            log.warning(f'未知类型 {url}')
             return
         if p_range:
             h, t = p_range[0] - 1, p_range[1]
@@ -400,7 +400,7 @@ class Downloader:
         res = await self._req(url, follow_redirects=True)
         init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
         if len(init_info.get('error', {})) > 0:
-            rprint(f'[red]视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
+            log.warning(f'视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
             return
         title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0]
         title = legal_title(title, add_name)
@@ -418,7 +418,8 @@ class Downloader:
             audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
         except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
             # todo https://www.bilibili.com/video/BV1Jx411r776?p=3 未处理，没有dash下载方式的视频
-            rprint(f'[rgb(234,122,153)]{title} 需要大会员，或该地区不支持')
+            log.warning(f'{title} 需要大会员，或该地区不支持')
+            # rprint(f'[rgb(234,122,153)]{title} 需要大会员，或该地区不支持')
             self.sema.release()
             return
         cid = audio_urls[0].split('/')[-2]
@@ -431,7 +432,7 @@ class Downloader:
         # add cor according to params
         if not only_audio:
             if os.path.exists(f'{file_dir}/{title}.mp4'):
-                rprint(f'[green]{title}.mp4 已经存在')
+                log.info(f'[green]已存在[/green] {title}.mp4')
             else:
                 cors.append(self._get_media(video_urls, f'{title}-video', task_id, hierarchy))
                 cors.append(self._get_media(audio_urls, f'{title}-audio', task_id, hierarchy))
@@ -461,7 +462,7 @@ class Downloader:
         # make progress invisible and print
         if self.progress.tasks[task_id].visible:
             self.progress.update(task_id, advance=1, visible=False)
-            print(f'{title}{".mp3" if only_audio else ".mp4"} 完成')
+            log.info(f'[cyan]已完成[/cyan] {title}{".mp3" if only_audio else ".mp4"}')
         # todo return file path
 
     async def get_dm(self, cid, aid, title, update=False, convert_func=None,
@@ -478,9 +479,10 @@ class Downloader:
         """
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
-        file_path = f'{file_dir}/{title}-弹幕{file_type}'
+        file_name = f"{title}-弹幕{file_type}"
+        file_path = f'{file_dir}/{file_name}'
         if not update and os.path.exists(file_path):
-            rprint(f'[dark_green]{title}-弹幕{file_type} 已经存在')
+            log.info(f"[green]已存在[/green] {file_name}")
             return file_path
         params = {'oid': cid, 'pid': aid, 'type': 1}
         res = await self._req(f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
@@ -495,7 +497,7 @@ class Downloader:
         content = await convert_func(content) if convert_func else content
         with open(file_path, 'wb') as f:
             f.write(content)
-        rprint(f'[grey39]{title}-弹幕{file_type} 完成')
+        log.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
     async def get_subtitle(self, url, extra: dict = None, convert=True, hierarchy: Optional[Union[bool, str]] = None):
@@ -526,7 +528,7 @@ class Downloader:
         res = await self._req('https://api.bilibili.com/x/player/v2', params=params)
         info = json.loads(res.text)
         if info['code'] == -400:
-            rprint(f'[red]未找到字幕信息 {url}')
+            log.warning(f'未找到字幕信息 {url}')
             return
         subtitles = info['data']['subtitle']['subtitles']
         cors = []
@@ -548,19 +550,18 @@ class Downloader:
                 res = await self.client.request(method, url, follow_redirects=follow_redirects, **kwargs)
                 res.raise_for_status()
             except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
-                rprint(f'[red]警告：{e.__class__} 可能由于网络不佳 {method} {url}')
+                log.warning(f'{method} {e.__class__.__name__} url: {url}')
                 pre_exc = e
                 await asyncio.sleep(0.1)
             except httpx.HTTPStatusError as e:
-                rprint(f'[red]警告：状态码异常{e.response.status_code} {method} {url}')
+                log.warning(f'{method} {e.response.status_code} {url}', exc_info=e)
                 pre_exc = e
             except Exception as e:
-                rprint(f'[red]警告：未知异常{e.__class__} {method} {url}')
+                log.warning(f'{method} {e.__class__.__name__} 未知异常 url: {url}')
                 pre_exc = e
                 await asyncio.sleep(0.5)
             else:
                 return res
-        # rprint(f'[red]超过重复次数 {url_or_urls}')
         raise pre_exc
 
     async def _get_static(self, url, name, convert_func=None, hierarchy=None) -> str:
@@ -576,15 +577,16 @@ class Downloader:
             file_type = '.' + convert_func.__name__.split('2')[-1]  #
         else:
             file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
-        file_path = f'{file_dir}/{name}' + file_type
+        file_name = name + file_type
+        file_path = f'{file_dir}/{file_name}'
         if os.path.exists(file_path):
-            rprint(f'[dark_green]{name + file_type} 已经存在')  # extra file use different color
+            log.info(f'[green]已存在[/green] {file_name}')  # extra file use different color
         else:
             res = await self._req(url)
             content = convert_func(res.content) if convert_func else res.content
             with open(file_path, 'wb') as f:
                 f.write(content)
-            rprint(f'[grey39]{name + file_type} 完成')  # extra file use different color
+            log.info(f'[cyan]已完成[/cyan] {name + file_type}')  # extra file use different color
         return file_path
 
     async def _get_content_length(self, url_or_urls) -> int:
@@ -600,7 +602,7 @@ class Downloader:
     async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy=None):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if os.path.exists(f'{file_dir}/{media_name}'):
-            rprint(f'[green]{media_name} 已经存在')
+            log.info(f'[green]已存在[/green] {media_name}')
             return f'{file_dir}/{media_name}'
         total = await self._get_content_length(media_urls)
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
@@ -622,7 +624,7 @@ class Downloader:
                         with open(f'{file_dir}/{part}', 'rb') as pf:
                             f.write(pf.read())
             except KeyboardInterrupt:
-                rprint('Interrupt, but waiting for file merge, please try again later')
+                log.warning('Interrupt, but waiting for file merge, please try again later')
                 merge()
             [os.remove(f'{file_dir}/{part}') for part in part_names]
 
@@ -632,7 +634,7 @@ class Downloader:
     async def _get_media_part(self, media_urls: Sequence[str], part_name, task_id, exception=0, hierarchy=None):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if exception > 5:
-            rprint(f'[red]超过重试次数 {part_name}')
+            log.error(f'超过重试次数 {part_name}')
             raise Exception('超过重试次数')
         start, end = map(int, part_name.split('-')[-2:])
         if os.path.exists(f'{file_dir}/{part_name}'):
@@ -653,10 +655,10 @@ class Downloader:
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
-            rprint(f'[red]警告：{e.__class__} 该异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
+            log.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except Exception as e:
-            rprint(f'[red]警告：未知异常{e.__class__} {part_name}')
+            log.warning(f'STREAM {e.__class__.__name__} 未知异常')
             await asyncio.sleep(.5 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
