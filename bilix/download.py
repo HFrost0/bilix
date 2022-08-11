@@ -541,29 +541,27 @@ class Downloader:
     async def _req(self, url_or_urls: Union[str, Sequence[str]], method='GET', follow_redirects=False,
                    **kwargs) -> httpx.Response:
         """Client request with retry"""
-        for rp in range(3):  # repeat 3 times to handle Exception
+        pre_exc = Exception("超过重复次数")  # predefine to avoid warning
+        for _ in range(3):  # repeat 3 times to handle Exception
             url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
             try:
                 res = await self.client.request(method, url, follow_redirects=follow_redirects, **kwargs)
                 res.raise_for_status()
             except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
                 rprint(f'[red]警告：{e.__class__} 可能由于网络不佳 {method} {url}')
+                pre_exc = e
                 await asyncio.sleep(0.1)
-            except httpx.HTTPStatusError:
-                rprint(f'[red]警告：状态码异常{res.status_code} {method} {url}')
-                # deal with HEAD 404 bug https://github.com/HFrost0/bilix/issues/16
-                if method == 'HEAD' and rp >= 1:
-                    method = 'GET'
-                    kwargs['headers'] = {'Range': 'bytes=0-1'}
+            except httpx.HTTPStatusError as e:
+                rprint(f'[red]警告：状态码异常{e.response.status_code} {method} {url}')
+                pre_exc = e
             except Exception as e:
                 rprint(f'[red]警告：未知异常{e.__class__} {method} {url}')
+                pre_exc = e
                 await asyncio.sleep(0.5)
             else:
-                break
-        else:
-            rprint(f'[red]超过重复次数 {url_or_urls}')
-            raise Exception('超过重复次数')
-        return res
+                return res
+        # rprint(f'[red]超过重复次数 {url_or_urls}')
+        raise pre_exc
 
     async def _get_static(self, url, name, convert_func=None, hierarchy=None) -> str:
         """
@@ -589,16 +587,22 @@ class Downloader:
             rprint(f'[grey39]{name + file_type} 完成')  # extra file use different color
         return file_path
 
+    async def _get_content_length(self, url_or_urls) -> int:
+        try:
+            res = await self._req(url_or_urls, method='HEAD')
+            total = int(res.headers['Content-Length'])
+        except httpx.HTTPStatusError:
+            # deal with HEAD 404 bug https://github.com/HFrost0/bilix/issues/16
+            res = await self._req(url_or_urls, method='GET', headers={'Range': 'bytes=0-1'})
+            total = int(res.headers['Content-Range'].split('/')[-1])
+        return total
+
     async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy=None):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if os.path.exists(f'{file_dir}/{media_name}'):
             rprint(f'[green]{media_name} 已经存在')
             return f'{file_dir}/{media_name}'
-        res = await self._req(media_urls, method='HEAD')
-        if res.request.method == "HEAD":
-            total = int(res.headers['Content-Length'])
-        else:  # method has been change by _req to GET and total length now in Content-Range instead of Content-Length
-            total = int(res.headers['Content-Range'].split('/')[-1])
+        total = await self._get_content_length(media_urls)
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
@@ -649,7 +653,7 @@ class Downloader:
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
-            rprint(f'[red]警告：{e.__class__} in streaming，该异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
+            rprint(f'[red]警告：{e.__class__} 该异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except Exception as e:
