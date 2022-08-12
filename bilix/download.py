@@ -114,7 +114,7 @@ class Downloader:
         :param hierarchy:
         :return:
         """
-        col_name, up_name, bvids = api.get_collect_info(url, self.client)
+        col_name, up_name, bvids = await api.get_collect_info(url, self.client)
         if hierarchy:
             name = legal_title(f"【合集】{up_name}-{col_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
