@@ -1,18 +1,16 @@
 import asyncio
-from typing import Union, Sequence, Optional
+from typing import Union, Sequence
 import httpx
-import re
 import random
-import json
-import json5
 from datetime import datetime, timedelta
 import os
 from anyio import run_process
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
+import bilix.api.bilibili as api
 from bilix.subtitle import json2srt
-from bilix.dm import parse_view, dm2ass_factory
-from bilix.utils import legal_title
+from bilix.dm import dm2ass_factory
+from bilix.utils import legal_title, req_retry
 from bilix.log import log
 
 
@@ -44,33 +42,22 @@ class Downloader:
         self.progress.start()
         self.sema = asyncio.Semaphore(video_concurrency)
         self.part_concurrency = part_concurrency
+        self._cate_meta = None
 
     async def aclose(self):
         self.progress.stop()
         await self.client.aclose()
 
-    def _make_hierarchy_dir(self, hierarchy: Union[bool, str], add_name: str):
+    def _make_hierarchy_dir(self, hierarchy: Union[bool, str], add_dir: str):
         """Make and return new hierarchy according to old hierarchy and add name"""
-        assert hierarchy is True or (type(hierarchy) is str and len(hierarchy) > 0)
-        hierarchy = add_name if hierarchy is True else f'{hierarchy}/{add_name}'
+        assert hierarchy is True or (type(hierarchy) is str and len(hierarchy) > 0) and len(add_dir) > 0
+        hierarchy = add_dir if hierarchy is True else f'{hierarchy}/{add_dir}'
         if not os.path.exists(f'{self.videos_dir}/{hierarchy}'):
             os.makedirs(f'{self.videos_dir}/{hierarchy}')
         return hierarchy
 
-    async def _load_cate_info(self):
-        if 'cate_info' not in dir(self):
-            self.cate_info = {}
-            res = await self._req('https://s1.hdslb.com/bfs/static/laputa-channel/client/assets/index.c0ea30e6.js')
-            cate_data = re.search('Za=([^;]*);', res.text).groups()[0]
-            cate_data = json5.loads(cate_data)['channelList']
-            for i in cate_data:
-                if 'sub' in i:
-                    for j in i['sub']:
-                        self.cate_info[j['name']] = j
-                self.cate_info[i['name']] = i
-
     async def get_collect_or_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                                  hierarchy: Optional[Union[bool, str]] = None):
+                                  hierarchy: Union[bool, str] = True):
         """
         下载合集或视频列表
 
@@ -83,20 +70,19 @@ class Downloader:
         :param hierarchy: 是否使用层次目录保存文件
         :return:
         """
-        sid = re.search(r'sid=(\d+)', url).groups()[0]
         if 'seriesdetail' in url:
-            await self.get_list(sid, quality, image, subtitle, dm, only_audio, hierarchy)
+            await self.get_list(url, quality, image, subtitle, dm, only_audio, hierarchy)
         elif 'collectiondetail' in url:
-            await self.get_collect(sid, quality, image, subtitle, dm, only_audio, hierarchy)
+            await self.get_collect(url, quality, image, subtitle, dm, only_audio, hierarchy)
         else:
             raise Exception(f'未知的详情页 {url}')
 
-    async def get_list(self, sid, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                       hierarchy: Optional[Union[bool, str]] = None):
+    async def get_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
+                       hierarchy: Union[bool, str] = True):
         """
         下载视频列表
 
-        :param sid: 列表id
+        :param url: 列表详情页url
         :param quality:
         :param image:
         :param subtitle:
@@ -105,28 +91,21 @@ class Downloader:
         :param hierarchy:
         :return:
         """
-        res = await self._req(f'https://api.bilibili.com/x/series/series?series_id={sid}')  # meta api
-        meta = json.loads(res.text)
-        mid = meta['data']['meta']['mid']
-        params = {'mid': mid, 'series_id': sid, 'ps': meta['data']['meta']['total']}
-        list_res, up_res = await asyncio.gather(self._req('https://api.bilibili.com/x/series/archives', params=params),
-                                                self._req(f'https://api.bilibili.com/x/space/acc/info?mid={mid}'))
-        list_info, up_info = json.loads(list_res.text), json.loads(up_res.text)
+        list_name, up_name, bvids = await api.get_list_info(url, self.client)
         if hierarchy:
-            list_name, up_name = meta['data']['meta']['name'], up_info['data']['name']
             name = legal_title(f"【视频列表】{up_name}-{list_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
         await asyncio.gather(
-            *[self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality,
+            *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality,
                               image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-              for i in list_info['data']['archives']])
+              for i in bvids])
 
-    async def get_collect(self, sid, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                          hierarchy: Optional[Union[bool, str]] = None):
+    async def get_collect(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
+                          hierarchy: Union[bool, str] = True):
         """
         下载合集
 
-        :param sid: 合集id
+        :param url: 合集详情页url
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
@@ -135,22 +114,17 @@ class Downloader:
         :param hierarchy:
         :return:
         """
-        params = {'season_id': sid}
-        res = await self._req('https://api.bilibili.com/x/space/fav/season/list', params=params)
-        data = json.loads(res.text)
-        medias = data['data']['medias']
-        info = data['data']['info']
+        col_name, up_name, bvids = api.get_collect_info(url, self.client)
         if hierarchy:
-            col_name, up_name = info['title'], medias[0]['upper']['name']
             name = legal_title(f"【合集】{up_name}-{col_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
         await asyncio.gather(
-            *[self.get_series(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality,
+            *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality,
                               image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-              for i in medias])
+              for i in bvids])
 
     async def get_favour(self, fid, num=20, keyword='', quality=0, series=True, image=False, subtitle=False, dm=False,
-                         only_audio=False, hierarchy: Optional[Union[bool, str]] = None):
+                         only_audio=False, hierarchy: Union[bool, str] = True):
         """
         下载收藏夹内的视频
 
@@ -166,15 +140,12 @@ class Downloader:
         :param hierarchy:
         :return:
         """
-        ps = 20
-        params = {'media_id': fid, 'pn': 1, 'ps': ps, 'keyword': keyword, 'order': 'mtime'}
-        res = await self._req('https://api.bilibili.com/x/v3/fav/resource/list', params=params)
-        data = json.loads(res.text)['data']
+        fav_name, up_name, total_size, bvids = await api.get_favour_page_info(fid, keyword=keyword, client=self.client)
         if hierarchy:
-            fav_name, up_name = data['info']['title'], data['info']['upper']['name']
             name = legal_title(f"【收藏夹】{up_name}-{fav_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
-        total = min(data['info']['media_count'], num)
+        total = min(total_size, num)
+        ps = 20
         page_nums = total // ps + min(1, total % ps)
         cors = []
         for i in range(page_nums):
@@ -187,27 +158,30 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def _get_favor_by_page(self, fid, pn=1, num=20, keyword='', quality=0, series=True,
-                                 image=False, subtitle=False, dm=False, only_audio=False, hierarchy=None):
+                                 image=False, subtitle=False, dm=False, only_audio=False, hierarchy=True):
         ps = 20
         num = min(ps, num)
-        params = {'media_id': fid, 'order': 'mtime', 'ps': ps, 'pn': pn, 'keyword': keyword}
-        res = await self._req('https://api.bilibili.com/x/v3/fav/resource/list', params=params)
-        info = json.loads(res.text)
+        _, _, _, bvids = await api.get_favour_page_info(fid, pn, ps, keyword, self.client)
         cors = []
-        for i in info['data']['medias'][:num]:
-            bvid = i['bvid']
-            if i['title'] == '已失效视频':
-                log.warning(f"已失效视频 https://www.bilibili.com/video/{bvid}")
-            else:
-                func = self.get_series if series else self.get_video
-                # noinspection PyArgumentList
-                cors.append(func(f'https://www.bilibili.com/video/{bvid}', quality=quality,
-                                 image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy))
+        for i in bvids[:num]:
+            func = self.get_series if series else self.get_video
+            # noinspection PyArgumentList
+            cors.append(func(f'https://www.bilibili.com/video/{i}', quality=quality,
+                             image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy))
         await asyncio.gather(*cors)
+
+    @property
+    async def cate_meta(self):
+        if not self._cate_meta:
+            self._cate_meta = asyncio.ensure_future(api.get_cate_meta(self.client))
+            self._cate_meta = await self._cate_meta
+        elif asyncio.isfuture(self._cate_meta):
+            await self._cate_meta
+        return self._cate_meta
 
     async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0, series=True,
                               image=False, subtitle=False, dm=False, only_audio=False,
-                              hierarchy: Optional[Union[bool, str]] = None):
+                              hierarchy: Union[bool, str] = True):
         """
         下载分区视频
 
@@ -225,17 +199,17 @@ class Downloader:
         :param hierarchy:
         :return:
         """
-        await self._load_cate_info()
-        if cate_name not in self.cate_info:
+        cate_meta = await self.cate_meta
+        if cate_name not in cate_meta:
             log.error(f'未找到分区 {cate_name}')
             return
-        if 'subChannelId' not in self.cate_info[cate_name]:
-            sub_names = [i['name'] for i in self.cate_info[cate_name]['sub']]
+        if 'subChannelId' not in cate_meta[cate_name]:
+            sub_names = [i['name'] for i in cate_meta[cate_name]['sub']]
             log.error(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
             return
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【分区】{cate_name}"))
-        cate_id = self.cate_info[cate_name]['tid']
+        cate_id = cate_meta[cate_name]['tid']
         time_to = datetime.now()
         time_from = time_to - timedelta(days=days)
         time_from, time_to = time_from.strftime('%Y%m%d'), time_to.strftime('%Y%m%d')
@@ -243,30 +217,29 @@ class Downloader:
         page = 1
         cors = []
         while num > 0:
-            params = {'search_type': 'video', 'view_type': 'hot_rank', 'cate_id': cate_id, 'pagesize': pagesize,
-                      'keyword': keyword, 'page': page, 'order': order, 'time_from': time_from, 'time_to': time_to}
-            cors.append(self._get_cate_videos_by_page(min(pagesize, num), params, quality, series,
-                                                      image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                                                      hierarchy=hierarchy))
+            cors.append(
+                self._get_cate_videos_by_page(cate_id, time_from, time_to, page, min(pagesize, num), order, keyword,
+                                              quality, series, image=image, subtitle=subtitle, dm=dm,
+                                              only_audio=only_audio, hierarchy=hierarchy))
             num -= pagesize
             page += 1
         await asyncio.gather(*cors)
 
-    async def _get_cate_videos_by_page(self, num, params, quality=0, series=True,
-                                       image=False, subtitle=False, dm=False, only_audio=False, hierarchy=None):
-        res = await self._req('https://s.search.bilibili.com/cate/search', params=params)
-        info = json.loads(res.text)
-        info = info['result'][:num]
+    async def _get_cate_videos_by_page(self, cate_id, time_from, time_to, pn=1, num=30, order='click', keyword='',
+                                       quality=0, series=True, image=False, subtitle=False, dm=False,
+                                       only_audio=False, hierarchy=True):
+        bvids = await api.get_cate_page_info(cate_id, time_from, time_to, pn, 30, order, keyword, self.client)
+        bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
-        cors = [func(f"https://www.bilibili.com/video/{i['bvid']}", quality=quality,
+        cors = [func(f"https://www.bilibili.com/video/{i}", quality=quality,
                      image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-                for i in info]
+                for i in bvids]
         await asyncio.gather(*cors)
 
     async def get_up_videos(self, mid: str, num=10, order='pubdate', keyword='', quality=0, series=True,
                             image=False, subtitle=False, dm=False, only_audio=False,
-                            hierarchy: Optional[Union[bool, str]] = None):
+                            hierarchy: Union[bool, str] = True):
         """
 
         :param mid: b站用户id，在空间页面的url中可以找到
@@ -283,13 +256,10 @@ class Downloader:
         :return:
         """
         ps = 30
-        params = {'mid': mid, 'order': order, 'ps': ps, 'pn': 1, 'keyword': keyword}
-        res = await self._req('https://api.bilibili.com/x/space/arc/search', params=params)
-        info = json.loads(res.text)
+        up_name, total_size, bv_ids = await api.get_up_info(mid, 1, ps, order, keyword, self.client)
         if hierarchy:
-            name = info['data']['list']['vlist'][0]['author']
-            hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【up】{name}"))
-        num = min(info['data']['page']['count'], num)
+            hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【up】{up_name}"))
+        num = min(total_size, num)
         page_nums = num // ps + min(1, num % ps)
         cors = []
         for i in range(page_nums):
@@ -307,19 +277,17 @@ class Downloader:
                                      hierarchy=None):
         ps = 30
         num = min(ps, num)
-        params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
-        res = await self._req('https://api.bilibili.com/x/space/arc/search', params=params)
-        info = json.loads(res.text)
-        bv_ids = [i['bvid'] for i in info['data']['list']['vlist']][:num]
+        _, _, bvids = await api.get_up_info(mid, pn, ps, order, keyword, self.client)
+        bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
         await asyncio.gather(
             *[func(f'https://www.bilibili.com/video/{bv}', quality=quality,
-                   image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bv_ids])
+                   image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bvids])
 
     async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, dm=False, only_audio=False,
                          p_range: Sequence[int] = None,
-                         hierarchy: Optional[Union[bool, str]] = None):
+                         hierarchy: Union[bool, str] = True):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
@@ -333,46 +301,22 @@ class Downloader:
         :param hierarchy:
         :return:
         """
-        url = url.split('?')[0]
-        res = await self._req(url, follow_redirects=True)
         try:
-            init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0]
-            init_info = json.loads(init_info)
-            cors = []
-        except AttributeError:
-            log.warning(f'视频已失效 {url}')  # 啊叻？视频不见了？在分区下载的时候可能产生
+            video_info = await api.get_video_info(url, self.client)
+        except AttributeError as e:
+            log.warning(f'{e} {url}')
             return
-        if len(init_info.get('error', {})) > 0:
-            log.warning(f'视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
-            return
-        if 'videoData' in init_info:  # bv视频
-            if hierarchy:
-                title = legal_title(init_info['videoData']['title'])
-                if len(init_info['videoData']['pages']) > 1:
-                    hierarchy = self._make_hierarchy_dir(hierarchy, title)
-                else:
-                    hierarchy = hierarchy if type(hierarchy) is str else None
-            for idx, i in enumerate(init_info['videoData']['pages']):
-                p_url = f"{url}?p={idx + 1}"
-                add_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
-                cors.append(self.get_video(p_url, quality, add_name,
-                                           image=True if idx == 0 and image else False,
-                                           subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy))
-        elif 'initEpList' in init_info:  # 动漫，电视剧，电影
-            if hierarchy:
-                title = legal_title(re.search('property="og:title" content="([^"]*)"', res.text).groups()[0])
-                if len(init_info['initEpList']) > 1:
-                    hierarchy = self._make_hierarchy_dir(hierarchy, title)
-                else:
-                    hierarchy = hierarchy if type(hierarchy) is str else None
-            for idx, i in enumerate(init_info['initEpList']):
-                p_url = i['link']
-                add_name = i['title']
-                cors.append(self.get_video(p_url, quality, add_name, image=image,
-                                           subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy))
+        title = video_info.title
+        pages = video_info.pages
+        if len(pages) > 1:
+            hierarchy = self._make_hierarchy_dir(hierarchy, title)
         else:
-            log.warning(f'未知类型 {url}')
-            return
+            hierarchy = hierarchy if type(hierarchy) is str else None
+        cors = [self.get_video(p_url, quality, add_name,
+                               image=True if idx == 0 and image else False,
+                               subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy,
+                               extra=video_info if idx == 0 else None)
+                for idx, (add_name, p_url) in enumerate(pages)]
         if p_range:
             h, t = p_range[0] - 1, p_range[1]
             assert 0 <= h <= t
@@ -381,8 +325,7 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,
-                        only_audio=False,
-                        hierarchy: Optional[Union[bool, str]] = None):
+                        only_audio=False, hierarchy: Union[bool, str] = True, extra=None):
         """
         下载单个视频
 
@@ -394,35 +337,34 @@ class Downloader:
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
         :param hierarchy:
+        :param extra: 额外数据，提供时不用再次请求页面
         :return:
         """
         await self.sema.acquire()
-        res = await self._req(url, follow_redirects=True)
-        init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
-        if len(init_info.get('error', {})) > 0:
-            log.warning(f'视频已失效 {url}')  # 404 啥都没有，在分区下载的时候可能产生
-            return
-        title = re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0]
+        if not extra:
+            try:
+                extra = await api.get_video_info(url, self.client)
+            except AttributeError as e:
+                log.warning(f'{url} {e}')
+                self.sema.release()
+                return
+        title = extra.h1_title
         title = legal_title(title, add_name)
-        try:  # find video and audio url
-            play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
-            play_info = json.loads(play_info)
-            video_info, video_urls = None, None  # avoid ide warning
-            # choose quality
-            for q, (_, i) in enumerate(groupby(play_info['data']['dash']['video'], key=lambda x: x['id'])):
-                video_info = next(i)
-                video_urls = (video_info['base_url'], *(video_info['backup_url'] if video_info['backup_url'] else ()))
-                if q == quality:
-                    break
-            audio_info = play_info['data']['dash']['audio'][0]
-            audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
-        except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
-            # todo https://www.bilibili.com/video/BV1Jx411r776?p=3 未处理，没有dash下载方式的视频
-            log.warning(f'{title} 需要大会员，或该地区不支持')
-            # rprint(f'[rgb(234,122,153)]{title} 需要大会员，或该地区不支持')
+        dash = extra.dash
+        img_url = extra.img_url
+        if not dash:
+            log.warning(f'{extra.title} 需要大会员或该地区不支持')
             self.sema.release()
             return
-        cid = audio_urls[0].split('/')[-2]
+        video_info, video_urls = None, None  # avoid ide warning
+        # choose quality
+        for q, (_, i) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
+            video_info = next(i)
+            video_urls = (video_info['base_url'], *(video_info['backup_url'] if video_info['backup_url'] else ()))
+            if q == quality:
+                break
+        audio_info = dash['audio'][0]
+        audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
 
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy and len(hierarchy) > 0 else self.videos_dir
         task_id = self.progress.add_task(
@@ -442,14 +384,12 @@ class Downloader:
         if image or subtitle or dm:
             extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
             if image:
-                img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
                 cors.append(self._get_static(img_url, title, hierarchy=extra_hierarchy))
             if subtitle:
-                cors.append(self.get_subtitle(url, extra={'cid': cid, 'title': title}, hierarchy=extra_hierarchy))
+                cors.append(self.get_subtitle(url, extra=extra, hierarchy=extra_hierarchy))
             if dm:
-                aid = init_info['aid'] if 'aid' in init_info else init_info['epInfo']['aid']  # normal or ep video
                 w, h = video_info['width'], video_info['height']
-                cors.append(self.get_dm(cid, aid, title, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy))
+                cors.append(self.get_dm(url, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy, extra=extra))
         await asyncio.gather(*cors)
         self.sema.release()
 
@@ -459,24 +399,27 @@ class Downloader:
                  '-codec', 'copy', f'{file_dir}/{title}.mp4', '-loglevel', 'quiet'])
             os.remove(f'{file_dir}/{title}-video')
             os.remove(f'{file_dir}/{title}-audio')
-        # make progress invisible and print
+        # make progress invisible
         if self.progress.tasks[task_id].visible:
             self.progress.update(task_id, advance=1, visible=False)
             log.info(f'[cyan]已完成[/cyan] {title}{".mp3" if only_audio else ".mp4"}')
-        # todo return file path
 
-    async def get_dm(self, cid, aid, title, update=False, convert_func=None,
-                     hierarchy: Optional[Union[bool, str]] = None):
+    async def get_dm(self, url, update=False, convert_func=None,
+                     hierarchy: str = '', extra=None):
         """
 
-        :param cid:
-        :param aid:
-        :param title: 弹幕文件名
+        :param url: 视频url
         :param update: 是否更新覆盖之前下载的弹幕文件
         :param convert_func:
         :param hierarchy:
+        :param extra: 额外数据，提供则不再访问前端
         :return:
         """
+        if not extra:
+            extra = await api.get_video_info(url, self.client)
+        title = extra.title
+        aid, cid = extra.aid, extra.cid
+
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
         file_name = f"{title}-弹幕{file_type}"
@@ -484,14 +427,8 @@ class Downloader:
         if not update and os.path.exists(file_path):
             log.info(f"[green]已存在[/green] {file_name}")
             return file_path
-        params = {'oid': cid, 'pid': aid, 'type': 1}
-        res = await self._req(f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
-        view = parse_view(res.content)
-        total = int(view['dmSge']['total'])
-        cors = []
-        for i in range(total):
-            url = f'https://api.bilibili.com/x/v2/dm/web/seg.so?oid={cid}&type=1&segment_index={i + 1}'
-            cors.append(self._req(url))
+        dm_urls = await api.get_dm_info(aid, cid, self.client)
+        cors = [req_retry(self.client, dm_url) for dm_url in dm_urls]
         results = await asyncio.gather(*cors)
         content = b''.join(res.content for res in results)
         content = await convert_func(content) if convert_func else content
@@ -500,7 +437,7 @@ class Downloader:
         log.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
-    async def get_subtitle(self, url, extra: dict = None, convert=True, hierarchy: Optional[Union[bool, str]] = None):
+    async def get_subtitle(self, url, convert=True, hierarchy: str = '', extra=None):
         """
         获取某个视频的字幕文件
 
@@ -511,60 +448,26 @@ class Downloader:
         :return:
         """
         if not extra:
-            res = await self._req(url)
-            init_info = json.loads(re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', res.text).groups()[0])
-            bvid = init_info['bvid']
-            (p, cid), = init_info['cidMap'][bvid]['cids'].items()
-            title = init_info['videoData']['title']
-            add_name = ''
-            if len(init_info['videoData']['pages']) > 1:
-                part_title = init_info['videoData']['pages'][int(p) - 1]['part']
-                add_name = f'P{p}-{part_title}'
-            title = legal_title(title, add_name)
-        else:
-            bvid = url.split('?')[0].strip('/').split('/')[-1]
-            cid, title = extra['cid'], extra['title']
-        params = {'bvid': bvid, 'cid': cid}
-        res = await self._req('https://api.bilibili.com/x/player/v2', params=params)
-        info = json.loads(res.text)
-        if info['code'] == -400:
-            log.warning(f'未找到字幕信息 {url}')
+            extra = await api.get_video_info(url, self.client)
+        bvid = extra.bvid
+        p, cid = extra.p, extra.cid
+        title = extra.title
+        add_name = extra.pages[p][0]
+        title = legal_title(title, add_name)
+        try:
+            subtitles = await api.get_subtitle_info(bvid, cid, self.client)
+        except AttributeError as e:
+            log.warning(f'{url} {e}')
             return
-        subtitles = info['data']['subtitle']['subtitles']
         cors = []
-        for i in subtitles:
-            sub_url = f'http:{i["subtitle_url"]}'
-            sub_name = f"{title}-{i['lan_doc']}"
-            cors.append(self._get_static(sub_url, sub_name, convert_func=json2srt if convert else None,
+        for sub_url, sub_name in subtitles:
+            file_name = f"{title}-{sub_name}"
+            cors.append(self._get_static(sub_url, file_name, convert_func=json2srt if convert else None,
                                          hierarchy=hierarchy))
         paths = await asyncio.gather(*cors)
         return paths
 
-    async def _req(self, url_or_urls: Union[str, Sequence[str]], method='GET', follow_redirects=False,
-                   **kwargs) -> httpx.Response:
-        """Client request with retry"""
-        pre_exc = Exception("超过重复次数")  # predefine to avoid warning
-        for _ in range(3):  # repeat 3 times to handle Exception
-            url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
-            try:
-                res = await self.client.request(method, url, follow_redirects=follow_redirects, **kwargs)
-                res.raise_for_status()
-            except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
-                log.warning(f'{method} {e.__class__.__name__} url: {url}')
-                pre_exc = e
-                await asyncio.sleep(0.1)
-            except httpx.HTTPStatusError as e:
-                log.warning(f'{method} {e.response.status_code} {url}', exc_info=e)
-                pre_exc = e
-            except Exception as e:
-                log.warning(f'{method} {e.__class__.__name__} 未知异常 url: {url}')
-                pre_exc = e
-                await asyncio.sleep(0.5)
-            else:
-                return res
-        raise pre_exc
-
-    async def _get_static(self, url, name, convert_func=None, hierarchy=None) -> str:
+    async def _get_static(self, url, name, convert_func=None, hierarchy: str = '') -> str:
         """
 
         :param url:
@@ -582,29 +485,29 @@ class Downloader:
         if os.path.exists(file_path):
             log.info(f'[green]已存在[/green] {file_name}')  # extra file use different color
         else:
-            res = await self._req(url)
+            res = await req_retry(self.client, url)
             content = convert_func(res.content) if convert_func else res.content
             with open(file_path, 'wb') as f:
                 f.write(content)
             log.info(f'[cyan]已完成[/cyan] {name + file_type}')  # extra file use different color
         return file_path
 
-    async def _get_content_length(self, url_or_urls) -> int:
+    async def _content_length(self, url_or_urls) -> int:
         try:
-            res = await self._req(url_or_urls, method='HEAD')
+            res = await req_retry(self.client, url_or_urls, method='HEAD')
             total = int(res.headers['Content-Length'])
         except httpx.HTTPStatusError:
             # deal with HEAD 404 bug https://github.com/HFrost0/bilix/issues/16
-            res = await self._req(url_or_urls, method='GET', headers={'Range': 'bytes=0-1'})
+            res = await req_retry(self.client, url_or_urls, method='GET', headers={'Range': 'bytes=0-1'})
             total = int(res.headers['Content-Range'].split('/')[-1])
         return total
 
-    async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy=None):
+    async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy: str = ''):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if os.path.exists(f'{file_dir}/{media_name}'):
             log.info(f'[green]已存在[/green] {media_name}')
             return f'{file_dir}/{media_name}'
-        total = await self._get_content_length(media_urls)
+        total = await self._content_length(media_urls)
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
@@ -631,7 +534,7 @@ class Downloader:
         merge()
         return f'{file_dir}/{media_name}'
 
-    async def _get_media_part(self, media_urls: Sequence[str], part_name, task_id, exception=0, hierarchy=None):
+    async def _get_media_part(self, media_urls: Sequence[str], part_name, task_id, exception=0, hierarchy: str = ''):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if exception > 5:
             log.error(f'超过重试次数 {part_name}')
