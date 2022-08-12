@@ -309,12 +309,12 @@ class Downloader:
         title = video_info.title
         pages = video_info.pages
         p = video_info.p
-        if len(pages) > 1:
+        if hierarchy and len(pages) > 1:
             hierarchy = self._make_hierarchy_dir(hierarchy, title)
         else:
-            hierarchy = hierarchy if type(hierarchy) is str else None
+            hierarchy = hierarchy if type(hierarchy) is str else ''  # incase hierarchy is False
         cors = [self.get_video(p_url, quality, add_name,
-                               image=True if idx == 0 and image else False,
+                               image=True if idx == 0 and image else False,  # todo bug p_range
                                subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy,
                                extra=video_info if idx == p else None)
                 for idx, (add_name, p_url) in enumerate(pages)]
@@ -326,7 +326,7 @@ class Downloader:
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,
-                        only_audio=False, hierarchy: Union[bool, str] = True, extra=None):
+                        only_audio=False, hierarchy: str = '', extra=None):
         """
         下载单个视频
 
@@ -367,7 +367,7 @@ class Downloader:
         audio_info = dash['audio'][0]
         audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
 
-        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy and len(hierarchy) > 0 else self.videos_dir
+        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         task_id = self.progress.add_task(
             total=1,
             description=title if len(title) < 33 else f'{title[:15]}...{title[-15:]}', visible=False)
@@ -432,7 +432,9 @@ class Downloader:
         cors = [req_retry(self.client, dm_url) for dm_url in dm_urls]
         results = await asyncio.gather(*cors)
         content = b''.join(res.content for res in results)
-        content = await convert_func(content) if convert_func else content
+        content = convert_func(content) if convert_func else content
+        if asyncio.iscoroutine(content):
+            content = await content
         with open(file_path, 'wb') as f:
             f.write(content)
         log.info(f"[cyan]已完成[/cyan] {file_name}")
