@@ -175,8 +175,9 @@ async def get_video_info(url, client=_dft_client) -> VideoInfo:
         (p, cid), = init_info['cidMap'][bvid]['cids'].items()
         p = int(p) - 1
         title = legal_title(init_info['videoData']['title'])
+        base_url = url.split('?')[0]
         for idx, i in enumerate(init_info['videoData']['pages']):
-            p_url = f"{url}?p={idx + 1}"
+            p_url = f"{base_url}?p={idx + 1}"
             add_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
             pages.append([add_name, p_url])
     elif 'initEpList' in init_info:  # 动漫，电视剧，电影

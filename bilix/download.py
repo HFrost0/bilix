@@ -443,9 +443,9 @@ class Downloader:
         获取某个视频的字幕文件
 
         :param url: 视频url
-        :param extra: {cid:.. title:...}提供则不再请求前端
         :param convert: 是否转换成srt
         :param hierarchy:
+        :param extra: 额外数据，提供则不再访问前端
         :return:
         """
         if not extra:

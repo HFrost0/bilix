@@ -22,7 +22,7 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
             pre_exc = e
             await asyncio.sleep(0.1)
         except httpx.HTTPStatusError as e:
-            log.warning(f'{method} {e.response.status_code} {url}', exc_info=e)
+            log.warning(f'{method} {e.response.status_code} {url}')
             pre_exc = e
         except Exception as e:
             log.warning(f'{method} {e.__class__.__name__} 未知异常 url: {url}')

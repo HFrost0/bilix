@@ -13,7 +13,6 @@
 
 <div align="center"> <img src='https://s1.ax1x.com/2022/05/03/OANTvF.gif' style="border-radius: 8px"> </div>
 
-- [特性 Features](#%E7%89%B9%E6%80%A7-features)
 - [依赖环境 Environment](#%E4%BE%9D%E8%B5%96%E7%8E%AF%E5%A2%83-environment)
 - [快速上手 Quick Start](#%E5%BF%AB%E9%80%9F%E4%B8%8A%E6%89%8B-quick-start)
     - [批量下载](#%E6%89%B9%E9%87%8F%E4%B8%8B%E8%BD%BD)
@@ -30,6 +29,8 @@
     - [关于断点重连](#%E5%85%B3%E4%BA%8E%E6%96%AD%E7%82%B9%E9%87%8D%E8%BF%9E)
 - [欢迎提问](#%E6%AC%A2%E8%BF%8E%E6%8F%90%E9%97%AE)
 - [未来工作](#%E6%9C%AA%E6%9D%A5%E5%B7%A5%E4%BD%9C)
+    - [功能](#%E5%8A%9F%E8%83%BD)
+    - [工程](#%E5%B7%A5%E7%A8%8B)
     - [已知的bug 🤡](#%E5%B7%B2%E7%9F%A5%E7%9A%84bug-)
 
 ## 特性 Features
@@ -230,7 +231,7 @@ pip install bilix --upgrade
 
 ### 工程
 
-- [ ] 每日测试（GitHub Action），重构download.py以支持更好的单元测试
+- [ ] 每日测试（GitHub Action）
 - [x] logging
 
 ### 已知的bug 🤡
