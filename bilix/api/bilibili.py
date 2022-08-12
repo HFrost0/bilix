@@ -32,7 +32,7 @@ async def get_cate_meta(client: httpx.AsyncClient = _dft_client) -> dict:
     return cate_info
 
 
-async def get_list_info(url_or_sid: str, client: httpx.AsyncClient = _dft_client) -> tuple[str, str, list]:
+async def get_list_info(url_or_sid: str, client: httpx.AsyncClient = _dft_client):
     """
     获取视频列表信息
 
@@ -57,7 +57,7 @@ async def get_list_info(url_or_sid: str, client: httpx.AsyncClient = _dft_client
     return list_name, up_name, bvids
 
 
-async def get_collect_info(url_or_sid, client: httpx.AsyncClient = _dft_client) -> tuple[str, str, list]:
+async def get_collect_info(url_or_sid, client: httpx.AsyncClient = _dft_client):
     """
     获取合集信息
 
