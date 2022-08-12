@@ -308,6 +308,7 @@ class Downloader:
             return
         title = video_info.title
         pages = video_info.pages
+        p = video_info.p
         if len(pages) > 1:
             hierarchy = self._make_hierarchy_dir(hierarchy, title)
         else:
@@ -315,7 +316,7 @@ class Downloader:
         cors = [self.get_video(p_url, quality, add_name,
                                image=True if idx == 0 and image else False,
                                subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy,
-                               extra=video_info if idx == 0 else None)
+                               extra=video_info if idx == p else None)
                 for idx, (add_name, p_url) in enumerate(pages)]
         if p_range:
             h, t = p_range[0] - 1, p_range[1]

@@ -229,7 +229,7 @@ if __name__ == '__main__':
 
     # result = asyncio.run(get_cate_meta())
     # rich.print(result)
-    result = asyncio.run(get_video_info(
-        "https://www.bilibili.com/video/BV1sa411b786"
+    result = asyncio.run(get_favour_page_info(
+        "69072721"
     ))
     rich.print(result)
