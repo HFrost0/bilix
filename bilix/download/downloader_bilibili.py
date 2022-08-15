@@ -5,56 +5,31 @@ import random
 from datetime import datetime, timedelta
 import os
 from anyio import run_process
-from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 from itertools import groupby
 import bilix.api.bilibili as api
+from bilix.download.base_downloader import BaseDownloader
 from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
 from bilix.utils import legal_title, req_retry, cors_slice
 from bilix.log import logger
 
 
-class DownloaderBilibili:
-    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10, http2=True):
+class DownloaderBilibili(BaseDownloader):
+    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
         :param sess_data: 有条件的用户填写大会员凭证，填写后可下载大会员资源
         :param video_concurrency: 限制最大同时下载的视频数量
         :param part_concurrency: 每个媒体的分段并发数
-        :param http2: 是否使用http2协议
         """
-        # assert video_concurrency * part_concurrency <= 100
-        self.videos_dir = videos_dir
-        if not os.path.exists(self.videos_dir):
-            os.makedirs(videos_dir)
         cookies = {'SESSDATA': sess_data}
         headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
-        self.client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=http2)
-        self.progress = Progress(
-            "{task.description}",
-            "{task.percentage:>3.0f}%",
-            BarColumn(),
-            DownloadColumn(),
-            TransferSpeedColumn(),
-            'ETA',
-            TimeRemainingColumn(), transient=True)
-        self.progress.start()
+        client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=True)
+        super(DownloaderBilibili, self).__init__(client, videos_dir)
         self.sema = asyncio.Semaphore(video_concurrency)
         self.part_concurrency = part_concurrency
         self._cate_meta = None
-
-    async def aclose(self):
-        self.progress.stop()
-        await self.client.aclose()
-
-    def _make_hierarchy_dir(self, hierarchy: Union[bool, str], add_dir: str):
-        """Make and return new hierarchy according to old hierarchy and add name"""
-        assert hierarchy is True or (type(hierarchy) is str and len(hierarchy) > 0) and len(add_dir) > 0
-        hierarchy = add_dir if hierarchy is True else f'{hierarchy}/{add_dir}'
-        if not os.path.exists(f'{self.videos_dir}/{hierarchy}'):
-            os.makedirs(f'{self.videos_dir}/{hierarchy}')
-        return hierarchy
 
     async def get_collect_or_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
                                   hierarchy: Union[bool, str] = True):
@@ -466,31 +441,6 @@ class DownloaderBilibili:
                                          hierarchy=hierarchy))
         paths = await asyncio.gather(*cors)
         return paths
-
-    async def _get_static(self, url, name, convert_func=None, hierarchy: str = '') -> str:
-        """
-
-        :param url:
-        :param name:
-        :param convert_func: function used to convert res.content, must be named like ...2...
-        :return:
-        """
-        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if convert_func:
-            file_type = '.' + convert_func.__name__.split('2')[-1]  #
-        else:
-            file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
-        file_name = name + file_type
-        file_path = f'{file_dir}/{file_name}'
-        if os.path.exists(file_path):
-            logger.info(f'[green]已存在[/green] {file_name}')  # extra file use different color
-        else:
-            res = await req_retry(self.client, url)
-            content = convert_func(res.content) if convert_func else res.content
-            with open(file_path, 'wb') as f:
-                f.write(content)
-            logger.info(f'[cyan]已完成[/cyan] {name + file_type}')  # extra file use different color
-        return file_path
 
     async def _content_length(self, url_or_urls: Union[str, Sequence[str]]) -> int:
         try:
