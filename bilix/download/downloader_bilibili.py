@@ -10,7 +10,7 @@ from itertools import groupby
 import bilix.api.bilibili as api
 from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
-from bilix.utils import legal_title, req_retry
+from bilix.utils import legal_title, req_retry, cors_slice
 from bilix.log import logger
 
 
@@ -319,10 +319,7 @@ class DownloaderBilibili:
                                extra=video_info if idx == p else None)
                 for idx, (add_name, p_url) in enumerate(pages)]
         if p_range:
-            h, t = p_range[0] - 1, p_range[1]
-            assert 0 <= h <= t
-            [cor.close() for idx, cor in enumerate(cors) if idx < h or idx >= t]  # avoid runtime warning
-            cors = cors[h:t]
+            cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,

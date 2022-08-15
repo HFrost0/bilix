@@ -2,10 +2,18 @@ import asyncio
 import html
 import re
 import random
-from typing import Union, Sequence
+from typing import Union, Sequence, Coroutine
 import httpx
 
 from bilix.log import logger
+
+
+def cors_slice(cors: Sequence[Coroutine], p_range: Sequence[int]):
+    h, t = p_range[0] - 1, p_range[1]
+    assert 0 <= h <= t
+    [cor.close() for idx, cor in enumerate(cors) if idx < h or idx >= t]  # avoid runtime warning
+    cors = cors[h:t]
+    return cors
 
 
 async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[str]], method='GET',
