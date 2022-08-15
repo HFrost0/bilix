@@ -83,7 +83,7 @@ class BaseDownLoaderM3u8(BaseDownloader):
         file_path = f"{base_path}/{name}"
         if not os.path.exists(file_path):
             async with p_sema:
-                res = await req_retry(self.client, ts_url)
+                res = await req_retry(self.client, ts_url, repeat_time=5)
             content = res.content
             # in case .png
             if not ts_url.endswith('.ts'):
