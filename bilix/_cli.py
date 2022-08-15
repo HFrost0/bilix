@@ -4,7 +4,7 @@ import click
 import rich
 from rich.panel import Panel
 from rich.table import Table
-from bilix.download import Downloader
+from bilix.download import DownloaderBilibili
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -238,7 +238,7 @@ def main(method: str,
          p_range,
          ):
     loop = asyncio.get_event_loop()
-    d = Downloader(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
+    d = DownloaderBilibili(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
     if method == 'get_series' or method == 's':
         cor = d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
                            p_range=p_range, hierarchy=hierarchy)

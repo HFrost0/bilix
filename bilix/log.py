@@ -1,6 +1,4 @@
 import logging
-
-import httpx
 from rich.logging import RichHandler
 
 logging.basicConfig(
@@ -10,17 +8,17 @@ logging.basicConfig(
     handlers=[RichHandler(show_time=False, show_path=False, markup=True, keywords=RichHandler.KEYWORDS + ['STREAM'],
                           rich_tracebacks=True)]
 )
-log = logging.getLogger("rich")
+logger = logging.getLogger("rich")
 
 if __name__ == '__main__':
-    # log.info("", exc_info=Exception(1))
+    # logger.info("", exc_info=Exception(1))
     print(repr(IndexError))
     try:
-        1/0
+        1 / 0
     except Exception as e:
-        log.warning(f"STREAM {e}")
+        logger.warning(f"STREAM {e}")
 
-    log.warning("GET", exc_info=IndexError(123))
-    # log.warning("Hello, World! https://www.baidu.com")
-    # log.warning("Hello, World! https://www.baidu.com")
-    # log.error("Hello, World! https://www.baidu.com")
+    logger.warning("GET", exc_info=IndexError(123))
+    # logger.warning("Hello, World! https://www.baidu.com")
+    # logger.warning("Hello, World! https://www.baidu.com")
+    # logger.error("Hello, World! https://www.baidu.com")

@@ -173,11 +173,11 @@ bilix get_series 'url' --subtitle --dm --image
 
 ```python
 import asyncio
-from bilix import Downloader
+from bilix import DownloaderBilibili
 
 
 async def main():
-    d = Downloader(video_concurrency=5, part_concurrency=10)
+    d = DownloaderBilibili(video_concurrency=5, part_concurrency=10)
     cor1 = d.get_series(
         'https://www.bilibili.com/bangumi/play/ss28277?spm_id_from=333.337.0.0'
         , quality=999)
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     asyncio.run(main())
 ```
 
-`Downloader`类的下载方法都是异步的，例如`d.get_series(...)`返回的是一个协程`Coroutine`对象，我们可以自由组合这些方法的返回值，然后通过`await asyncio.gather`
+`DownloaderBilibili`类的下载方法都是异步的，例如`d.get_series(...)`返回的是一个协程`Coroutine`对象，我们可以自由组合这些方法的返回值，然后通过`await asyncio.gather`
 方法并发执行这些任务。例如上面的例子中我们同时执行了三种不同的任务。
 
 你要组合很多很多任务？不用担心！`d`对象执行这些任务的并发度受到初始化参数的严格控制🫡，`video_concurrency`控制了同时下载的视频数量，而`part_concurrency`

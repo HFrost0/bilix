@@ -11,10 +11,10 @@ import bilix.api.bilibili as api
 from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
 from bilix.utils import legal_title, req_retry
-from bilix.log import log
+from bilix.log import logger
 
 
-class Downloader:
+class DownloaderBilibili:
     def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10, http2=True):
         """
 
@@ -201,11 +201,11 @@ class Downloader:
         """
         cate_meta = await self.cate_meta
         if cate_name not in cate_meta:
-            log.error(f'未找到分区 {cate_name}')
+            logger.error(f'未找到分区 {cate_name}')
             return
         if 'subChannelId' not in cate_meta[cate_name]:
             sub_names = [i['name'] for i in cate_meta[cate_name]['sub']]
-            log.error(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
+            logger.error(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
             return
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【分区】{cate_name}"))
@@ -304,7 +304,7 @@ class Downloader:
         try:
             video_info = await api.get_video_info(url, self.client)
         except AttributeError as e:
-            log.warning(f'{e} {url}')
+            logger.warning(f'{e} {url}')
             return
         title = video_info.title
         pages = video_info.pages
@@ -346,7 +346,7 @@ class Downloader:
             try:
                 extra = await api.get_video_info(url, self.client)
             except AttributeError as e:
-                log.warning(f'{url} {e}')
+                logger.warning(f'{url} {e}')
                 self.sema.release()
                 return
         title = extra.h1_title
@@ -354,7 +354,7 @@ class Downloader:
         dash = extra.dash
         img_url = extra.img_url
         if not dash:
-            log.warning(f'{extra.title} 需要大会员或该地区不支持')
+            logger.warning(f'{extra.title} 需要大会员或该地区不支持')
             self.sema.release()
             return
         video_info, video_urls = None, None  # avoid ide warning
@@ -375,7 +375,7 @@ class Downloader:
         # add cor according to params
         if not only_audio:
             if os.path.exists(f'{file_dir}/{title}.mp4'):
-                log.info(f'[green]已存在[/green] {title}.mp4')
+                logger.info(f'[green]已存在[/green] {title}.mp4')
             else:
                 cors.append(self._get_media(video_urls, f'{title}-video', task_id, hierarchy))
                 cors.append(self._get_media(audio_urls, f'{title}-audio', task_id, hierarchy))
@@ -403,7 +403,7 @@ class Downloader:
         # make progress invisible
         if self.progress.tasks[task_id].visible:
             self.progress.update(task_id, advance=1, visible=False)
-            log.info(f'[cyan]已完成[/cyan] {title}{".mp3" if only_audio else ".mp4"}')
+            logger.info(f'[cyan]已完成[/cyan] {title}{".mp3" if only_audio else ".mp4"}')
 
     async def get_dm(self, url, update=False, convert_func=None,
                      hierarchy: str = '', extra=None):
@@ -426,7 +426,7 @@ class Downloader:
         file_name = f"{title}-弹幕{file_type}"
         file_path = f'{file_dir}/{file_name}'
         if not update and os.path.exists(file_path):
-            log.info(f"[green]已存在[/green] {file_name}")
+            logger.info(f"[green]已存在[/green] {file_name}")
             return file_path
         dm_urls = await api.get_dm_info(aid, cid, self.client)
         cors = [req_retry(self.client, dm_url) for dm_url in dm_urls]
@@ -437,7 +437,7 @@ class Downloader:
             content = await content
         with open(file_path, 'wb') as f:
             f.write(content)
-        log.info(f"[cyan]已完成[/cyan] {file_name}")
+        logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
     async def get_subtitle(self, url, convert=True, hierarchy: str = '', extra=None):
@@ -460,7 +460,7 @@ class Downloader:
         try:
             subtitles = await api.get_subtitle_info(bvid, cid, self.client)
         except AttributeError as e:
-            log.warning(f'{url} {e}')
+            logger.warning(f'{url} {e}')
             return
         cors = []
         for sub_url, sub_name in subtitles:
@@ -486,16 +486,16 @@ class Downloader:
         file_name = name + file_type
         file_path = f'{file_dir}/{file_name}'
         if os.path.exists(file_path):
-            log.info(f'[green]已存在[/green] {file_name}')  # extra file use different color
+            logger.info(f'[green]已存在[/green] {file_name}')  # extra file use different color
         else:
             res = await req_retry(self.client, url)
             content = convert_func(res.content) if convert_func else res.content
             with open(file_path, 'wb') as f:
                 f.write(content)
-            log.info(f'[cyan]已完成[/cyan] {name + file_type}')  # extra file use different color
+            logger.info(f'[cyan]已完成[/cyan] {name + file_type}')  # extra file use different color
         return file_path
 
-    async def _content_length(self, url_or_urls) -> int:
+    async def _content_length(self, url_or_urls: Union[str, Sequence[str]]) -> int:
         try:
             res = await req_retry(self.client, url_or_urls, method='HEAD')
             total = int(res.headers['Content-Length'])
@@ -508,7 +508,7 @@ class Downloader:
     async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy: str = ''):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if os.path.exists(f'{file_dir}/{media_name}'):
-            log.info(f'[green]已存在[/green] {media_name}')
+            logger.info(f'[green]已存在[/green] {media_name}')
             return f'{file_dir}/{media_name}'
         total = await self._content_length(media_urls)
         self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
@@ -530,7 +530,7 @@ class Downloader:
                         with open(f'{file_dir}/{part}', 'rb') as pf:
                             f.write(pf.read())
             except KeyboardInterrupt:
-                log.warning('Interrupt, but waiting for file merge, please try again later')
+                logger.warning('Interrupt, but waiting for file merge, please try again later')
                 merge()
             [os.remove(f'{file_dir}/{part}') for part in part_names]
 
@@ -540,7 +540,7 @@ class Downloader:
     async def _get_media_part(self, media_urls: Sequence[str], part_name, task_id, exception=0, hierarchy: str = ''):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if exception > 5:
-            log.error(f'超过重试次数 {part_name}')
+            logger.error(f'超过重试次数 {part_name}')
             raise Exception('超过重试次数')
         start, end = map(int, part_name.split('-')[-2:])
         if os.path.exists(f'{file_dir}/{part_name}'):
@@ -561,10 +561,10 @@ class Downloader:
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
-            log.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
+            logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except Exception as e:
-            log.warning(f'STREAM {e.__class__.__name__} 未知异常')
+            logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
             await asyncio.sleep(.5 * exception)
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
