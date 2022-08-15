@@ -46,9 +46,9 @@ class BaseDownLoaderM3u8(BaseDownloader):
 
     async def get_m3u8_video(self, m3u8_url: str, name: str, hierarchy: str = ''):
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
-        if os.path.exists(f"{base_path}/{name}.mp4"):
-            logger.info(f"[green]已存在[/green] {name}.mp4")
-            return f"{base_path}/{name}.mp4"
+        if os.path.exists(f"{base_path}/{name}.ts"):
+            logger.info(f"[green]已存在[/green] {name}.ts")
+            return f"{base_path}/{name}.ts"
         await self.v_sema.acquire()
         res = await req_retry(self.client, m3u8_url)
         m3u8_info = m3u8.loads(res.text)
@@ -75,10 +75,7 @@ class BaseDownLoaderM3u8(BaseDownloader):
         os.rename(f"{base_path}/{name}-0.ts", f"{base_path}/{name}.ts")
         logger.info(f"[cyan]已完成[/cyan] {name}.ts")
         self.progress.update(task_id, visible=False)
-        return f"{base_path}/{name}.mp4"
-
-    async def _get_ts_stream(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = ''):
-        pass
+        return f"{base_path}/{name}.ts"
 
     async def _get_ts(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = ''):
         ts_url = seg.absolute_uri
