@@ -1,17 +1,15 @@
-import asyncio
-from typing import Union, Sequence
+from typing import Union
 import httpx
 import os
-import rich.progress
-from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
+from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn, TextColumn
 from bilix.utils import req_retry
 from bilix.log import logger
 
 
 class BaseDownloader:
     progress = Progress(
-        "{task.description}",
-        "{task.percentage:>3.0f}%",
+        TextColumn("[progress.description]{task.description}"),
+        TextColumn("[progress.percentage]{task.percentage:>4.1f}%"),
         BarColumn(),
         DownloadColumn(),
         TransferSpeedColumn(),
