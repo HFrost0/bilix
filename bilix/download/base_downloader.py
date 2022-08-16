@@ -30,10 +30,7 @@ class BaseDownloader:
         self.progress.start()
 
     async def __aenter__(self):
-        try:
-            await self.client.__aenter__()
-        except RuntimeError as e:
-            logger.error(e)
+        await self.client.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

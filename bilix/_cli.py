@@ -249,23 +249,7 @@ def main(**kwargs):
             loop.run_until_complete(loop.shutdown_asyncgens())
             # print('normal out')
         except KeyboardInterrupt:
-            pass  # todo bug due to KeyboardInterrupt in python3.9.../asyncio/events.py line 78-95
-            # try:
-            #     self._context.run(self._callback, *self._args)
-            # except (SystemExit, KeyboardInterrupt):  # 💦 always raise these two kind of error regrad
-            #     raise
-            # except BaseException as exc:
-            #     cb = format_helpers._format_callback_source(
-            #         self._callback, self._args)
-            #     msg = f'Exception in callback {cb}'
-            #     context = {
-            #         'message': msg,
-            #         'exception': exc,
-            #         'handle': self,
-            #     }
-            #     if self._source_traceback:
-            #         context['source_traceback'] = self._source_traceback
-            #     self._loop.call_exception_handler(context)
+            pass  # todo bug due to KeyboardInterrupt in python3.9 asyncio
         finally:
             # SingletonPPE().shutdown()
             asyncio.set_event_loop(None)

@@ -39,6 +39,7 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
             await asyncio.sleep(0.5)
         else:
             return res
+    logger.error(f"超过重复次数 {url_or_urls}")
     raise pre_exc
 
 
