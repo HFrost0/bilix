@@ -34,7 +34,13 @@ class BaseDownloader:
         await self.client.aclose()
 
     def _make_hierarchy_dir(self, hierarchy: Union[bool, str], add_dir: str):
-        """Make and return new hierarchy according to old hierarchy and add name"""
+        """
+        Make and return new hierarchy according to old hierarchy and add dir
+
+        :param hierarchy: current hierarchy, if True means add_dir becomes new hierarchy
+        :param add_dir: new dir add to hierarchy
+        :return:
+        """
         assert hierarchy is True or (type(hierarchy) is str and len(hierarchy) > 0) and len(add_dir) > 0
         hierarchy = add_dir if hierarchy is True else f'{hierarchy}/{add_dir}'
         if not os.path.exists(f'{self.videos_dir}/{hierarchy}'):
@@ -45,7 +51,7 @@ class BaseDownloader:
         """
 
         :param url:
-        :param name:
+        :param name: file name (with file type)
         :param convert_func: function used to convert res.content, must be named like ...2...
         :return:
         """
