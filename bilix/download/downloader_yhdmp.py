@@ -11,7 +11,7 @@ from bilix.download.base_downloader_m3u8 import BaseDownLoaderM3u8
 
 
 class DownloaderYhdmp(BaseDownLoaderM3u8):
-    def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 20):
+    def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10):
         client = httpx.AsyncClient(
             headers={'user-agent': 'PostmanRuntime/7.29.0', "Referer": "https://www.yhdmp.cc"}, http2=True)
         super(DownloaderYhdmp, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
@@ -43,8 +43,6 @@ class DownloaderYhdmp(BaseDownLoaderM3u8):
     async def get_video(self, url: str, hierarchy: str = ''):
         video_info = await api.get_video_info(url, self.client)
         name = legal_title(video_info.title, video_info.sub_title)
-        if video_info.m3u8_url == '':
-            logger.warning("")  # todo
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
 
 

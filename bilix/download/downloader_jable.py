@@ -24,9 +24,8 @@ class DownloaderJable(BaseDownLoaderM3u8):
 
 if __name__ == '__main__':
     async def main():
-        d = DownloaderJable()
-        await d.get_video("MIAA-650")
-        await d.aclose()
+        async with DownloaderJable() as d:
+            await d.get_video("hnd-980")
 
 
     asyncio.run(main())

@@ -29,6 +29,17 @@ class BaseDownloader:
             os.makedirs(videos_dir)
         self.progress.start()
 
+    async def __aenter__(self):
+        try:
+            await self.client.__aenter__()
+        except RuntimeError as e:
+            logger.error(e)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.progress.stop()
+        await self.client.__aexit__(exc_type, exc_val, exc_tb)
+
     async def aclose(self):
         self.progress.stop()
         await self.client.aclose()

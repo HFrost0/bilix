@@ -64,6 +64,11 @@ def print_help():
         "控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高，默认3",
     )
     table.add_row(
+        "--part-con",
+        '[dark_cyan]int',
+        "控制每个媒体的分段并发数，默认10",
+    )
+    table.add_row(
         '--cookie',
         '[dark_cyan]str',
         '有条件的用户可以提供大会员的SESSDATA来下载会员视频'
@@ -141,6 +146,12 @@ def print_help():
     'video_concurrency',
     type=int,
     default=3,
+)
+@click.option(
+    "--part-con",
+    "part_concurrency",
+    type=int,
+    default=10,
 )
 @click.option(
     '--cookie',

@@ -23,7 +23,7 @@ class BaseDownLoaderM3u8(BaseDownloader):
         TimeRemainingColumn(),
         transient=True)
 
-    def __init__(self, client: httpx.AsyncClient, videos_dir="videos", video_concurrency=3, part_concurrency=20):
+    def __init__(self, client: httpx.AsyncClient, videos_dir="videos", video_concurrency=3, part_concurrency=10):
         super(BaseDownLoaderM3u8, self).__init__(client, videos_dir)
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self.part_con = part_concurrency
