@@ -4,7 +4,8 @@ import click
 import rich
 from rich.panel import Panel
 from rich.table import Table
-from bilix.download import DownloaderBilibili
+from bilix.assign import assign
+from bilix.log import logger
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -61,6 +62,11 @@ def print_help():
         "--max-con",
         '[dark_cyan]int',
         "控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高，默认3",
+    )
+    table.add_row(
+        "--part-con",
+        '[dark_cyan]int',
+        "控制每个媒体的分段并发数，默认10",
     )
     table.add_row(
         '--cookie',
@@ -142,6 +148,12 @@ def print_help():
     default=3,
 )
 @click.option(
+    "--part-con",
+    "part_concurrency",
+    type=int,
+    default=10,
+)
+@click.option(
     '--cookie',
     'cookie',
     type=str,
@@ -218,54 +230,15 @@ def print_help():
     expose_value=False,
     callback=handle_help,
 )
-def main(method: str,
-         key: str,
-         videos_dir: str,
-         video_concurrency: int,
-         cookie: str,
-         quality: int,
-         days: int,
-         num: int,
-         order: str,
-         keyword: str,
-
-         no_series: bool,
-         hierarchy: bool,
-         image: bool,
-         subtitle: bool,
-         dm: bool,
-         only_audio: bool,
-         p_range,
-         ):
-    loop = asyncio.get_event_loop()
-    d = DownloaderBilibili(videos_dir=videos_dir, video_concurrency=video_concurrency, sess_data=cookie)
-    if method == 'get_series' or method == 's':
-        cor = d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                           p_range=p_range, hierarchy=hierarchy)
-    elif method == 'get_video' or method == 'v':
-        cor = d.get_video(key, quality=quality,
-                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
-    elif method == 'get_up' or method == 'up':
-        cor = d.get_up_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy
-        )
-    elif method == 'get_cate' or method == 'cate':
-        cor = d.get_cate_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-    elif method == 'get_favour' or method == 'fav':
-        cor = d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
-                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-    elif method == 'get_collect' or method == 'col':
-        cor = d.get_collect_or_list(key, quality=quality,
-                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-    else:
-        print(f'{method}不能识别，请使用正确的方法名')
-        return
-    task = loop.create_task(cor)
+def main(**kwargs):
     try:
-        loop.run_until_complete(task)
+        cor, d = assign(**kwargs)
+    except ValueError as e:
+        logger.error(e)
+        return
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(cor)
     except KeyboardInterrupt:
         rich.print('[cyan]提示：用户中断，重复执行命令可继续下载')
     finally:  # similar to asyncio.run
@@ -276,23 +249,7 @@ def main(method: str,
             loop.run_until_complete(loop.shutdown_asyncgens())
             # print('normal out')
         except KeyboardInterrupt:
-            pass  # todo bug due to KeyboardInterrupt in python3.9.../asyncio/events.py line 78-95
-            # try:
-            #     self._context.run(self._callback, *self._args)
-            # except (SystemExit, KeyboardInterrupt):  # 💦 always raise these two kind of error regrad
-            #     raise
-            # except BaseException as exc:
-            #     cb = format_helpers._format_callback_source(
-            #         self._callback, self._args)
-            #     msg = f'Exception in callback {cb}'
-            #     context = {
-            #         'message': msg,
-            #         'exception': exc,
-            #         'handle': self,
-            #     }
-            #     if self._source_traceback:
-            #         context['source_traceback'] = self._source_traceback
-            #     self._loop.call_exception_handler(context)
+            pass  # todo bug due to KeyboardInterrupt in python3.9 asyncio
         finally:
             # SingletonPPE().shutdown()
             asyncio.set_event_loop(None)

@@ -37,6 +37,10 @@ setup(
         'rich',
         'json5',
         'click',
+        'm3u8',
+        'bs4',
+        'pyexecjs',
+        'pycrypto',
         'protobuf>=4.21.1',
         'biliass==1.3.5'
     ],
