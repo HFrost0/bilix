@@ -1,12 +1,9 @@
 import asyncio
-import os.path
-
 import httpx
 from typing import Sequence
 
 import bilix.api.yhdmp as api
 from bilix.utils import legal_title, cors_slice
-from bilix.log import logger
 from bilix.download.base_downloader_m3u8 import BaseDownLoaderM3u8
 
 
