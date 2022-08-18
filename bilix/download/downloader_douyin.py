@@ -1,9 +1,9 @@
 import asyncio
-
 import httpx
 
 import bilix.api.douyin as api
 from bilix.api.douyin import _dft_headers
+from bilix.assign import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title, req_retry
 
@@ -25,6 +25,7 @@ class DownLoaderDouyin(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
 
+@Handler(name='抖音')
 def handle(**kwargs):
     key = kwargs['key']
     if 'douyin' in key:
@@ -32,16 +33,8 @@ def handle(**kwargs):
         videos_dir = kwargs['videos_dir']
         image = kwargs['image']
         method = kwargs['method']
+        d = DownLoaderDouyin(videos_dir=videos_dir, part_concurrency=part_con)
         if method == 'v' or method == 'get_video':
-            d = DownLoaderDouyin(videos_dir=videos_dir, part_concurrency=part_con)
             cor = d.get_video(key, image)
             return d, cor
-
-
-if __name__ == '__main__':
-    async def main():
-        async with DownLoaderDouyin() as d:
-            await d.get_video("https://www.douyin.com/video/6781355292451015948")
-
-
-    asyncio.run(main())
+        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')

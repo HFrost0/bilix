@@ -35,8 +35,8 @@ async def get_video_info(url: str, client=_dft_client) -> VideoInfo:
     if short_url := re.findall(r'https://v.douyin.com/\w+/', url):
         res = await req_retry(client, short_url[0], follow_redirects=True)
         url = str(res.url)
-    if key := re.search(r'/video/(\d+)', url).groups():
-        key = key[0]
+    if key := re.search(r'/video/(\d+)', url):
+        key = key.groups()[0]
     else:
         key = re.search(r"modal_id=(\d+)", url).groups()[0]
     res = await req_retry(client, f'https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids={key}')

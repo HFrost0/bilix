@@ -68,6 +68,7 @@ class BaseDownloader:
             file_type = '.' + convert_func.__name__.split('2')[-1]  #
         else:
             file_type = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
+            file_type = file_type.split('?')[0]
         file_name = name + file_type
         file_path = f'{file_dir}/{file_name}'
         if os.path.exists(file_path):
