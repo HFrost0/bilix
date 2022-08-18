@@ -1,6 +1,9 @@
 import asyncio
+import re
+
 import httpx
 import bilix.api.jable as api
+from bilix.assign import Handler
 from bilix.download.base_downloader_m3u8 import BaseDownLoaderM3u8
 
 
@@ -22,10 +25,31 @@ class DownloaderJable(BaseDownLoaderM3u8):
         await asyncio.gather(*cors)
 
 
-if __name__ == '__main__':
-    async def main():
-        async with DownloaderJable() as d:
-            await d.get_video("hnd-980")
-
-
-    asyncio.run(main())
+@Handler('jable')
+def handle(
+        method: str,
+        key: str,
+        videos_dir: str,
+        video_concurrency: int,
+        part_concurrency: int,
+        cookie: str,
+        quality: int,
+        days: int,
+        num: int,
+        order: str,
+        keyword: str,
+        no_series: bool,
+        hierarchy: bool,
+        image: bool,
+        subtitle: bool,
+        dm: bool,
+        only_audio: bool,
+        p_range,
+):
+    if 'jable' in key or re.match(r"[A-Za-z]+-\d+", key):
+        d = DownloaderJable(videos_dir=videos_dir, video_concurrency=video_concurrency,
+                            part_concurrency=part_concurrency)
+        if method == 'get_video' or method == 'v':
+            cor = d.get_video(key, image=image, hierarchy=hierarchy)
+            return d, cor
+        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')

@@ -6,6 +6,7 @@ import os
 from anyio import run_process
 from itertools import groupby
 import bilix.api.bilibili as api
+from bilix.assign import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
@@ -439,3 +440,55 @@ class DownloaderBilibili(BaseDownloaderPart):
                                          hierarchy=hierarchy))
         paths = await asyncio.gather(*cors)
         return paths
+
+
+@Handler(name='bilibili')
+def handle(
+        method: str,
+        key: str,
+        videos_dir: str,
+        video_concurrency: int,
+        part_concurrency: int,
+        cookie: str,
+        quality: int,
+        days: int,
+        num: int,
+        order: str,
+        keyword: str,
+        no_series: bool,
+        hierarchy: bool,
+        image: bool,
+        subtitle: bool,
+        dm: bool,
+        only_audio: bool,
+        p_range,
+):
+    d = DownloaderBilibili(videos_dir=videos_dir,
+                           video_concurrency=video_concurrency,
+                           part_concurrency=part_concurrency,
+                           sess_data=cookie)
+    if method == 'get_series' or method == 's':
+        cor = d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
+                           p_range=p_range, hierarchy=hierarchy)
+    elif method == 'get_video' or method == 'v':
+        cor = d.get_video(key, quality=quality,
+                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+    elif method == 'get_up' or method == 'up':
+        cor = d.get_up_videos(
+            key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy
+        )
+    elif method == 'get_cate' or method == 'cate':
+        cor = d.get_cate_videos(
+            key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
+    elif method == 'get_favour' or method == 'fav':
+        cor = d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
+                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
+    elif method == 'get_collect' or method == 'col':
+        cor = d.get_collect_or_list(key, quality=quality,
+                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
+                                    hierarchy=hierarchy)
+    else:
+        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+    return d, cor

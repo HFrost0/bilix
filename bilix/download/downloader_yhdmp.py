@@ -3,6 +3,7 @@ import httpx
 from typing import Sequence
 
 import bilix.api.yhdmp as api
+from bilix.assign import Handler
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownLoaderM3u8
 
@@ -43,11 +44,34 @@ class DownloaderYhdmp(BaseDownLoaderM3u8):
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
 
 
-if __name__ == '__main__':
-    async def main():
-        d = DownloaderYhdmp(video_concurrency=1)
-        await d.get_series("https://www.yhdmp.cc/vp/22224-1-0.html", p_range=[1, 1])
-        await d.aclose()
-
-
-    asyncio.run(main())
+@Handler(name='樱花动漫P')
+def assign2yhdmp(
+        method: str,
+        key: str,
+        videos_dir: str,
+        video_concurrency: int,
+        part_concurrency: int,
+        cookie: str,
+        quality: int,
+        days: int,
+        num: int,
+        order: str,
+        keyword: str,
+        no_series: bool,
+        hierarchy: bool,
+        image: bool,
+        subtitle: bool,
+        dm: bool,
+        only_audio: bool,
+        p_range,
+):
+    if 'yhdmp' in key:
+        d = DownloaderYhdmp(videos_dir=videos_dir, video_concurrency=video_concurrency,
+                            part_concurrency=part_concurrency)
+        if method == 'get_series' or method == 's':
+            cor = d.get_series(key, p_range=p_range, hierarchy=hierarchy)
+            return d, cor
+        elif method == 'get_video' or method == 'v':
+            cor = d.get_video(key)
+            return d, cor
+        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')

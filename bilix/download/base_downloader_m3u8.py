@@ -8,6 +8,7 @@ from Crypto.Cipher import AES
 from m3u8 import Segment
 from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn
 
+from bilix.assign import Handler
 from bilix.download.base_downloader import BaseDownloader
 from bilix.log import logger
 from bilix.utils import req_retry, merge_files
@@ -90,3 +91,17 @@ class BaseDownLoaderM3u8(BaseDownloader):
                 await f.write(content)
         self.progress.update(task_id, advance=seg.duration)
         return file_path
+
+
+@Handler(name="m3u8")
+def handle(**kwargs):
+    key = kwargs['key']
+    if '.m3u8' in key:
+        videos_dir = kwargs['videos_dir']
+        part_concurrency = kwargs['part_concurrency']
+        method = kwargs['method']
+        d = BaseDownLoaderM3u8(httpx.AsyncClient(), videos_dir=videos_dir, part_concurrency=part_concurrency)
+        if method == 'get_video' or method == 'v':
+            cor = d.get_m3u8_video(key, "unnamed")
+            return d, cor
+        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
