@@ -10,7 +10,7 @@ from rich.progress import Progress, BarColumn, TimeRemainingColumn, TextColumn
 
 from bilix.download.base_downloader import BaseDownloader
 from bilix.log import logger
-from bilix.utils import req_retry
+from bilix.utils import req_retry, merge_files
 
 
 class BaseDownLoaderM3u8(BaseDownloader):
@@ -46,9 +46,10 @@ class BaseDownLoaderM3u8(BaseDownloader):
 
     async def get_m3u8_video(self, m3u8_url: str, name: str, hierarchy: str = ''):
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
-        if os.path.exists(f"{base_path}/{name}.ts"):
+        file_path = f"{base_path}/{name}.ts"
+        if os.path.exists(file_path):
             logger.info(f"[green]已存在[/green] {name}.ts")
-            return f"{base_path}/{name}.ts"
+            return file_path
         await self.v_sema.acquire()
         res = await req_retry(self.client, m3u8_url)
         m3u8_info = m3u8.loads(res.text)
@@ -64,18 +65,12 @@ class BaseDownLoaderM3u8(BaseDownloader):
             total_time += seg.duration
             cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy))
         self.progress.update(task_id, total=total_time, visible=True)
-        await asyncio.gather(*cors)
+        file_list = await asyncio.gather(*cors)
         self.v_sema.release()
-        # merge
-        async with await anyio.open_file(f"{base_path}/{name}-0.ts", 'ab') as f:
-            for idx in range(1, len(m3u8_info.segments)):
-                async with await anyio.open_file(f"{base_path}/{name}-{idx}.ts", 'rb') as fa:
-                    await f.write(await fa.read())
-                    os.remove(f"{base_path}/{name}-{idx}.ts")
-        os.rename(f"{base_path}/{name}-0.ts", f"{base_path}/{name}.ts")
+        await merge_files(file_list, new_name=file_path)
         logger.info(f"[cyan]已完成[/cyan] {name}.ts")
         self.progress.update(task_id, visible=False)
-        return f"{base_path}/{name}.ts"
+        return file_path
 
     async def _get_ts(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = ''):
         ts_url = seg.absolute_uri
