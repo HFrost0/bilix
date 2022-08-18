@@ -36,7 +36,7 @@ class BaseDownloaderPart(BaseDownloader):
             logger.info(f'[green]已存在[/green] {media_name}')
             return file_path
         total = await self._content_length(media_urls)
-        if task_id:
+        if task_id is not None:
             self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         else:
             task_id = self.progress.add_task(description=media_name[:30], total=total, visible=True)
