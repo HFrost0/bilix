@@ -1,8 +1,10 @@
 import asyncio
 import html
+import os
 import re
 import random
 from typing import Union, Sequence, Coroutine
+import anyio
 import httpx
 
 from bilix.log import logger
@@ -41,6 +43,16 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
             return res
     logger.error(f"超过重复次数 {url_or_urls}")
     raise pre_exc
+
+
+async def merge_files(file_list: Sequence[str], new_name: str):
+    first_file = file_list[0]
+    async with await anyio.open_file(first_file, 'ab') as f:
+        for idx in range(1, len(file_list)):
+            async with await anyio.open_file(file_list[idx], 'rb') as fa:
+                await f.write(await fa.read())
+                os.remove(file_list[idx])
+    os.rename(first_file, new_name)
 
 
 def legal_title(title, add_name=''):

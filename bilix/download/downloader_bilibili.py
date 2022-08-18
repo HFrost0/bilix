@@ -1,20 +1,19 @@
 import asyncio
 from typing import Union, Sequence
 import httpx
-import random
 from datetime import datetime, timedelta
 import os
 from anyio import run_process
 from itertools import groupby
 import bilix.api.bilibili as api
-from bilix.download.base_downloader import BaseDownloader
+from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
 from bilix.utils import legal_title, req_retry, cors_slice
 from bilix.log import logger
 
 
-class DownloaderBilibili(BaseDownloader):
+class DownloaderBilibili(BaseDownloaderPart):
     def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10):
         """
 
@@ -26,9 +25,8 @@ class DownloaderBilibili(BaseDownloader):
         cookies = {'SESSDATA': sess_data}
         headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
         client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=True)
-        super(DownloaderBilibili, self).__init__(client, videos_dir)
-        self.sema = asyncio.Semaphore(video_concurrency)
-        self.part_concurrency = part_concurrency
+        super(DownloaderBilibili, self).__init__(client, videos_dir, part_concurrency)
+        self.v_sema = asyncio.Semaphore(video_concurrency)
         self._cate_meta = None
 
     async def get_collect_or_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
@@ -313,13 +311,13 @@ class DownloaderBilibili(BaseDownloader):
         :param extra: 额外数据，提供时不用再次请求页面
         :return:
         """
-        await self.sema.acquire()
+        await self.v_sema.acquire()
         if not extra:
             try:
                 extra = await api.get_video_info(url, self.client)
             except AttributeError as e:
                 logger.warning(f'{url} {e}')
-                self.sema.release()
+                self.v_sema.release()
                 return
         title = extra.h1_title
         title = legal_title(title, add_name)
@@ -327,7 +325,7 @@ class DownloaderBilibili(BaseDownloader):
         img_url = extra.img_url
         if not dash:
             logger.warning(f'{extra.title} 需要大会员或该地区不支持')
-            self.sema.release()
+            self.v_sema.release()
             return
         video_info, video_urls = None, None  # avoid ide warning
         # choose quality
@@ -364,7 +362,7 @@ class DownloaderBilibili(BaseDownloader):
                 w, h = video_info['width'], video_info['height']
                 cors.append(self.get_dm(url, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy, extra=extra))
         await asyncio.gather(*cors)
-        self.sema.release()
+        self.v_sema.release()
 
         if not only_audio and not os.path.exists(f'{file_dir}/{title}.mp4'):
             await run_process(
@@ -441,77 +439,3 @@ class DownloaderBilibili(BaseDownloader):
                                          hierarchy=hierarchy))
         paths = await asyncio.gather(*cors)
         return paths
-
-    async def _content_length(self, url_or_urls: Union[str, Sequence[str]]) -> int:
-        try:
-            res = await req_retry(self.client, url_or_urls, method='HEAD')
-            total = int(res.headers['Content-Length'])
-        except httpx.HTTPStatusError:
-            # deal with HEAD 404 bug https://github.com/HFrost0/bilix/issues/16
-            res = await req_retry(self.client, url_or_urls, method='GET', headers={'Range': 'bytes=0-1'})
-            total = int(res.headers['Content-Range'].split('/')[-1])
-        return total
-
-    async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy: str = ''):
-        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if os.path.exists(f'{file_dir}/{media_name}'):
-            logger.info(f'[green]已存在[/green] {media_name}')
-            return f'{file_dir}/{media_name}'
-        total = await self._content_length(media_urls)
-        self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
-        part_length = total // self.part_concurrency
-        cors = []
-        part_names = []
-        for i in range(self.part_concurrency):
-            start = i * part_length
-            end = (i + 1) * part_length - 1 if i < self.part_concurrency - 1 else total - 1
-            part_name = f'{media_name}-{start}-{end}'
-            part_names.append(part_name)
-            cors.append(self._get_media_part(media_urls, part_name, task_id, hierarchy=hierarchy))
-        await asyncio.gather(*cors)
-
-        def merge():
-            try:  # make sure merge will not interrupt by user
-                with open(f'{file_dir}/{media_name}', 'wb') as f:
-                    for part in part_names:
-                        with open(f'{file_dir}/{part}', 'rb') as pf:
-                            f.write(pf.read())
-            except KeyboardInterrupt:
-                logger.warning('Interrupt, but waiting for file merge, please try again later')
-                merge()
-            [os.remove(f'{file_dir}/{part}') for part in part_names]
-
-        merge()
-        return f'{file_dir}/{media_name}'
-
-    async def _get_media_part(self, media_urls: Sequence[str], part_name, task_id, exception=0, hierarchy: str = ''):
-        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if exception > 5:
-            logger.error(f'超过重试次数 {part_name}')
-            raise Exception('超过重试次数')
-        start, end = map(int, part_name.split('-')[-2:])
-        if os.path.exists(f'{file_dir}/{part_name}'):
-            downloaded = os.path.getsize(f'{file_dir}/{part_name}')
-            start += downloaded
-            if exception == 0:
-                self.progress.update(task_id, advance=downloaded)
-        if start > end:
-            return  # skip already finished
-        try:
-            async with self.client.stream("GET", random.choice(media_urls),
-                                          headers={'Range': f'bytes={start}-{end}'}) as r:
-                r.raise_for_status()
-                with open(f'{file_dir}/{part_name}', 'ab') as f:
-                    async for chunk in r.aiter_bytes():
-                        f.write(chunk)
-                        self.progress.update(task_id, advance=len(chunk))
-        except httpx.RemoteProtocolError:
-            await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
-        except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
-            logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
-            await asyncio.sleep(.1 * exception)
-            await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
-        except Exception as e:
-            logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
-            await asyncio.sleep(.5 * exception)
-            await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
