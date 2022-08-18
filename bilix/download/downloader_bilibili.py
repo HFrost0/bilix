@@ -347,10 +347,10 @@ class DownloaderBilibili(BaseDownloaderPart):
             if os.path.exists(f'{file_dir}/{title}.mp4'):
                 logger.info(f'[green]已存在[/green] {title}.mp4')
             else:
-                cors.append(self._get_media(video_urls, f'{title}-video', task_id, hierarchy))
-                cors.append(self._get_media(audio_urls, f'{title}-audio', task_id, hierarchy))
+                cors.append(self.get_media(video_urls, f'{title}-video', task_id, hierarchy))
+                cors.append(self.get_media(audio_urls, f'{title}-audio', task_id, hierarchy))
         else:
-            cors.append(self._get_media(audio_urls, f'{title}.mp3', task_id, hierarchy))
+            cors.append(self.get_media(audio_urls, f'{title}.mp3', task_id, hierarchy))
         # additional task
         if image or subtitle or dm:
             extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')

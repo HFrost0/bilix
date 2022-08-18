@@ -13,7 +13,8 @@ class BaseDownloaderPart(BaseDownloader):
         """
 
         :param client:
-        :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
+        :param videos_dir:
+        :param part_concurrency:
         """
         super(BaseDownloaderPart, self).__init__(client, videos_dir)
         self.part_concurrency = part_concurrency
@@ -28,14 +29,17 @@ class BaseDownloaderPart(BaseDownloader):
             total = int(res.headers['Content-Range'].split('/')[-1])
         return total
 
-    async def _get_media(self, media_urls: Sequence[str], media_name, task_id, hierarchy: str = ''):
+    async def get_media(self, media_urls: Sequence[str], media_name, task_id=None, hierarchy: str = ''):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_path = f'{file_dir}/{media_name}'
         if os.path.exists(file_path):
             logger.info(f'[green]已存在[/green] {media_name}')
             return file_path
         total = await self._content_length(media_urls)
-        self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
+        if task_id:
+            self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
+        else:
+            task_id = self.progress.add_task(description=media_name[:30], total=total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
         part_names = []
@@ -47,6 +51,9 @@ class BaseDownloaderPart(BaseDownloader):
             cors.append(self._get_media_part(media_urls, part_name, task_id, hierarchy=hierarchy))
         file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_name=file_path)
+        if self.progress.tasks[task_id].finished:
+            self.progress.update(task_id, visible=False)
+            logger.info(f"[cyan]已完成[/cyan] {media_name}")
         return file_path
 
     async def _get_media_part(self, media_urls: Sequence[str], part_name, task_id, exception=0, hierarchy: str = ''):
