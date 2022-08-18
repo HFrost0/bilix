@@ -232,7 +232,7 @@ def print_help():
 )
 def main(**kwargs):
     try:
-        cor, d = assign(**kwargs)
+        d, cor = assign(**kwargs)
     except ValueError as e:
         logger.error(e)
         return
@@ -240,7 +240,7 @@ def main(**kwargs):
     try:
         loop.run_until_complete(cor)
     except KeyboardInterrupt:
-        rich.print('[cyan]提示：用户中断，重复执行命令可继续下载')
+        logger.info('[cyan]提示：用户中断，重复执行命令可继续下载')
     finally:  # similar to asyncio.run
         tasks = [t for t in asyncio.all_tasks(loop)]
         [t.cancel() for t in tasks]
