@@ -11,6 +11,7 @@ from bilix.log import logger
 class BaseDownloaderPart(BaseDownloader):
     def __init__(self, client: httpx.AsyncClient, videos_dir: str = 'videos', part_concurrency=10):
         """
+        Base Async http Content-Range Downloader
 
         :param client:
         :param videos_dir:
@@ -29,7 +30,15 @@ class BaseDownloaderPart(BaseDownloader):
             total = int(res.headers['Content-Range'].split('/')[-1])
         return total
 
-    async def get_media(self, media_urls: Sequence[str], media_name, task_id=None, hierarchy: str = ''):
+    async def get_media(self, media_urls: Sequence[str], media_name, task_id=None, hierarchy: str = '') -> str:
+        """
+
+        :param media_urls: media urls with backups
+        :param media_name:
+        :param task_id: if not provided, a new progress task will be created
+        :param hierarchy:
+        :return: downloaded file path
+        """
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_path = f'{file_dir}/{media_name}'
         if os.path.exists(file_path):
@@ -69,7 +78,7 @@ class BaseDownloaderPart(BaseDownloader):
             if exception == 0:
                 self.progress.update(task_id, advance=downloaded)
         if start > end:
-            return  # skip already finished
+            return file_path  # skip already finished
         try:
             async with self.client.stream("GET", random.choice(media_urls),
                                           headers={'Range': f'bytes={start}-{end}'}) as r:

@@ -25,6 +25,14 @@ class BaseDownLoaderM3u8(BaseDownloader):
         transient=True)
 
     def __init__(self, client: httpx.AsyncClient, videos_dir="videos", video_concurrency=3, part_concurrency=10):
+        """
+        Base async m3u8 Downloader
+
+        :param client:
+        :param videos_dir:
+        :param video_concurrency:
+        :param part_concurrency:
+        """
         super(BaseDownLoaderM3u8, self).__init__(client, videos_dir)
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self.part_con = part_concurrency
@@ -45,7 +53,15 @@ class BaseDownLoaderM3u8(BaseDownloader):
         cipher = self.decrypt_cache[uri]
         return cipher.decrypt(content)
 
-    async def get_m3u8_video(self, m3u8_url: str, name: str, hierarchy: str = ''):
+    async def get_m3u8_video(self, m3u8_url: str, name: str, hierarchy: str = '') -> str:
+        """
+        download
+
+        :param m3u8_url:
+        :param name:
+        :param hierarchy:
+        :return: downloaded file path
+        """
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
         file_path = f"{base_path}/{name}.ts"
         if os.path.exists(file_path):
@@ -73,7 +89,7 @@ class BaseDownLoaderM3u8(BaseDownloader):
         self.progress.update(task_id, visible=False)
         return file_path
 
-    async def _get_ts(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = ''):
+    async def _get_ts(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = '') -> str:
         ts_url = seg.absolute_uri
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
         file_path = f"{base_path}/{name}"
