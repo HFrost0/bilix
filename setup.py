@@ -50,7 +50,7 @@ setup(
         'm3u8',
         'bs4',
         'pyexecjs',
-        'pycrypto',
+        'pycryptodome',
         'protobuf>=4.21.1',
         'biliass==1.3.5'
     ],
