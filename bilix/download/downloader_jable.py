@@ -4,10 +4,10 @@ import re
 import httpx
 import bilix.api.jable as api
 from bilix.assign import Handler
-from bilix.download.base_downloader_m3u8 import BaseDownLoaderM3u8
+from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
-class DownloaderJable(BaseDownLoaderM3u8):
+class DownloaderJable(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10):
         client = httpx.AsyncClient(
             headers={'user-agent': 'PostmanRuntime/7.29.0', "referer": "https://jable.tv"}, http2=False)

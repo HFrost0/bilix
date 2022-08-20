@@ -14,7 +14,7 @@ from bilix.log import logger
 from bilix.utils import req_retry, merge_files
 
 
-class BaseDownLoaderM3u8(BaseDownloader):
+class BaseDownloaderM3u8(BaseDownloader):
     # todo no two live progress
     progress = Progress(
         TextColumn("[progress.description]{task.description}"),
@@ -33,7 +33,7 @@ class BaseDownLoaderM3u8(BaseDownloader):
         :param video_concurrency:
         :param part_concurrency:
         """
-        super(BaseDownLoaderM3u8, self).__init__(client, videos_dir)
+        super(BaseDownloaderM3u8, self).__init__(client, videos_dir)
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self.part_con = part_concurrency
         self.decrypt_cache = {}
@@ -116,7 +116,7 @@ def handle(**kwargs):
         videos_dir = kwargs['videos_dir']
         part_concurrency = kwargs['part_concurrency']
         method = kwargs['method']
-        d = BaseDownLoaderM3u8(httpx.AsyncClient(), videos_dir=videos_dir, part_concurrency=part_concurrency)
+        d = BaseDownloaderM3u8(httpx.AsyncClient(), videos_dir=videos_dir, part_concurrency=part_concurrency)
         if method == 'get_video' or method == 'v':
             cor = d.get_m3u8_video(key, "unnamed")
             return d, cor

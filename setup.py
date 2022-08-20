@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from pathlib import Path
+
 from setuptools import setup, find_packages
 
 
@@ -8,12 +10,19 @@ def get_long_description():
 
 
 def get_version() -> str:
-    with open('bilix/__init__.py', 'r', encoding='utf8') as f:
+    with open('bilix/__version__.py', 'r', encoding='utf8') as f:
         for line in f.readlines():
             if line.startswith("__version__"):
                 delim = '"' if '"' in line else "'"
                 return line.split(delim)[1]
     raise RuntimeError("Unable to find version string.")
+
+
+def get_packages(package):
+    """
+    Return root package and all sub-packages.
+    """
+    return [str(path.parent) for path in Path(package).glob("**/__init__.py")]
 
 
 setup(
@@ -27,10 +36,10 @@ setup(
     url='https://github.com/HFrost0/bilix',
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
-    packages=find_packages(),
+    packages=get_packages('bilix'),
     include_package_data=True,
     entry_points={
-        "console_scripts": "bilix=bilix._cli:main",
+        "console_scripts": "bilix=bilix.__main__:main",
     },
     install_requires=[
         "httpx[http2]>=0.22.0",

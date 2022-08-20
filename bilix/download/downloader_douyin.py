@@ -8,10 +8,10 @@ from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title, req_retry
 
 
-class DownLoaderDouyin(BaseDownloaderPart):
+class DownloaderDouyin(BaseDownloaderPart):
     def __init__(self, videos_dir='videos', part_concurrency=10):
         client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-        super(DownLoaderDouyin, self).__init__(client, videos_dir, part_concurrency)
+        super(DownloaderDouyin, self).__init__(client, videos_dir, part_concurrency)
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(url, self.client)
@@ -33,7 +33,7 @@ def handle(**kwargs):
         videos_dir = kwargs['videos_dir']
         image = kwargs['image']
         method = kwargs['method']
-        d = DownLoaderDouyin(videos_dir=videos_dir, part_concurrency=part_con)
+        d = DownloaderDouyin(videos_dir=videos_dir, part_concurrency=part_con)
         if method == 'v' or method == 'get_video':
             cor = d.get_video(key, image)
             return d, cor

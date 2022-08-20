@@ -28,7 +28,7 @@ async def get_video_info(url: str, client: httpx.AsyncClient = _dft_client) -> V
     # request
     res = await req_retry(client, url)
     m3u8_url = m3u8_pattern.search(res.text)[0]
-    soup = BeautifulSoup(res.text, features="lxml")
+    soup = BeautifulSoup(res.text, 'html.parser')
     h1 = soup.find('h1')
     title, sub_title = h1.a.text, h1.span.text[1:]
 

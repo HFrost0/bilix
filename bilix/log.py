@@ -8,7 +8,7 @@ logging.basicConfig(
     handlers=[RichHandler(show_time=False, show_path=False, markup=True, keywords=RichHandler.KEYWORDS + ['STREAM'],
                           rich_tracebacks=True)]
 )
-logger = logging.getLogger("rich")
+logger = logging.getLogger("bilix")
 
 if __name__ == '__main__':
     # logger.info("", exc_info=Exception(1))
