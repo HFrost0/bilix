@@ -6,10 +6,10 @@ import bilix.api.yinghuacd as api
 from bilix.assign import Handler
 from bilix.log import logger
 from bilix.utils import legal_title, cors_slice
-from bilix.download.base_downloader_m3u8 import BaseDownLoaderM3u8
+from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
-class DownloaderYinghuacd(BaseDownLoaderM3u8):
+class DownloaderYinghuacd(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10):
         client = httpx.AsyncClient(
             headers={'user-agent': 'PostmanRuntime/7.29.0', "Referer": "http://www.yinghuacd.com"}, http2=False)

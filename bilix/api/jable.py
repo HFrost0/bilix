@@ -30,7 +30,7 @@ async def get_video_info(url_or_avid: str, client: httpx.AsyncClient = _dft_clie
         avid = url_or_avid
     avid = avid.upper()
     res = await req_retry(client, url)  # proxies default global in httpx
-    soup = BeautifulSoup(res.text, features="lxml")
+    soup = BeautifulSoup(res.text, "html.parser")
     title = soup.find('meta', property="og:title")['content']
     title = legal_title(title)
     model_name = soup.find("span", class_="placeholder rounded-circle")['title']

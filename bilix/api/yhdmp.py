@@ -68,7 +68,7 @@ async def get_video_info(url: str, client: httpx.AsyncClient = _dft_client) -> V
     # extract
     title, sub_title = map(legal_title,
                            re.search(r'target="_self">([^<]+)</a><span>:([^<]+)</span>', res_web.text).groups())
-    soup = BeautifulSoup(res_web.text, features="lxml")
+    soup = BeautifulSoup(res_web.text, 'html.parser')
     divs = soup.find_all('div', class_="movurl")
     play_info = []
     for div in divs:
