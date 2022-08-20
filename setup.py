@@ -28,15 +28,16 @@ setup(
     long_description=get_long_description(),
     long_description_content_type="text/markdown",
     packages=find_packages(),
+    include_package_data=True,
     entry_points={
         "console_scripts": "bilix=bilix._cli:main",
     },
     install_requires=[
-        "httpx[http2]",
+        "httpx[http2]>=0.22.0",
         'anyio',
         'rich',
         'json5',
-        'click',
+        'click>=8.0.3',
         'm3u8',
         'bs4',
         'pyexecjs',

@@ -4,6 +4,8 @@ import click
 import rich
 from rich.panel import Panel
 from rich.table import Table
+
+import bilix
 from bilix.assign import assign
 from bilix.log import logger
 
@@ -16,9 +18,17 @@ def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Para
     ctx.exit()
 
 
+def handle_version(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
+    if not value or ctx.resilient_parsing:
+        return
+
+    rich.print(f"Version {bilix.__version__}")
+    ctx.exit()
+
+
 def print_help():
     console = rich.console.Console()
-    console.print("\n[bold]Bilix", justify="center")
+    console.print(f"\n[bold]bilix {bilix.__version__}", justify="center")
     console.print("⚡️快如闪电的bilibili下载工具，基于Python现代Async特性，高速批量下载整部动漫，电视剧，up投稿等\n", justify="center")
     console.print("使用方法： bilix [cyan]<method> <key> [OPTIONS][/cyan] ", justify="left")
     table = Table.grid(padding=1, pad_edge=False)
@@ -229,6 +239,14 @@ def print_help():
     is_eager=True,
     expose_value=False,
     callback=handle_help,
+)
+@click.option(
+    '-v',
+    "--version",
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+    callback=handle_version,
 )
 def main(**kwargs):
     try:
