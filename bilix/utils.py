@@ -51,7 +51,7 @@ async def merge_files(file_list: Sequence[str], new_name: str):
         for idx in range(1, len(file_list)):
             async with await anyio.open_file(file_list[idx], 'rb') as fa:
                 await f.write(await fa.read())
-                os.remove(file_list[idx])
+            os.remove(file_list[idx])
     os.rename(first_file, new_name)
 
 
