@@ -6,6 +6,7 @@ from .downloader_bilibili import DownloaderBilibili
 from .downloader_jable import DownloaderJable
 from .downloader_douyin import DownloaderDouyin
 from .downloader_yinghuacd import DownloaderYinghuacd
+from .downloader_cctv import DownloaderCctv
 
 # js runtime require
 try:
