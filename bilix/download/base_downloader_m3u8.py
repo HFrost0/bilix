@@ -103,8 +103,8 @@ class BaseDownloaderM3u8(BaseDownloader):
             # in case encrypted
             if seg.key:
                 content = await self._decrypt(seg.key, content)
-            async with await anyio.open_file(file_path, 'wb') as f:
-                await f.write(content)
+            with open(file_path, 'wb') as f:
+                f.write(content)
         self.progress.update(task_id, advance=seg.duration)
         return file_path
 
