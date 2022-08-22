@@ -1,5 +1,6 @@
 import asyncio
 from typing import Union, Sequence
+import aiofiles
 import httpx
 import random
 import os
@@ -83,9 +84,9 @@ class BaseDownloaderPart(BaseDownloader):
             async with self.client.stream("GET", random.choice(media_urls),
                                           headers={'Range': f'bytes={start}-{end}'}) as r:
                 r.raise_for_status()
-                with open(file_path, 'ab') as f:
+                async with aiofiles.open(file_path, 'ab') as f:
                     async for chunk in r.aiter_bytes():
-                        f.write(chunk)
+                        await f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
         except httpx.RemoteProtocolError:
             await self._get_media_part(media_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)

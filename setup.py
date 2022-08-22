@@ -44,6 +44,7 @@ setup(
     install_requires=[
         "httpx[http2]>=0.22.0",
         'anyio',
+        'aiofiles>=0.8.0',
         'rich',
         'json5',
         'click>=8.0.3',

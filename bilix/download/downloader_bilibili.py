@@ -1,5 +1,6 @@
 import asyncio
 from typing import Union, Sequence
+import aiofiles
 import httpx
 from datetime import datetime, timedelta
 import os
@@ -406,8 +407,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         content = convert_func(content) if convert_func else content
         if asyncio.iscoroutine(content):
             content = await content
-        with open(file_path, 'wb') as f:
-            f.write(content)
+        async with aiofiles.open(file_path, 'wb') as f:
+            await f.write(content)
         logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 

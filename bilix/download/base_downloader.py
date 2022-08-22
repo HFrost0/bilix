@@ -1,4 +1,5 @@
 from typing import Union
+import aiofiles
 import httpx
 import os
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn, TextColumn
@@ -76,7 +77,7 @@ class BaseDownloader:
         else:
             res = await req_retry(self.client, url)
             content = convert_func(res.content) if convert_func else res.content
-            with open(file_path, 'wb') as f:
-                f.write(content)
+            async with aiofiles.open(file_path, 'wb') as f:
+                await f.write(content)
             logger.info(f'[cyan]已完成[/cyan] {name + file_type}')  # extra file use different color
         return file_path

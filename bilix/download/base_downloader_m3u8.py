@@ -1,6 +1,6 @@
 import asyncio
 import re
-import anyio
+import aiofiles
 import httpx
 import os
 import m3u8
@@ -103,8 +103,8 @@ class BaseDownloaderM3u8(BaseDownloader):
             # in case encrypted
             if seg.key:
                 content = await self._decrypt(seg.key, content)
-            with open(file_path, 'wb') as f:
-                f.write(content)
+            async with aiofiles.open(file_path, 'wb') as f:
+                await f.write(content)
         self.progress.update(task_id, advance=seg.duration)
         return file_path
 
