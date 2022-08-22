@@ -4,8 +4,10 @@ import aiofiles
 import httpx
 from datetime import datetime, timedelta
 import os
-from anyio import run_process
 from itertools import groupby
+
+from anyio import run_process
+
 import bilix.api.bilibili as api
 from bilix.assign import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
@@ -367,9 +369,10 @@ class DownloaderBilibili(BaseDownloaderPart):
         self.v_sema.release()
 
         if not only_audio and not os.path.exists(f'{file_dir}/{title}.mp4'):
-            await run_process(
-                ['ffmpeg', '-i', f'{file_dir}/{title}-video', '-i', f'{file_dir}/{title}-audio',
-                 '-codec', 'copy', f'{file_dir}/{title}.mp4', '-loglevel', 'quiet'])
+            process = await asyncio.create_subprocess_shell(
+                f" ffmpeg -i '{file_dir}/{title}-video' -i '{file_dir}/{title}-audio'"
+                f" -codec copy {file_dir}/{title}.mp4 -loglevel quiet")
+            await process.wait()
             os.remove(f'{file_dir}/{title}-video')
             os.remove(f'{file_dir}/{title}-audio')
         # make progress invisible

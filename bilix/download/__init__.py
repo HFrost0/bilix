@@ -11,7 +11,7 @@ from .downloader_cctv import DownloaderCctv
 # js runtime require
 try:
     from .downloader_yhdmp import DownloaderYhdmp
-except Exception as e:
+except Exception as _e:
     from bilix.log import logger as _logger
 
-    _logger.debug(f"Due to {e} Yhdmp is not available")
+    _logger.debug(f"Due to {_e} Yhdmp is not available")
