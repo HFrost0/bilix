@@ -289,7 +289,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         else:
             hierarchy = hierarchy if type(hierarchy) is str else ''  # incase hierarchy is False
         cors = [self.get_video(p_url, quality, add_name,
-                               image=True if idx == 0 and image else False,  # todo bug p_range
+                               image=image,
                                subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy,
                                extra=video_info if idx == p else None)
                 for idx, (add_name, p_url) in enumerate(pages)]
