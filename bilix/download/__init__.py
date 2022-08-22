@@ -1,4 +1,5 @@
 # base
+import time
 from .base_downloader_m3u8 import BaseDownloaderM3u8
 from .base_downloader_part import BaseDownloaderPart
 # site

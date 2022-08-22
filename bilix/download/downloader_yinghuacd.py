@@ -16,7 +16,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         super(DownloaderYinghuacd, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
 
     async def get_series(self, url: str, p_range: Sequence[int] = None, hierarchy=True):
-        video_info = await api.get_video_info(url)
+        video_info = await api.get_video_info(self.client, url)
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, video_info.title)
         cors = [self.get_video(u, hierarchy=hierarchy if hierarchy else '', extra=video_info if u == url else None)
@@ -27,7 +27,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
 
     async def get_video(self, url: str, hierarchy: str = '', extra=None):
         if extra is None:
-            video_info = await api.get_video_info(url, self.client)
+            video_info = await api.get_video_info(self.client, url)
         else:
             video_info = extra
         name = legal_title(video_info.title, video_info.sub_title)

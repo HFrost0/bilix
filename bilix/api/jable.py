@@ -8,7 +8,6 @@ from bilix.utils import legal_title, req_retry
 
 BASE_URL = "https://jable.tv"
 _dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL}
-_dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
 
 
 @dataclass
@@ -21,7 +20,7 @@ class VideoInfo:
     img_url: str
 
 
-async def get_video_info(url_or_avid: str, client: httpx.AsyncClient = _dft_client) -> VideoInfo:
+async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoInfo:
     if url_or_avid.startswith('http'):
         url = url_or_avid
         avid = url.split('/')[-2]
@@ -42,8 +41,9 @@ async def get_video_info(url_or_avid: str, client: httpx.AsyncClient = _dft_clie
 
 if __name__ == '__main__':
     async def main():
+        _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
         return await asyncio.gather(
-            get_video_info("MIAA-650"),
+            get_video_info(_dft_client, "MIAA-650"),
         )
 
 

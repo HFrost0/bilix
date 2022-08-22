@@ -14,7 +14,7 @@ class DownloaderDouyin(BaseDownloaderPart):
         super(DownloaderDouyin, self).__init__(client, videos_dir, part_concurrency)
 
     async def get_video(self, url: str, image=False):
-        video_info = await api.get_video_info(url, self.client)
+        video_info = await api.get_video_info(self.client, url)
         title = legal_title(video_info.author_name, video_info.title)
         # redirect to real video location
         res = await req_retry(self.client, video_info.nwm_urls[0], follow_redirects=True)

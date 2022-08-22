@@ -15,7 +15,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         super(DownloaderYhdmp, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
 
     async def get_series(self, url: str, p_range: Sequence[int] = None, hierarchy=True):
-        video_info = await api.get_video_info(url)
+        video_info = await api.get_video_info(self.client, url)
         ep_idx = video_info.ep_idx
         play_idx = video_info.play_idx
         title = video_info.title
@@ -24,7 +24,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
 
         # no need to reuse get_video since we only need m3u8_url
         async def get_video(name):
-            m3u8_url = await api.get_m3u8_url(url)
+            m3u8_url = await api.get_m3u8_url(self.client, url)
             await self.get_m3u8_video(m3u8_url=m3u8_url, name=name, hierarchy=hierarchy if hierarchy else '')
 
         cors = []
@@ -39,7 +39,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, hierarchy: str = ''):
-        video_info = await api.get_video_info(url, self.client)
+        video_info = await api.get_video_info(self.client, url)
         name = legal_title(video_info.title, video_info.sub_title)
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
 

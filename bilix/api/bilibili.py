@@ -10,10 +10,9 @@ from bilix.dm import parse_view
 from bilix.utils import req_retry, legal_title
 
 _dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
-_dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
 
 
-async def get_cate_meta(client: httpx.AsyncClient = _dft_client) -> dict:
+async def get_cate_meta(client: httpx.AsyncClient) -> dict:
     """
     获取b站分区元数据
 
@@ -32,7 +31,7 @@ async def get_cate_meta(client: httpx.AsyncClient = _dft_client) -> dict:
     return cate_info
 
 
-async def get_list_info(url_or_sid: str, client: httpx.AsyncClient = _dft_client):
+async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     """
     获取视频列表信息
 
@@ -57,7 +56,7 @@ async def get_list_info(url_or_sid: str, client: httpx.AsyncClient = _dft_client
     return list_name, up_name, bvids
 
 
-async def get_collect_info(url_or_sid, client: httpx.AsyncClient = _dft_client):
+async def get_collect_info(client: httpx.AsyncClient, url_or_sid: str):
     """
     获取合集信息
 
@@ -76,7 +75,7 @@ async def get_collect_info(url_or_sid, client: httpx.AsyncClient = _dft_client):
     return col_name, up_name, bvids
 
 
-async def get_favour_page_info(fid, pn=1, ps=20, keyword='', client: httpx.AsyncClient = _dft_client):
+async def get_favour_page_info(client: httpx.AsyncClient, fid, pn=1, ps=20, keyword=''):
     """
     获取收藏夹信息（分页）
 
@@ -96,8 +95,8 @@ async def get_favour_page_info(fid, pn=1, ps=20, keyword='', client: httpx.Async
     return fav_name, up_name, total_size, bvids
 
 
-async def get_cate_page_info(cate_id, time_from, time_to, pn=1, ps=30, order='click', keyword='',
-                             client: httpx.AsyncClient = _dft_client):
+async def get_cate_page_info(client: httpx.AsyncClient, cate_id, time_from, time_to, pn=1, ps=30,
+                             order='click', keyword=''):
     """
     获取分区视频信息（分页）
 
@@ -119,7 +118,7 @@ async def get_cate_page_info(cate_id, time_from, time_to, pn=1, ps=30, order='cl
     return bvids
 
 
-async def get_up_info(mid, pn=1, ps=30, order='pubdate', keyword='', client=_dft_client):
+async def get_up_info(client: httpx.AsyncClient, mid, pn=1, ps=30, order='pubdate', keyword=''):
     """
     获取up主信息
 
@@ -153,7 +152,7 @@ class VideoInfo:
     dash: dict = None
 
 
-async def get_video_info(url, client=_dft_client) -> VideoInfo:
+async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
     """
     获取视频信息
 
@@ -208,7 +207,7 @@ async def get_video_info(url, client=_dft_client) -> VideoInfo:
     return video_info
 
 
-async def get_subtitle_info(bvid, cid, client=_dft_client):
+async def get_subtitle_info(client: httpx.AsyncClient, bvid, cid):
     params = {'bvid': bvid, 'cid': cid}
     res = await req_retry(client, 'https://api.bilibili.com/x/player/v2', params=params)
     info = json.loads(res.text)
@@ -217,7 +216,7 @@ async def get_subtitle_info(bvid, cid, client=_dft_client):
     return [[f'http:{i["subtitle_url"]}', i['lan_doc']] for i in info['data']['subtitle']['subtitles']]
 
 
-async def get_dm_info(aid, cid, client=_dft_client):
+async def get_dm_info(client: httpx.AsyncClient, aid, cid):
     params = {'oid': cid, 'pid': aid, 'type': 1}
     res = await req_retry(client, f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
     view = parse_view(res.content)
@@ -230,7 +229,8 @@ if __name__ == '__main__':
 
     # result = asyncio.run(get_cate_meta())
     # rich.print(result)
+    _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
     result = asyncio.run(get_favour_page_info(
-        "69072721"
+        _dft_client, "69072721",
     ))
     rich.print(result)

@@ -17,7 +17,6 @@ from bilix.utils import req_retry, legal_title
 _dft_headers = {'user-agent': 'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012)'
                               ' AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Mobile'
                               ' Safari/537.36 Edg/87.0.664.66'}
-_dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
 
 
 @dataclass
@@ -31,7 +30,7 @@ class VideoInfo:
     origin_cover: str
 
 
-async def get_video_info(url: str, client=_dft_client) -> VideoInfo:
+async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     if short_url := re.findall(r'https://v.douyin.com/\w+/', url):
         res = await req_retry(client, short_url[0], follow_redirects=True)
         url = str(res.url)
@@ -63,7 +62,8 @@ async def get_video_info(url: str, client=_dft_client) -> VideoInfo:
 
 if __name__ == '__main__':
     async def main():
-        data = await get_video_info('https://www.douyin.com/video/7132430286415252773')
+        _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+        data = await get_video_info(_dft_client, 'https://www.douyin.com/video/7132430286415252773')
         print(data)
 
 

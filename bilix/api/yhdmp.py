@@ -14,7 +14,7 @@ from bilix.utils import legal_title
 
 BASE_URL = "https://www.yhdmp.cc"
 _dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL}
-_dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+
 with open(f'{os.path.dirname(bilix.__file__)}/js/yhdmp.js', 'r') as f:
     js = execjs.compile(f.read())
 
@@ -55,7 +55,7 @@ class VideoInfo:
     m3u8_url: str
 
 
-async def get_video_info(url: str, client: httpx.AsyncClient = _dft_client) -> VideoInfo:
+async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     aid, play_idx, ep_idx = url.split('/')[-1].split('.')[0].split('-')
     play_idx, ep_idx = int(play_idx), int(ep_idx)
     # request
@@ -78,7 +78,7 @@ async def get_video_info(url: str, client: httpx.AsyncClient = _dft_client) -> V
     return video_info
 
 
-async def get_m3u8_url(url, client=_dft_client):
+async def get_m3u8_url(client: httpx.AsyncClient, url):
     aid, play_idx, ep_idx = url.split('/')[-1].split('.')[0].split('-')
     params = {"aid": aid, "playindex": play_idx, "epindex": ep_idx, "r": random.random()}
     res_play = await req_retry(client, f"{BASE_URL}/_getplay", params=params)
@@ -91,9 +91,11 @@ async def get_m3u8_url(url, client=_dft_client):
 
 
 async def main():
+    _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+
     return await asyncio.gather(
-        get_video_info("https://www.yhdmp.cc/vp/22224-1-0.html"),
-        get_m3u8_url("https://www.yhdmp.cc/vp/18261-2-0.html"),
+        get_video_info(_dft_client, "https://www.yhdmp.cc/vp/22224-1-0.html"),
+        get_m3u8_url(_dft_client, "https://www.yhdmp.cc/vp/18261-2-0.html"),
     )
 
 

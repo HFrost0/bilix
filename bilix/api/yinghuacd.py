@@ -12,7 +12,7 @@ from bilix.utils import legal_title, req_retry
 
 BASE_URL = "http://www.yinghuacd.com"
 _dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL}
-_dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+
 m3u8_pattern = re.compile(r'http.*m3u8')
 
 
@@ -24,7 +24,7 @@ class VideoInfo:
     m3u8_url: str
 
 
-async def get_video_info(url: str, client: httpx.AsyncClient = _dft_client) -> VideoInfo:
+async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     # request
     res = await req_retry(client, url)
     m3u8_url = m3u8_pattern.search(res.text)[0]
@@ -39,8 +39,10 @@ async def get_video_info(url: str, client: httpx.AsyncClient = _dft_client) -> V
 
 
 async def main():
+    _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+
     return await asyncio.gather(
-        get_video_info("http://www.yinghuacd.com/v/5606-7.html"),
+        get_video_info(_dft_client, "http://www.yinghuacd.com/v/5606-7.html"),
     )
 
 

@@ -5,9 +5,6 @@ import httpx
 from datetime import datetime, timedelta
 import os
 from itertools import groupby
-
-from anyio import run_process
-
 import bilix.api.bilibili as api
 from bilix.assign import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
@@ -68,7 +65,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param hierarchy:
         :return:
         """
-        list_name, up_name, bvids = await api.get_list_info(url, self.client)
+        list_name, up_name, bvids = await api.get_list_info(self.client, url)
         if hierarchy:
             name = legal_title(f"【视频列表】{up_name}-{list_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
@@ -91,7 +88,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param hierarchy:
         :return:
         """
-        col_name, up_name, bvids = await api.get_collect_info(url, self.client)
+        col_name, up_name, bvids = await api.get_collect_info(self.client, url)
         if hierarchy:
             name = legal_title(f"【合集】{up_name}-{col_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
@@ -117,7 +114,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param hierarchy:
         :return:
         """
-        fav_name, up_name, total_size, bvids = await api.get_favour_page_info(fid, keyword=keyword, client=self.client)
+        fav_name, up_name, total_size, bvids = await api.get_favour_page_info(self.client, fid, keyword=keyword)
         if hierarchy:
             name = legal_title(f"【收藏夹】{up_name}-{fav_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
@@ -138,7 +135,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                                  image=False, subtitle=False, dm=False, only_audio=False, hierarchy=True):
         ps = 20
         num = min(ps, num)
-        _, _, _, bvids = await api.get_favour_page_info(fid, pn, ps, keyword, self.client)
+        _, _, _, bvids = await api.get_favour_page_info(self.client, fid, pn, ps, keyword)
         cors = []
         for i in bvids[:num]:
             func = self.get_series if series else self.get_video
@@ -205,7 +202,7 @@ class DownloaderBilibili(BaseDownloaderPart):
     async def _get_cate_videos_by_page(self, cate_id, time_from, time_to, pn=1, num=30, order='click', keyword='',
                                        quality=0, series=True, image=False, subtitle=False, dm=False,
                                        only_audio=False, hierarchy=True):
-        bvids = await api.get_cate_page_info(cate_id, time_from, time_to, pn, 30, order, keyword, self.client)
+        bvids = await api.get_cate_page_info(self.client, cate_id, time_from, time_to, pn, 30, order, keyword)
         bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
@@ -233,7 +230,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         ps = 30
-        up_name, total_size, bv_ids = await api.get_up_info(mid, 1, ps, order, keyword, self.client)
+        up_name, total_size, bv_ids = await api.get_up_info(self.client, mid, 1, ps, order, keyword)
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【up】{up_name}"))
         num = min(total_size, num)
@@ -254,7 +251,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                                      hierarchy=None):
         ps = 30
         num = min(ps, num)
-        _, _, bvids = await api.get_up_info(mid, pn, ps, order, keyword, self.client)
+        _, _, bvids = await api.get_up_info(self.client, mid, pn, ps, order, keyword)
         bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
@@ -279,7 +276,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         try:
-            video_info = await api.get_video_info(url, self.client)
+            video_info = await api.get_video_info(self.client, url)
         except AttributeError as e:
             logger.warning(f'{e} {url}')
             return
@@ -318,7 +315,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         await self.v_sema.acquire()
         if not extra:
             try:
-                extra = await api.get_video_info(url, self.client)
+                extra = await api.get_video_info(self.client, url)
             except AttributeError as e:
                 logger.warning(f'{url} {e}')
                 self.v_sema.release()
@@ -392,7 +389,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         if not extra:
-            extra = await api.get_video_info(url, self.client)
+            extra = await api.get_video_info(self.client, url)
         title = extra.title
         aid, cid = extra.aid, extra.cid
 
@@ -403,7 +400,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         if not update and os.path.exists(file_path):
             logger.info(f"[green]已存在[/green] {file_name}")
             return file_path
-        dm_urls = await api.get_dm_info(aid, cid, self.client)
+        dm_urls = await api.get_dm_info(self.client, aid, cid)
         cors = [req_retry(self.client, dm_url) for dm_url in dm_urls]
         results = await asyncio.gather(*cors)
         content = b''.join(res.content for res in results)
@@ -426,14 +423,14 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         if not extra:
-            extra = await api.get_video_info(url, self.client)
+            extra = await api.get_video_info(self.client, url)
         bvid = extra.bvid
         p, cid = extra.p, extra.cid
         title = extra.title
         add_name = extra.pages[p][0]
         title = legal_title(title, add_name)
         try:
-            subtitles = await api.get_subtitle_info(bvid, cid, self.client)
+            subtitles = await api.get_subtitle_info(self.client, bvid, cid)
         except AttributeError as e:
             logger.warning(f'{url} {e}')
             return

@@ -14,7 +14,7 @@ class DownloaderJable(BaseDownloaderM3u8):
         super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
 
     async def get_video(self, url: str, image=True, hierarchy=True):
-        video_info = await api.get_video_info(url, self.client)
+        video_info = await api.get_video_info(self.client, url)
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, f"{video_info.avid} {video_info.model_name}")
         cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=video_info.title,

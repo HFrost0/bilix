@@ -13,21 +13,21 @@ class DownloaderCctv(BaseDownloaderM3u8):
         super(DownloaderCctv, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
 
     async def get_series(self, url: str, quality=0, hierarchy=True):
-        pid, vide, vida = await api.get_id(url, self.client)
+        pid, vide, vida = await api.get_id(self.client, url)
         if vida is None:  # 单个视频
             await self.get_video(pid, quality=quality)
         else:  # 剧集
-            title, pids = await api.get_series_info(vide, vida, self.client)
+            title, pids = await api.get_series_info(self.client, vide, vida)
             if hierarchy:
                 hierarchy = self._make_hierarchy_dir(hierarchy, title)
             await asyncio.gather(*[self.get_video(pid, quality, hierarchy if hierarchy else '') for pid in pids])
 
     async def get_video(self, url_or_pid: str, quality=0, hierarchy=''):
         if url_or_pid.startswith('http'):
-            pid, _, _ = await api.get_id(url_or_pid)
+            pid, _, _ = await api.get_id(self.client, url_or_pid)
         else:
             pid = url_or_pid
-        title, m3u8_urls = await api.get_media_info(pid, self.client)
+        title, m3u8_urls = await api.get_media_info(self.client, pid)
         m3u8_url = m3u8_urls[min(quality, len(m3u8_urls) - 1)]
         file_path = await self.get_m3u8_video(m3u8_url, title, hierarchy)
         return file_path

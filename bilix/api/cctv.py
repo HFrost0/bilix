@@ -9,25 +9,20 @@ from bilix.log import logger
 from bilix.utils import legal_title, req_retry
 
 _dft_headers = {'user-agent': 'PostmanRuntime/7.29.0'}
-_dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-
-vida_pattern = re.compile(r'videotvCodes ?= ?"(\w+)"')
-vide_pattern = re.compile(r'/(VIDE\w+)\.')
-pid_pattern = re.compile(r'guid ?= ?"(\w+)"')
 
 
-async def get_id(url: str, client: httpx.AsyncClient = _dft_client) -> Tuple[str, str, str]:
+async def get_id(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str]:
     res_web = await req_retry(client, url)
-    pid = pid_pattern.findall(res_web.text)[0]
-    vide = vide_pattern.findall(url)[0]
+    pid = re.findall(r'guid ?= ?"(\w+)"', res_web.text)[0]
+    vide = re.findall(r'/(VIDE\w+)\.', url)[0]
     try:
-        vida = vida_pattern.findall(res_web.text)[0]
+        vida = re.findall(r'videotvCodes ?= ?"(\w+)"', res_web.text)[0]
     except IndexError:
         vida = None
     return pid, vide, vida
 
 
-async def get_media_info(pid: str, client=_dft_client) -> Tuple[str, Sequence[str]]:
+async def get_media_info(client: httpx.AsyncClient, pid: str) -> Tuple[str, Sequence[str]]:
     """
 
     :param pid:
@@ -48,7 +43,7 @@ async def get_media_info(pid: str, client=_dft_client) -> Tuple[str, Sequence[st
     return title, m3u8_urls
 
 
-async def get_series_info(vide: str, vida: str, client=_dft_client) -> Tuple[str, Sequence[str]]:
+async def get_series_info(client: httpx.AsyncClient, vide: str, vida: str) -> Tuple[str, Sequence[str]]:
     """
 
     :param vide:
@@ -71,8 +66,11 @@ async def get_series_info(vide: str, vida: str, client=_dft_client) -> Tuple[str
 
 if __name__ == '__main__':
     async def main():
+        _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+
         return await asyncio.gather(
             get_id(
+                _dft_client,
                 "https://tv.cctv.com/2012/05/02/VIDE1355968282695723.shtml?spm=C55853485115.P6UrzpiudtDc.0.0"
             ))
 
