@@ -98,12 +98,12 @@ class DownloaderBilibili(BaseDownloaderPart):
                               image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
               for i in bvids])
 
-    async def get_favour(self, fid, num=20, keyword='', quality=0, series=True, image=False, subtitle=False, dm=False,
-                         only_audio=False, hierarchy: Union[bool, str] = True):
+    async def get_favour(self, url_or_fid, num=20, keyword='', quality=0, series=True, image=False, subtitle=False,
+                         dm=False, only_audio=False, hierarchy: Union[bool, str] = True):
         """
         下载收藏夹内的视频
 
-        :param fid: 收藏夹id
+        :param url_or_fid: 收藏夹url或收藏夹id
         :param num: 下载数量
         :param keyword: 搜索关键词
         :param quality:
@@ -115,7 +115,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param hierarchy:
         :return:
         """
-        fav_name, up_name, total_size, bvids = await api.get_favour_page_info(self.client, fid, keyword=keyword)
+        fav_name, up_name, total_size, bvids = await api.get_favour_page_info(self.client, url_or_fid, keyword=keyword)
         if hierarchy:
             name = legal_title(f"【收藏夹】{up_name}-{fav_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
@@ -128,15 +128,15 @@ class DownloaderBilibili(BaseDownloaderPart):
                 num = total - (page_nums - 1) * ps
             else:
                 num = ps
-            cors.append(self._get_favor_by_page(fid, i + 1, num, keyword, quality, series,
+            cors.append(self._get_favor_by_page(url_or_fid, i + 1, num, keyword, quality, series,
                                                 image, subtitle, dm, only_audio, hierarchy=hierarchy))
         await asyncio.gather(*cors)
 
-    async def _get_favor_by_page(self, fid, pn=1, num=20, keyword='', quality=0, series=True,
+    async def _get_favor_by_page(self, url_or_fid, pn=1, num=20, keyword='', quality=0, series=True,
                                  image=False, subtitle=False, dm=False, only_audio=False, hierarchy=True):
         ps = 20
         num = min(ps, num)
-        _, _, _, bvids = await api.get_favour_page_info(self.client, fid, pn, ps, keyword)
+        _, _, _, bvids = await api.get_favour_page_info(self.client, url_or_fid, pn, ps, keyword)
         cors = []
         for i in bvids[:num]:
             func = self.get_series if series else self.get_video
@@ -212,12 +212,12 @@ class DownloaderBilibili(BaseDownloaderPart):
                 for i in bvids]
         await asyncio.gather(*cors)
 
-    async def get_up_videos(self, mid: str, num=10, order='pubdate', keyword='', quality=0, series=True,
+    async def get_up_videos(self, url_or_mid: str, num=10, order='pubdate', keyword='', quality=0, series=True,
                             image=False, subtitle=False, dm=False, only_audio=False,
                             hierarchy: Union[bool, str] = True):
         """
 
-        :param mid: b站用户id，在空间页面的url中可以找到
+        :param url_or_mid: b站用户空间页面url 或b站用户id，在空间页面的url中可以找到
         :param num: 下载总数
         :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
         :param keyword: 过滤关键词
@@ -231,7 +231,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         ps = 30
-        up_name, total_size, bv_ids = await api.get_up_info(self.client, mid, 1, ps, order, keyword)
+        up_name, total_size, bv_ids = await api.get_up_info(self.client, url_or_mid, 1, ps, order, keyword)
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【up】{up_name}"))
         num = min(total_size, num)
@@ -242,17 +242,17 @@ class DownloaderBilibili(BaseDownloaderPart):
                 p_num = num - (page_nums - 1) * ps
             else:
                 p_num = ps
-            cors.append(self._get_up_videos_by_page(mid, i + 1, p_num, order, keyword, quality, series,
+            cors.append(self._get_up_videos_by_page(url_or_mid, i + 1, p_num, order, keyword, quality, series,
                                                     image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
                                                     hierarchy=hierarchy))
         await asyncio.gather(*cors)
 
-    async def _get_up_videos_by_page(self, mid, pn=1, num=30, order='pubdate', keyword='', quality=0, series=True,
-                                     image=False, subtitle=False, dm=False, only_audio=False,
+    async def _get_up_videos_by_page(self, url_or_mid, pn=1, num=30, order='pubdate', keyword='', quality=0,
+                                     series=True, image=False, subtitle=False, dm=False, only_audio=False,
                                      hierarchy=None):
         ps = 30
         num = min(ps, num)
-        _, _, bvids = await api.get_up_info(self.client, mid, pn, ps, order, keyword)
+        _, _, bvids = await api.get_up_info(self.client, url_or_mid, pn, ps, order, keyword)
         bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
@@ -323,6 +323,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 return
         title = extra.h1_title
         title = legal_title(title, add_name)
+        extra.title = title  # update extra title
         dash = extra.dash
         img_url = extra.img_url
         if not dash:

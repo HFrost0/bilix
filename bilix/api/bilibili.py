@@ -75,17 +75,21 @@ async def get_collect_info(client: httpx.AsyncClient, url_or_sid: str):
     return col_name, up_name, bvids
 
 
-async def get_favour_page_info(client: httpx.AsyncClient, fid, pn=1, ps=20, keyword=''):
+async def get_favour_page_info(client: httpx.AsyncClient, url_or_fid: str, pn=1, ps=20, keyword=''):
     """
     获取收藏夹信息（分页）
 
-    :param fid:
+    :param url_or_fid:
     :param pn:
     :param ps:
     :param keyword:
     :param client:
     :return:
     """
+    if url_or_fid.startswith('http'):
+        fid = re.findall(r'fid=(\d+)', url_or_fid)[0]
+    else:
+        fid = url_or_fid
     params = {'media_id': fid, 'pn': pn, 'ps': ps, 'keyword': keyword, 'order': 'mtime'}
     res = await req_retry(client, 'https://api.bilibili.com/x/v3/fav/resource/list', params=params)
     data = json.loads(res.text)['data']
@@ -118,11 +122,11 @@ async def get_cate_page_info(client: httpx.AsyncClient, cate_id, time_from, time
     return bvids
 
 
-async def get_up_info(client: httpx.AsyncClient, mid, pn=1, ps=30, order='pubdate', keyword=''):
+async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order='pubdate', keyword=''):
     """
     获取up主信息
 
-    :param mid:
+    :param url_or_mid:
     :param pn:
     :param ps:
     :param order:
@@ -130,6 +134,10 @@ async def get_up_info(client: httpx.AsyncClient, mid, pn=1, ps=30, order='pubdat
     :param client:
     :return:
     """
+    if url_or_mid.startswith('http'):
+        mid = re.findall(r'/(\d+)', url_or_mid)[0]
+    else:
+        mid = url_or_mid
     params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
     res = await req_retry(client, 'https://api.bilibili.com/x/space/arc/search', params=params)
     info = json.loads(res.text)
