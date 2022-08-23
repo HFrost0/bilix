@@ -27,7 +27,11 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
 
     async def get_video(self, url: str, hierarchy: str = '', extra=None):
         if extra is None:
-            video_info = await api.get_video_info(self.client, url)
+            try:
+                video_info = await api.get_video_info(self.client, url)
+            except Exception as e:
+                logger.error(f"{url} 解析失败 {e}")
+                return
         else:
             video_info = extra
         name = legal_title(video_info.title, video_info.sub_title)
