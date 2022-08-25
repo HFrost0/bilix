@@ -125,7 +125,7 @@ class BaseDownloaderM3u8(BaseDownloader):
                 logger.error(f"超过重复次数 {ts_url}")
                 raise Exception("超过重复次数")
         # in case .png
-        if not ts_url.endswith('.ts'):
+        if re.match(r'.*\.ts', ts_url) is None:
             content = content[content.find(b'\x47\x40'):]
         # in case encrypted
         if seg.key:
