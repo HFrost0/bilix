@@ -18,8 +18,7 @@ class DownloaderDouyin(BaseDownloaderPart):
         title = legal_title(video_info.author_name, video_info.title)
         # redirect to real video location
         res = await req_retry(self.client, video_info.nwm_urls[0], follow_redirects=True)
-        media_urls = [str(res.url)]
-        cors = [self.get_media(media_urls, media_name=title + ".mp4")]
+        cors = [self.get_media(str(res.url), media_name=title + ".mp4")]
         if image:
             cors.append(self._get_static(video_info.cover, title))
         await asyncio.gather(*cors)
