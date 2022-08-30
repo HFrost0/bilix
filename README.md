@@ -1,4 +1,4 @@
-# Bilix
+# bilix
 
 [![GitHub license](https://img.shields.io/github/license/HFrost0/bilix?style=flat-square)](https://github.com/HFrost0/bilix/blob/master/LICENSE)
 ![PyPI](https://img.shields.io/pypi/v/bilix?style=flat-square&color=blue)
@@ -7,7 +7,7 @@
 
 ⚡️快如闪电的 [bilibili](https://www.bilibili.com/) 视频下载工具，基于 Python 现代 Async 异步特性，高速批量下载整部动漫，电视剧，电影，up投稿...
 
-<div align="center"> <img src='https://s1.ax1x.com/2022/05/03/OFh34O.gif' style="border-radius: 8px"> </div>
+<div align="center"> <img src='https://s2.loli.net/2022/08/31/P5X8YAQ7WyNEbrq.gif' style="border-radius: 8px"> </div>
 
 ⚡️在200M宽带中实测可以拉满网速
 
