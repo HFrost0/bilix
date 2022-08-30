@@ -13,9 +13,10 @@ class Handler:
 
 
 def assign(**kwargs):
-    bili_func = Handler.registered.pop('bilibili')
+    bili_handler = Handler.registered.pop('bilibili')
     for name, handle in Handler.registered.items():
         if res := handle(**kwargs):
             logger.info(f"Assign to {name}")
             return res
-    return bili_func(**kwargs)
+    # since bilix is originally designed for bilibili, finally use bilibili handler
+    return bili_handler(**kwargs)
