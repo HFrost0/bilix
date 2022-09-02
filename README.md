@@ -24,6 +24,7 @@
     - [下载合集或视频列表](#%E4%B8%8B%E8%BD%BD%E5%90%88%E9%9B%86%E6%88%96%E8%A7%86%E9%A2%91%E5%88%97%E8%A1%A8)
     - [下载字幕，弹幕，封面...](#%E4%B8%8B%E8%BD%BD%E5%AD%97%E5%B9%95%E5%BC%B9%E5%B9%95%E5%B0%81%E9%9D%A2)
 - [进阶使用 Advance Guide](#%E8%BF%9B%E9%98%B6%E4%BD%BF%E7%94%A8-advance-guide)
+    - [方法名简写](#%E6%96%B9%E6%B3%95%E5%90%8D%E7%AE%80%E5%86%99)
     - [你是大会员？🥸](#%E4%BD%A0%E6%98%AF%E5%A4%A7%E4%BC%9A%E5%91%98%F0%9F%A5%B8)
     - [在 python 中调用](#%E5%9C%A8-python-%E4%B8%AD%E8%B0%83%E7%94%A8)
     - [关于断点重连](#%E5%85%B3%E4%BA%8E%E6%96%AD%E7%82%B9%E9%87%8D%E8%BF%9E)
@@ -111,10 +112,10 @@ bilix get_series 'https://www.bilibili.com/video/BV1ts411D7mf' --only-audio
 假设你是一个嘉心糖，想要下载嘉然小姐最新投稿的100个视频，那么你可以使用命令：
 
 ```shell
-bilix get_up '672328094' --num 100
+bilix get_up 'https://space.bilibili.com/672328094' --num 100
 ```
 
-`672328094`是up主的id，在up空间首页的url中就可以找到哦，例如： https://space.bilibili.com/672328094
+`https://space.bilibili.com/672328094` 是up空间页url，另外用up主id`672328094`替换url同样也是可以的
 
 ### 下载分区视频
 
@@ -131,12 +132,11 @@ bilix get_cate 宅舞 --keyword 超级敏感 --order click --num 20 --days 30
 如果你需要下载自己或者其他人收藏夹中的视频，你可以使用`get_favour`方法
 
 ```shell
-bilix get_favour '1445680654' --num 20
+bilix get_favour 'https://space.bilibili.com/11499954/favlist?fid=1445680654' --num 20
 ```
 
-`1445680654`
-是收藏夹id，如果要知道一个收藏夹的id是什么，最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，然后浏览器的url就会出现该收藏夹的id，例如 https://space.bilibili.com/11499954/favlist?fid=1445680654
-，其中url中的`fid`就是收藏夹id。
+`https://space.bilibili.com/11499954/favlist?fid=1445680654` 是收藏夹url，如果要知道一个收藏夹的url是什么，
+最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，url就会出现在浏览器的地址栏中。另外直接使用url中的fid`1445680654`替换url也是可以的。
 
 ### 下载合集或视频列表
 
@@ -161,11 +161,23 @@ bilix get_series 'url' --subtitle --dm --image
 
 ## 进阶使用 Advance Guide
 
-请使用`bilix -h`查看更多参数提示，包括方法名简写（例如`get_series`简写为`s`），视频画面质量选择，并发量控制，下载目录等。
+请使用`bilix -h`查看更多参数提示，包括方法名简写，视频画面质量选择，并发量控制，下载目录等。
+
+### 方法名简写
+
+觉得get_series，get_video这些方法名写起来太麻烦了？同感！你可以使用他们的简写，这样快多了：
+
+```shell
+bilix s 'url'
+bilix v 'url'
+...
+```
 
 ### 你是大会员？🥸
 
 请在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
+
+另外如果你总是需要附加--cookie参数，可以使用`alias`命令，例如`alias bilix=/.../python -m bilix --cookie xxxxxxxx`
 
 ### 在 python 中调用
 
@@ -202,7 +214,7 @@ if __name__ == '__main__':
 用户可以通过Ctrl+C中断任务，对于未完成的文件，重新执行命令会在之前的进度基础上下载，已完成的文件会进行跳过。但是对于未完成的文件，以下情况不能使用断点重连，建议清除未完成任务的临时文件再执行命令。
 
 - 中断后改变画面质量
-- 中断后改变分段并发数`part_concurrency`
+- 中断后改变分段并发数`--part-con`
 
 🫠在0.6.4版本之前的断点重连存在bug，可能导致视频音画缺失，请通过命令升级最新版本
 
@@ -220,21 +232,14 @@ pip install bilix --upgrade
 
 ### 功能
 
-- [x] 下载视频封面
-- [x] 支持下载字幕，目前已支持下载json，以及转换成srt格式
-- [x] 支持弹幕下载，目前已支持下载protobuf的的弹幕文件，以及基于[biliass](https://github.com/yutto-dev/biliass)
-  的ass格式转换 [issue](https://github.com/HFrost0/bilix/issues/7)
-- [x] 支持用pip安装，并提供更简明的命令行调用方式
-- [x] 支持层级文件夹
-- [x] 支持更可控的中断（包含弹幕合成中断）
+- [ ] 支持合成封面
 - [ ] 支持切片下载
 
 ### 工程
 
 - [ ] 每日测试（GitHub Action）
-- [x] logging
 
 ### 已知的bug 🤡
 
 * 当两个视频名字完全一样时，任务冲突但不会报错，可能导致视频缺胳膊少腿
-* 暂不支持少数没有音画分开下载方式（dash）的视频
+* 不支持少数没有音画分开下载方式（dash）的视频

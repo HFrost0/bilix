@@ -137,6 +137,7 @@ def print_help():
         '下载集数范围，例如-p 1 3 只下载P1至P3，仅get_series时生效',
     )
     table.add_row("-h --help", '', "帮助信息")
+    table.add_row("-v --version", '', "版本信息")
     table.add_row("--debug", '', "显示debug信息")
     console.print(Panel(table, border_style="dim", title="Options", title_align="left"))
 
