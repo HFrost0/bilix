@@ -94,10 +94,9 @@ class BaseDownloaderPart(BaseDownloader):
                     async for chunk in r.aiter_bytes():
                         await f.write(chunk)
                         self.progress.update(task_id, advance=len(chunk))
-        except httpx.RemoteProtocolError:
-            await self._get_media_part(url_or_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
-        except (httpx.ReadTimeout, httpx.ConnectTimeout) as e:
-            logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
+        except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
+            if exception > 1:
+                logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(url_or_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except Exception as e:

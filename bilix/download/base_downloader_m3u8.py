@@ -103,7 +103,7 @@ class BaseDownloaderM3u8(BaseDownloader):
 
         async with p_sema:
             content = None
-            for _ in range(5):
+            for exception in range(5):
                 try:
                     content = b''
                     async with self.client.stream("GET", ts_url) as r:
@@ -114,7 +114,8 @@ class BaseDownloaderM3u8(BaseDownloader):
                             content += chunk
                             self.progress.update(task_id, advance=len(chunk))
                 except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
-                    logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
+                    if exception > 1:
+                        logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
                     await asyncio.sleep(.1)
                 except Exception as e:
                     logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
