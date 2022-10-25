@@ -28,7 +28,7 @@ def handle_debug(ctx: click.Context, param: typing.Union[click.Option, click.Par
     if not value or ctx.resilient_parsing:
         return
     logger.setLevel('DEBUG')
-    logger.debug("Debug level on")
+    logger.debug("Debug on, more information will be shown")
 
 
 def print_help():
@@ -71,7 +71,7 @@ def print_help():
     table.add_row(
         "-q --quality",
         '[dark_cyan]int',
-        "视频画面质量，默认0为最高画质，越大画质越低，超出范围时自动选最低画质"
+        "视频画面质量，默认0为最高画质，越大画质越低，超出范围时自动选最低画质，或者直接使用字符串指定'1080p'等名称"
     )
     table.add_row(
         "--max-con",
@@ -142,6 +142,20 @@ def print_help():
     console.print(Panel(table, border_style="dim", title="Options", title_align="left"))
 
 
+class BasedQualityType(click.ParamType):
+    name = "quality"
+
+    def convert(self, value, param, ctx):
+        try:
+            value = int(value)
+        except ValueError:
+            return value  # str
+        if value in (1080, 720, 480, 360):
+            return str(value)
+        else:
+            return value  # relative choice like 0, 1, 2, 999...
+
+
 @click.command(add_help_option=False)
 @click.argument("method", type=str)
 @click.argument("key", type=str)
@@ -155,8 +169,8 @@ def print_help():
     '-q',
     '--quality',
     'quality',
-    type=int,
-    default=0,
+    type=BasedQualityType(),
+    default=0,  # default relatively choice
 )
 @click.option(
     '--max-con',

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Union, Sequence
+from typing import Union, Sequence, Tuple
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
@@ -13,6 +13,34 @@ from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
 from bilix.utils import legal_title, req_retry, cors_slice
 from bilix.log import logger
+
+__all__ = ['DownloaderBilibili']
+
+
+def choose_quality(dash, support_formats, quality: Union[str, int]) -> Tuple[dict, Sequence]:
+    # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
+    if isinstance(quality, str):
+        for f_info in support_formats:
+            if quality.upper() in f_info['new_description'].upper():
+                q_id = f_info['quality']
+                for video_info in dash['video']:
+                    if video_info['id'] == q_id:
+                        video_urls = (video_info['base_url'], *(video_info['backup_url']
+                                                                if video_info['backup_url'] else ()))
+                        logger.debug(f"quality <{f_info['new_description']}> has been chosen")
+                        return video_info, video_urls
+        raise ValueError(f'No valid quality for {quality}')
+    # 2. relative choice
+    else:
+        video_info, video_urls = None, None
+        for q, (q_id, it) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
+            video_info = next(it)  # use the first codec
+            video_urls = (video_info['base_url'], *(video_info['backup_url']
+                                                    if video_info['backup_url'] else ()))
+            if q == quality:
+                break
+        logger.debug(f'Relative quality {quality} has been chosen')
+        return video_info, video_urls
 
 
 class DownloaderBilibili(BaseDownloaderPart):
@@ -81,7 +109,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         下载合集
 
         :param url: 合集详情页url
-        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
@@ -106,7 +134,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param url_or_fid: 收藏夹url或收藏夹id
         :param num: 下载数量
         :param keyword: 搜索关键词
-        :param quality:
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
         :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
@@ -165,7 +193,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param order: 何种排序，click播放数，scores评论数，stow收藏数，coin硬币数，dm弹幕数
         :param keyword: 搜索关键词
         :param days: 过去days天中的结果
-        :param quality: 画面质量
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
         :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
@@ -212,8 +240,8 @@ class DownloaderBilibili(BaseDownloaderPart):
                 for i in bvids]
         await asyncio.gather(*cors)
 
-    async def get_up_videos(self, url_or_mid: str, num=10, order='pubdate', keyword='', quality=0, series=True,
-                            image=False, subtitle=False, dm=False, only_audio=False,
+    async def get_up_videos(self, url_or_mid: str, num=10, order='pubdate', keyword='', quality: Union[int, str] = 0,
+                            series=True, image=False, subtitle=False, dm=False, only_audio=False,
                             hierarchy: Union[bool, str] = True):
         """
 
@@ -221,7 +249,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param num: 下载总数
         :param order: 何种排序，b站支持：最新发布pubdate，最多播放click，最多收藏stow
         :param keyword: 过滤关键词
-        :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
         :param series: 每个视频是否下载所有p，False时仅下载系列中的第一个视频
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
@@ -260,14 +288,14 @@ class DownloaderBilibili(BaseDownloaderPart):
             *[func(f'https://www.bilibili.com/video/{bv}', quality=quality,
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bvids])
 
-    async def get_series(self, url: str, quality: int = 0, image=False, subtitle=False, dm=False, only_audio=False,
-                         p_range: Sequence[int] = None,
+    async def get_series(self, url: str, quality: Union[str, int] = 0, image=False, subtitle=False,
+                         dm=False, only_audio=False, p_range: Sequence[int] = None,
                          hierarchy: Union[bool, str] = True):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
 
         :param url: 系列中任意一个视频的url
-        :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
@@ -297,13 +325,13 @@ class DownloaderBilibili(BaseDownloaderPart):
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, quality: int = 0, add_name='', image=False, subtitle=False, dm=False,
-                        only_audio=False, hierarchy: str = '', extra=None):
+    async def get_video(self, url: str, quality: Union[str, int] = 0, add_name='', image=False, subtitle=False,
+                        dm=False, only_audio=False, hierarchy: str = '', extra=None):
         """
         下载单个视频
 
         :param url: 视频的url
-        :param quality: 下载视频画面的质量，默认0为可下载的最高画质，数字越大质量越低，数值超过范围时默认选取最低画质
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
         :param add_name: 给文件的额外添加名，用户请直接保持默认
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
@@ -313,59 +341,57 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param extra: 额外数据，提供时不用再次请求页面
         :return:
         """
-        await self.v_sema.acquire()
-        if not extra:
-            try:
-                extra = await api.get_video_info(self.client, url)
-            except AttributeError as e:
-                logger.warning(f'{url} {e}')
-                self.v_sema.release()
+        async with self.v_sema:
+            if not extra:
+                try:
+                    extra = await api.get_video_info(self.client, url)
+                except AttributeError as e:
+                    logger.warning(f'{url} {e}')
+                    return
+            title = extra.h1_title
+            title = legal_title(title, add_name)
+            extra.title = title  # update extra title
+            dash = extra.dash
+            img_url = extra.img_url
+            formats = extra.support_formats
+            if not dash:
+                logger.warning(f'{extra.title} 需要大会员或该地区不支持')
                 return
-        title = extra.h1_title
-        title = legal_title(title, add_name)
-        extra.title = title  # update extra title
-        dash = extra.dash
-        img_url = extra.img_url
-        if not dash:
-            logger.warning(f'{extra.title} 需要大会员或该地区不支持')
-            self.v_sema.release()
-            return
-        video_info, video_urls = None, None  # avoid ide warning
-        # choose quality
-        for q, (_, i) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
-            video_info = next(i)
-            video_urls = (video_info['base_url'], *(video_info['backup_url'] if video_info['backup_url'] else ()))
-            if q == quality:
-                break
-        audio_info = dash['audio'][0]
-        audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
+            # choose video quality
+            try:
+                video_info, video_urls = choose_quality(dash, formats, quality)
+            except ValueError:
+                logger.warning(f"{extra.title} 清晰度<{quality}>不可用，请检查输入是否正确或是否需要大会员")
+                return
+            # for audio, choose the highest quality
+            audio_info = dash['audio'][0]
+            audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
 
-        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        task_id = self.progress.add_task(
-            total=1,
-            description=title if len(title) < 33 else f'{title[:15]}...{title[-15:]}', visible=False)
-        cors = []
-        # add cor according to params
-        if not only_audio:
-            if os.path.exists(f'{file_dir}/{title}.mp4'):
-                logger.info(f'[green]已存在[/green] {title}.mp4')
+            file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
+            task_id = self.progress.add_task(
+                total=1, description=title if len(title) < 33 else f'{title[:15]}...{title[-15:]}', visible=False)
+            cors = []
+            # add cor according to params
+            if not only_audio:
+                if os.path.exists(f'{file_dir}/{title}.mp4'):
+                    logger.info(f'[green]已存在[/green] {title}.mp4')
+                else:
+                    cors.append(self.get_media(video_urls, f'{title}-video', task_id, hierarchy))
+                    cors.append(self.get_media(audio_urls, f'{title}-audio', task_id, hierarchy))
             else:
-                cors.append(self.get_media(video_urls, f'{title}-video', task_id, hierarchy))
-                cors.append(self.get_media(audio_urls, f'{title}-audio', task_id, hierarchy))
-        else:
-            cors.append(self.get_media(audio_urls, f'{title}.mp3', task_id, hierarchy))
-        # additional task
-        if image or subtitle or dm:
-            extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
-            if image:
-                cors.append(self._get_static(img_url, title, hierarchy=extra_hierarchy))
-            if subtitle:
-                cors.append(self.get_subtitle(url, extra=extra, hierarchy=extra_hierarchy))
-            if dm:
-                w, h = video_info['width'], video_info['height']
-                cors.append(self.get_dm(url, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy, extra=extra))
-        await asyncio.gather(*cors)
-        self.v_sema.release()
+                cors.append(self.get_media(audio_urls, f'{title}.mp3', task_id, hierarchy))
+            # additional task
+            if image or subtitle or dm:
+                extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
+                if image:
+                    cors.append(self._get_static(img_url, title, hierarchy=extra_hierarchy))
+                if subtitle:
+                    cors.append(self.get_subtitle(url, extra=extra, hierarchy=extra_hierarchy))
+                if dm:
+                    w, h = video_info['width'], video_info['height']
+                    cors.append(
+                        self.get_dm(url, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy, extra=extra))
+            await asyncio.gather(*cors)
 
         if not only_audio and not os.path.exists(f'{file_dir}/{title}.mp4'):
             await run_process(
@@ -452,7 +478,7 @@ def handle(
         video_concurrency: int,
         part_concurrency: int,
         cookie: str,
-        quality: int,
+        quality: Union[str, int],
         days: int,
         num: int,
         order: str,

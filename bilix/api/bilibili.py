@@ -158,6 +158,7 @@ class VideoInfo:
     img_url: str
     bvid: str = None
     dash: dict = None
+    support_formats: dict = None
 
 
 async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
@@ -199,19 +200,21 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
             pages.append([add_name, p_url])
     else:
         raise AttributeError("未知类型")
+
     # extract dash
     try:
         play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', res.text).groups()[0]
         play_info = json.loads(play_info)
         dash = play_info['data']['dash']
+        support_formats = play_info['data']['support_formats']
     except (KeyError, AttributeError):  # KeyError-电影，AttributeError-动画
         # todo https://www.bilibili.com/video/BV1Jx411r776?p=3 未处理，没有dash下载方式的视频
-        dash = None
+        dash, support_formats = None, None
     # extract img url
     img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
     # construct data
     video_info = VideoInfo(title=title, h1_title=h1_title, aid=aid, cid=cid,
-                           p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash)
+                           p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash, support_formats=support_formats)
     return video_info
 
 
@@ -238,7 +241,8 @@ if __name__ == '__main__':
     # result = asyncio.run(get_cate_meta())
     # rich.print(result)
     _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-    result = asyncio.run(get_favour_page_info(
-        _dft_client, "69072721",
+    result = asyncio.run(get_video_info(
+        _dft_client,
+        "https://www.bilibili.com/video/BV1fK4y1t7hj/?spm_id_from=333.337.search-card.all.click&vd_source=8f8d575add685a41dfeb68d9963dd93f",
     ))
     rich.print(result)
