@@ -278,7 +278,7 @@ class BasedQualityType(click.ParamType):
 )
 def main(**kwargs):
     try:
-        d, cor = assign(**kwargs)
+        executor, cor = assign(**kwargs)
     except ValueError as e:
         logger.error(e)
         return
@@ -291,7 +291,7 @@ def main(**kwargs):
         tasks = [t for t in asyncio.all_tasks(loop)]
         [t.cancel() for t in tasks]
         try:
-            loop.run_until_complete(asyncio.gather(*tasks, d.aclose(), return_exceptions=True))
+            loop.run_until_complete(asyncio.gather(*tasks, executor.aclose(), return_exceptions=True))
             loop.run_until_complete(loop.shutdown_asyncgens())
             # print('normal out')
         except KeyboardInterrupt:

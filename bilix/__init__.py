@@ -1,2 +1,2 @@
 from .download import *
-from . import api, dm, download
+from . import api, dm, download, info
