@@ -178,8 +178,16 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
     # extract meta
     pages = []
     h1_title = legal_title(re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0])
-    status = init_info['videoData']['stat']
     if 'videoData' in init_info:  # bv视频
+        status = {
+            'view': init_info['videoData']['stat']['view'],  # 播放量
+            'danmaku': init_info['videoData']['stat']['danmaku'],  # 弹幕
+            'coin': init_info['videoData']['stat']['coin'],  # 硬币
+            'like': init_info['videoData']['stat']['like'],  # 点赞数
+            'reply': init_info['videoData']['stat']['reply'],  # 回复数
+            'favorite': init_info['videoData']['stat']['favorite'],  # 收藏数
+            'share': init_info['videoData']['stat']['share'],  # 分享数
+        }
         bvid = init_info['bvid']
         aid = init_info['aid']
         (p, cid), = init_info['cidMap'][bvid]['cids'].items()
@@ -191,6 +199,16 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
             add_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
             pages.append([add_name, p_url])
     elif 'initEpList' in init_info:  # 动漫，电视剧，电影
+        status = {
+            'view': init_info['mediaInfo']['stat']['views'],  # 播放量
+            'danmaku': init_info['mediaInfo']['stat']['danmakus'],  # 弹幕
+            'coin': init_info['mediaInfo']['stat']['coins'],  # 硬币
+            'like': init_info['mediaInfo']['stat']['likes'],  # 点赞数
+            'reply': init_info['mediaInfo']['stat']['reply'],  # 回复数
+            'favorite': init_info['mediaInfo']['stat']['favorite'],  # 收藏数
+            'favorites': init_info['mediaInfo']['stat']['favorites'],  # 追剧数 / 追番数 （特有）
+            'share': init_info['mediaInfo']['stat']['share'],  # 分享数
+        }
         bvid = None
         aid = init_info['epInfo']['aid']
         cid = init_info['epInfo']['cid']
@@ -245,6 +263,6 @@ if __name__ == '__main__':
     _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
     result = asyncio.run(get_video_info(
         _dft_client,
-        "https://www.bilibili.com/video/BV1fK4y1t7hj/?spm_id_from=333.337.search-card.all.click&vd_source=8f8d575add685a41dfeb68d9963dd93f",
+        "https://www.bilibili.com/video/BV1fK4y1t7hj"
     ))
     rich.print(result)
