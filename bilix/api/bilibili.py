@@ -156,6 +156,7 @@ class VideoInfo:
     p: int
     pages: Sequence[Sequence[str]]
     img_url: str
+    status: dict
     bvid: str = None
     dash: dict = None
     support_formats: dict = None
@@ -177,6 +178,7 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
     # extract meta
     pages = []
     h1_title = legal_title(re.search('<h1[^>]*title="([^"]*)"', res.text).groups()[0])
+    status = init_info['videoData']['stat']
     if 'videoData' in init_info:  # bv视频
         bvid = init_info['bvid']
         aid = init_info['aid']
@@ -213,7 +215,7 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
     # extract img url
     img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
     # construct data
-    video_info = VideoInfo(title=title, h1_title=h1_title, aid=aid, cid=cid,
+    video_info = VideoInfo(title=title, h1_title=h1_title, aid=aid, cid=cid, status=status,
                            p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash, support_formats=support_formats)
     return video_info
 
