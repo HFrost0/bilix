@@ -1,6 +1,13 @@
+import asyncio
 import httpx
 import re
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich.tree import Tree
+
 import bilix.api.bilibili as api
+from bilix.utils import req_retry
 from bilix.assign import Handler
 from bilix.info.base_informer import BaseInformer
 
@@ -22,7 +29,7 @@ def parse_bilibili_url(url: str):
 
 
 class InformerBilibili(BaseInformer):
-    def __init__(self, sess_data):
+    def __init__(self, sess_data: str = ''):
         cookies = {'SESSDATA': sess_data}
         headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
         client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=True)
@@ -53,7 +60,34 @@ class InformerBilibili(BaseInformer):
         pass
 
     async def info_video(self, url: str):
-        pass
+        video_info = await api.get_video_info(self.client, url)
+
+        async def make_sure_size(data):
+            if 'size' not in data:
+                res = await req_retry(self.client, data['base_url'], method='GET', headers={'Range': 'bytes=0-1'})
+                data['size'] = int(res.headers['Content-Range'].split('/')[-1])
+
+        await asyncio.gather(
+            *[make_sure_size(d) for d in video_info.dash['video']],
+            make_sure_size(video_info.dash['audio'][0])  # currently, no need for other codec
+            # *[make_sure_size(d) for d in video_info.dash['audio']],
+        )
+        len_audio = video_info.dash['audio'][0]['size']
+        tree = Tree(
+            f"[bold reverse] {video_info.h1_title} [/]"
+            f" {video_info.status['view']:,}👀 {video_info.status['like']:,}👍 {video_info.status['coin']:,} 🪙",
+            guide_style="bold cyan")
+        for f in video_info.support_formats:
+            p_tree = tree.add(f['new_description'])
+            q_id = f['quality']
+            for v in video_info.dash['video']:  # todo can be speed up...
+                if v['id'] == q_id:
+                    p_tree.add(f"codec: {v['codecs']:32} total: {len_audio + v['size']}")
+                    # logger.debug(f"quality <{f_info['new_description']}> has been chosen")
+            if len(p_tree.children) == 0:
+                p_tree.style = "rgb(242,93,142)"
+                p_tree.add("需要登录或大会员")
+        self.console.print(tree)
 
 
 @Handler("bilibili info")
@@ -64,3 +98,12 @@ def handle(**kwargs):
         informer = InformerBilibili(sess_data=kwargs['cookie'])
         cor = informer.info_key(key)
         return informer, cor
+
+
+if __name__ == '__main__':
+    async def main():
+        informer = InformerBilibili()
+        await informer.info_video('https://www.bilibili.com/video/BV1ce4y1t7Bs')
+
+
+    asyncio.run(main())

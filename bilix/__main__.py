@@ -150,7 +150,7 @@ class BasedQualityType(click.ParamType):
             value = int(value)
         except ValueError:
             return value  # str
-        if value in (1080, 720, 480, 360):
+        if value in {1080, 720, 480, 360}:
             return str(value)
         else:
             return value  # relative choice like 0, 1, 2, 999...
