@@ -17,30 +17,31 @@ from bilix.log import logger
 __all__ = ['DownloaderBilibili']
 
 
-def choose_quality(dash, support_formats, quality: Union[str, int]) -> Tuple[dict, Sequence]:
+def choose_quality(dash, support_formats, quality: Union[str, int], codec: str = '') -> Tuple[dict, Sequence]:
     # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
     if isinstance(quality, str):
         for f_info in support_formats:
             if quality.upper() in f_info['new_description'].upper():
                 q_id = f_info['quality']
                 for video_info in dash['video']:
-                    if video_info['id'] == q_id:
+                    if video_info['id'] == q_id and (codec == '' or video_info['codecs'] == codec):
                         video_urls = (video_info['base_url'], *(video_info['backup_url']
                                                                 if video_info['backup_url'] else ()))
-                        logger.debug(f"quality <{f_info['new_description']}> has been chosen")
+                        logger.debug(
+                            f"quality <{f_info['new_description']}> codec <{video_info['codecs']}> has been chosen")
                         return video_info, video_urls
-        raise ValueError(f'No valid quality for {quality}')
     # 2. relative choice
     else:
-        video_info, video_urls = None, None
         for q, (q_id, it) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
-            video_info = next(it)  # use the first codec
-            video_urls = (video_info['base_url'], *(video_info['backup_url']
-                                                    if video_info['backup_url'] else ()))
             if q == quality:
-                break
-        logger.debug(f'Relative quality {quality} has been chosen')
-        return video_info, video_urls
+                for video_info in it:
+                    if codec == '' or codec == video_info['codecs']:
+                        video_urls = (video_info['base_url'], *(video_info['backup_url']
+                                                                if video_info['backup_url'] else ()))
+                        logger.debug(
+                            f"relative quality <{quality}> codec <{video_info['codecs']}> has been chosen")
+                        return video_info, video_urls
+    raise ValueError(f'Invalid quality and codec quality:{quality} codec: {codec}')
 
 
 class DownloaderBilibili(BaseDownloaderPart):
@@ -289,7 +290,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bvids])
 
     async def get_series(self, url: str, quality: Union[str, int] = 0, image=False, subtitle=False,
-                         dm=False, only_audio=False, p_range: Sequence[int] = None,
+                         dm=False, only_audio=False, p_range: Sequence[int] = None, codec: str = '',
                          hierarchy: Union[bool, str] = True):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
@@ -301,6 +302,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
         :param p_range: 下载集数范围，例如(1, 3)：P1至P3
+        :param codec: 视频编码（可通过info获取）
         :param hierarchy:
         :return:
         """
@@ -318,7 +320,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             hierarchy = hierarchy if type(hierarchy) is str else ''  # incase hierarchy is False
         cors = [self.get_video(p_url, quality, add_name,
                                image=image,
-                               subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy,
+                               subtitle=subtitle, dm=dm, only_audio=only_audio, codec=codec, hierarchy=hierarchy,
                                extra=video_info if idx == p else None)
                 for idx, (add_name, p_url) in enumerate(pages)]
         if p_range:
@@ -326,7 +328,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: Union[str, int] = 0, add_name='', image=False, subtitle=False,
-                        dm=False, only_audio=False, hierarchy: str = '', extra=None):
+                        dm=False, only_audio=False, codec: str = '', hierarchy: str = '', extra=None):
         """
         下载单个视频
 
@@ -337,6 +339,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
+        :param codec: 视频编码（可通过codec获取）
         :param hierarchy:
         :param extra: 额外数据，提供时不用再次请求页面
         :return:
@@ -359,9 +362,9 @@ class DownloaderBilibili(BaseDownloaderPart):
                 return
             # choose video quality
             try:
-                video_info, video_urls = choose_quality(dash, formats, quality)
+                video_info, video_urls = choose_quality(dash, formats, quality, codec)
             except ValueError:
-                logger.warning(f"{extra.title} 清晰度<{quality}>不可用，请检查输入是否正确或是否需要大会员")
+                logger.warning(f"{extra.title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
                 return
             # for audio, choose the highest quality
             audio_info = dash['audio'][0]
@@ -490,6 +493,7 @@ def handle(
         dm: bool,
         only_audio: bool,
         p_range,
+        codec: str,
 ):
     d = DownloaderBilibili(videos_dir=videos_dir,
                            video_concurrency=video_concurrency,
@@ -497,10 +501,10 @@ def handle(
                            sess_data=cookie)
     if method == 'get_series' or method == 's':
         cor = d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                           p_range=p_range, hierarchy=hierarchy)
+                           p_range=p_range, hierarchy=hierarchy, codec=codec)
     elif method == 'get_video' or method == 'v':
         cor = d.get_video(key, quality=quality,
-                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
+                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, codec=codec)
     elif method == 'get_up' or method == 'up':
         cor = d.get_up_videos(
             key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,

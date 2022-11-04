@@ -74,7 +74,7 @@ def print_help():
     )
     table.add_row(
         "-q --quality",
-        '[dark_cyan]int',
+        '[dark_cyan]int | str',
         "视频画面质量，默认0为最高画质，越大画质越低，超出范围时自动选最低画质，或者直接使用字符串指定'1080p'等名称"
     )
     table.add_row(

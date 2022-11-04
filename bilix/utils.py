@@ -93,4 +93,6 @@ def pick_unit_and_suffix(size: int, suffixes: List[str], base: int) -> Tuple[int
         unit = base ** i
         if size < unit * base:
             break
+    else:
+        raise ValueError('Invalid input')
     return unit, suffix
