@@ -7,7 +7,8 @@ from rich.text import Text
 from rich.tree import Tree
 
 import bilix.api.bilibili as api
-from bilix.utils import req_retry
+from bilix.log import logger
+from bilix.utils import req_retry, convert_size
 from bilix.assign import Handler
 from bilix.info.base_informer import BaseInformer
 
@@ -61,6 +62,9 @@ class InformerBilibili(BaseInformer):
 
     async def info_video(self, url: str):
         video_info = await api.get_video_info(self.client, url)
+        if video_info.dash is None:
+            logger.warning(f'{video_info.h1_title} 需要大会员或该地区不支持')
+            return
 
         async def make_sure_size(data):
             if 'size' not in data:
@@ -75,15 +79,14 @@ class InformerBilibili(BaseInformer):
         len_audio = video_info.dash['audio'][0]['size']
         tree = Tree(
             f"[bold reverse] {video_info.h1_title} [/]"
-            f" {video_info.status['view']:,}👀 {video_info.status['like']:,}👍 {video_info.status['coin']:,} 🪙",
+            f" {video_info.status['view']:,}👀 {video_info.status['like']:,}👍 {video_info.status['coin']:,}🪙",
             guide_style="bold cyan")
         for f in video_info.support_formats:
             p_tree = tree.add(f['new_description'])
             q_id = f['quality']
             for v in video_info.dash['video']:  # todo can be speed up...
                 if v['id'] == q_id:
-                    p_tree.add(f"codec: {v['codecs']:32} total: {len_audio + v['size']}")
-                    # logger.debug(f"quality <{f_info['new_description']}> has been chosen")
+                    p_tree.add(f"codec: {v['codecs']:32} total: {convert_size(len_audio + v['size'])}")
             if len(p_tree.children) == 0:
                 p_tree.style = "rgb(242,93,142)"
                 p_tree.add("需要登录或大会员")

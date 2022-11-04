@@ -3,7 +3,7 @@ import html
 import os
 import re
 import random
-from typing import Union, Sequence, Coroutine
+from typing import Union, Sequence, Coroutine, List, Tuple
 import aiofiles
 import httpx
 
@@ -78,3 +78,19 @@ def _truncate(s: str, target=150):
     while len(s.encode('utf8')) > target - 3:
         s = s[:-1]
     return s
+
+
+def convert_size(total_bytes: int) -> str:
+    unit, suffix = pick_unit_and_suffix(
+        total_bytes, ["bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"], 1000
+    )
+    return f"{total_bytes / unit:,.2f}{suffix}"
+
+
+def pick_unit_and_suffix(size: int, suffixes: List[str], base: int) -> Tuple[int, str]:
+    """Borrowed from rich.filesize. Pick a suffix and base for the given size."""
+    for i, suffix in enumerate(suffixes):
+        unit = base ** i
+        if size < unit * base:
+            break
+    return unit, suffix
