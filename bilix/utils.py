@@ -99,13 +99,13 @@ def pick_unit_and_suffix(size: int, suffixes: List[str], base: int) -> Tuple[int
 
 
 def parse_bilibili_url(url: str):
-    if re.match(r'https://space\.bilibili\.com/\d+/favlist\?fid=\d+$', url):
+    if re.match(r'https://space\.bilibili\.com/\d+/favlist\?fid=\d+', url):
         return 'fav'
-    elif re.match(r'https://space\.bilibili\.com/\d+/channel/seriesdetail\?sid=\d+$', url):
+    elif re.match(r'https://space\.bilibili\.com/\d+/channel/seriesdetail\?sid=\d+', url):
         return 'list'
-    elif re.match(r'https://space\.bilibili\.com/\d+/channel/collectiondetail\?sid=\d+$', url):
+    elif re.match(r'https://space\.bilibili\.com/\d+/channel/collectiondetail\?sid=\d+', url):
         return 'col'
-    elif re.match(r'https://space\.bilibili\.com/\d+$', url):  # up space url
+    elif re.match(r'https://space\.bilibili\.com/\d+', url):  # up space url
         return 'up'
     elif re.search(r'www\.bilibili\.com', url):
         return 'video'
