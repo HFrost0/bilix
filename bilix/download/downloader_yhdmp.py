@@ -45,26 +45,14 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
 
 
 @Handler(name='樱花动漫P')
-def handle(
-        method: str,
-        key: str,
-        videos_dir: str,
-        video_concurrency: int,
-        part_concurrency: int,
-        cookie: str,
-        quality: int,
-        days: int,
-        num: int,
-        order: str,
-        keyword: str,
-        no_series: bool,
-        hierarchy: bool,
-        image: bool,
-        subtitle: bool,
-        dm: bool,
-        only_audio: bool,
-        p_range,
-):
+def handle(**kwargs):
+    method = kwargs['method']
+    key = kwargs['key']
+    videos_dir = kwargs['videos_dir']
+    video_concurrency = kwargs['video_concurrency']
+    part_concurrency = kwargs['part_concurrency']
+    hierarchy = kwargs['hierarchy']
+    p_range = kwargs['p_range']
     if 'yhdmp' in key:
         d = DownloaderYhdmp(videos_dir=videos_dir, video_concurrency=video_concurrency,
                             part_concurrency=part_concurrency)

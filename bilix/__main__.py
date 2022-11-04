@@ -27,6 +27,8 @@ def handle_version(ctx: click.Context, param: typing.Union[click.Option, click.P
 def handle_debug(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ):
     if not value or ctx.resilient_parsing:
         return
+    from rich.traceback import install
+    install()
     logger.setLevel('DEBUG')
     logger.debug("Debug on, more information will be shown")
 
@@ -47,7 +49,8 @@ def print_help():
         'get_up 或 up：获取某个up的所有投稿视频，支持数量选择，关键词搜索，排序\n'
         'get_cate 或 cate：获取分区视频，支持数量选择，关键词搜索，排序\n'
         'get_favour 或 fav：获取收藏夹内视频，支持数量选择，关键词搜索\n'
-        'get_collect 或 col：获取合集或视频列表内视频'
+        'get_collect 或 col：获取合集或视频列表内视频\n'
+        'info：打印url所属资源的详细信息（例如点赞数，画质，编码格式等）'
     )
     table.add_row(
         "[cyan]<key>",
@@ -55,7 +58,8 @@ def print_help():
         '如果使用get_up，则在该位置填写b站用户id\n'
         '如果使用get_cate，则在该位置填写分区名称\n'
         '如果使用get_favour，则在该位置填写收藏夹id\n'
-        '如果使用get_collect，则在该位置填写合集或者视频列表详情页url'
+        '如果使用get_collect，则在该位置填写合集或者视频列表详情页url\n'
+        '如果使用info，则在该位置填写url'
     )
     console.print(table)
     # console.rule("OPTIONS参数")
@@ -135,6 +139,10 @@ def print_help():
     table.add_row(
         "-p", '[dark_cyan]int, int',
         '下载集数范围，例如-p 1 3 只下载P1至P3，仅get_series时生效',
+    )
+    table.add_row(
+        "--codec", '[dark_cyan]str',
+        '视频编码（请使用info查看后填写），仅在get_video, get_series时生效',
     )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
@@ -252,6 +260,12 @@ class BasedQualityType(click.ParamType):
     '-p',
     'p_range',
     type=(int, int),
+)
+@click.option(
+    '--codec',
+    'codec',
+    type=str,
+    default=''
 )
 @click.option(
     '-h',
