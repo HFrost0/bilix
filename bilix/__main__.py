@@ -55,11 +55,11 @@ def print_help():
     table.add_row(
         "[cyan]<key>",
         '如果使用get_video或get_series，在此填写视频的url\n'
-        '如果使用get_up，则在该位置填写b站用户id\n'
+        '如果使用get_up，则在该位置填写b站用户空间页url或用户id\n'
         '如果使用get_cate，则在该位置填写分区名称\n'
-        '如果使用get_favour，则在该位置填写收藏夹id\n'
+        '如果使用get_favour，则在该位置填写收藏夹页url或收藏夹id\n'
         '如果使用get_collect，则在该位置填写合集或者视频列表详情页url\n'
-        '如果使用info，则在该位置填写url'
+        '如果使用info，则在该位置填写任意资源url'
     )
     console.print(table)
     # console.rule("OPTIONS参数")
@@ -142,7 +142,7 @@ def print_help():
     )
     table.add_row(
         "--codec", '[dark_cyan]str',
-        '视频编码（请使用info查看后填写），仅在get_video, get_series时生效',
+        '视频编码（可使用info查看后填写），可以使用完整名称（例如avc1.640032）或部分名称（例如avc，hev）',
     )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")

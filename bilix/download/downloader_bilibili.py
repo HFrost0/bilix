@@ -11,7 +11,7 @@ from bilix.assign import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
-from bilix.utils import legal_title, req_retry, cors_slice
+from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url
 from bilix.log import logger
 
 __all__ = ['DownloaderBilibili']
@@ -21,10 +21,10 @@ def choose_quality(dash, support_formats, quality: Union[str, int], codec: str =
     # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
     if isinstance(quality, str):
         for f_info in support_formats:
-            if quality.upper() in f_info['new_description'].upper():
+            if f_info['new_description'].upper().startswith(quality.upper()):
                 q_id = f_info['quality']
                 for video_info in dash['video']:
-                    if video_info['id'] == q_id and (codec == '' or video_info['codecs'] == codec):
+                    if video_info['id'] == q_id and (codec == '' or video_info['codecs'].startswith(codec)):
                         video_urls = (video_info['base_url'], *(video_info['backup_url']
                                                                 if video_info['backup_url'] else ()))
                         logger.debug(
@@ -35,7 +35,7 @@ def choose_quality(dash, support_formats, quality: Union[str, int], codec: str =
         for q, (q_id, it) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
             if q == quality:
                 for video_info in it:
-                    if codec == '' or codec == video_info['codecs']:
+                    if codec == '' or video_info['codecs'].startswith(codec):
                         video_urls = (video_info['base_url'], *(video_info['backup_url']
                                                                 if video_info['backup_url'] else ()))
                         logger.debug(
@@ -61,7 +61,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         self._cate_meta = None
 
     async def get_collect_or_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                                  hierarchy: Union[bool, str] = True):
+                                  codec: str = '', hierarchy: Union[bool, str] = True):
         """
         下载合集或视频列表
 
@@ -71,18 +71,23 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle:
         :param dm:
         :param only_audio:
+        :param codec:
         :param hierarchy: 是否使用层次目录保存文件
         :return:
         """
-        if 'seriesdetail' in url:
-            await self.get_list(url, quality, image, subtitle, dm, only_audio, hierarchy)
-        elif 'collectiondetail' in url:
-            await self.get_collect(url, quality, image, subtitle, dm, only_audio, hierarchy)
+        t = parse_bilibili_url(url)
+        if t == 'list':
+            cor = self.get_list
+        elif t == 'col':
+            cor = self.get_collect
         else:
-            raise Exception(f'未知的详情页 {url}')
+            raise ValueError(f'{url} invalid for get_collect_or_list')
+        # noinspection PyArgumentList
+        await cor(url=url, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
+                  codec=codec, hierarchy=hierarchy)
 
     async def get_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                       hierarchy: Union[bool, str] = True):
+                       codec: str = '', hierarchy: Union[bool, str] = True):
         """
         下载视频列表
 
@@ -92,6 +97,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle:
         :param dm:
         :param only_audio:
+        :param codec
         :param hierarchy:
         :return:
         """
@@ -100,12 +106,12 @@ class DownloaderBilibili(BaseDownloaderPart):
             name = legal_title(f"【视频列表】{up_name}-{list_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
         await asyncio.gather(
-            *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality,
+            *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality, codec=codec,
                               image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
               for i in bvids])
 
     async def get_collect(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                          hierarchy: Union[bool, str] = True):
+                          codec: str = '', hierarchy: Union[bool, str] = True):
         """
         下载合集
 
@@ -115,6 +121,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
+        :param codec:
         :param hierarchy:
         :return:
         """
@@ -123,12 +130,12 @@ class DownloaderBilibili(BaseDownloaderPart):
             name = legal_title(f"【合集】{up_name}-{col_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
         await asyncio.gather(
-            *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality,
+            *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality, codec=codec,
                               image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
               for i in bvids])
 
     async def get_favour(self, url_or_fid, num=20, keyword='', quality=0, series=True, image=False, subtitle=False,
-                         dm=False, only_audio=False, hierarchy: Union[bool, str] = True):
+                         dm=False, only_audio=False, codec: str = '', hierarchy: Union[bool, str] = True):
         """
         下载收藏夹内的视频
 
@@ -141,6 +148,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
+        :param codec:
         :param hierarchy:
         :return:
         """
@@ -158,11 +166,11 @@ class DownloaderBilibili(BaseDownloaderPart):
             else:
                 num = ps
             cors.append(self._get_favor_by_page(url_or_fid, i + 1, num, keyword, quality, series,
-                                                image, subtitle, dm, only_audio, hierarchy=hierarchy))
+                                                image, subtitle, dm, only_audio, codec=codec, hierarchy=hierarchy))
         await asyncio.gather(*cors)
 
     async def _get_favor_by_page(self, url_or_fid, pn=1, num=20, keyword='', quality=0, series=True,
-                                 image=False, subtitle=False, dm=False, only_audio=False, hierarchy=True):
+                                 image=False, subtitle=False, dm=False, only_audio=False, codec='', hierarchy=True):
         ps = 20
         num = min(ps, num)
         _, _, _, bvids = await api.get_favour_page_info(self.client, url_or_fid, pn, ps, keyword)
@@ -170,7 +178,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         for i in bvids[:num]:
             func = self.get_series if series else self.get_video
             # noinspection PyArgumentList
-            cors.append(func(f'https://www.bilibili.com/video/{i}', quality=quality,
+            cors.append(func(f'https://www.bilibili.com/video/{i}', quality=quality, codec=codec,
                              image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy))
         await asyncio.gather(*cors)
 
@@ -184,7 +192,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         return self._cate_meta
 
     async def get_cate_videos(self, cate_name: str, num=10, order='click', keyword='', days=7, quality=0, series=True,
-                              image=False, subtitle=False, dm=False, only_audio=False,
+                              image=False, subtitle=False, dm=False, only_audio=False, codec='',
                               hierarchy: Union[bool, str] = True):
         """
         下载分区视频
@@ -200,6 +208,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
+        :param codec:
         :param hierarchy:
         :return:
         """
@@ -224,25 +233,25 @@ class DownloaderBilibili(BaseDownloaderPart):
             cors.append(
                 self._get_cate_videos_by_page(cate_id, time_from, time_to, page, min(pagesize, num), order, keyword,
                                               quality, series, image=image, subtitle=subtitle, dm=dm,
-                                              only_audio=only_audio, hierarchy=hierarchy))
+                                              only_audio=only_audio,codec=codec, hierarchy=hierarchy))
             num -= pagesize
             page += 1
         await asyncio.gather(*cors)
 
     async def _get_cate_videos_by_page(self, cate_id, time_from, time_to, pn=1, num=30, order='click', keyword='',
                                        quality=0, series=True, image=False, subtitle=False, dm=False,
-                                       only_audio=False, hierarchy=True):
+                                       only_audio=False, codec='', hierarchy=True):
         bvids = await api.get_cate_page_info(self.client, cate_id, time_from, time_to, pn, 30, order, keyword)
         bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
-        cors = [func(f"https://www.bilibili.com/video/{i}", quality=quality,
+        cors = [func(f"https://www.bilibili.com/video/{i}", quality=quality, codec=codec,
                      image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
                 for i in bvids]
         await asyncio.gather(*cors)
 
     async def get_up_videos(self, url_or_mid: str, num=10, order='pubdate', keyword='', quality: Union[int, str] = 0,
-                            series=True, image=False, subtitle=False, dm=False, only_audio=False,
+                            series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='',
                             hierarchy: Union[bool, str] = True):
         """
 
@@ -256,6 +265,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
+        :param codec:
         :param hierarchy:
         :return:
         """
@@ -273,11 +283,11 @@ class DownloaderBilibili(BaseDownloaderPart):
                 p_num = ps
             cors.append(self._get_up_videos_by_page(url_or_mid, i + 1, p_num, order, keyword, quality, series,
                                                     image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                                                    hierarchy=hierarchy))
+                                                    codec=codec, hierarchy=hierarchy))
         await asyncio.gather(*cors)
 
     async def _get_up_videos_by_page(self, url_or_mid, pn=1, num=30, order='pubdate', keyword='', quality=0,
-                                     series=True, image=False, subtitle=False, dm=False, only_audio=False,
+                                     series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='',
                                      hierarchy=None):
         ps = 30
         num = min(ps, num)
@@ -286,7 +296,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
         await asyncio.gather(
-            *[func(f'https://www.bilibili.com/video/{bv}', quality=quality,
+            *[func(f'https://www.bilibili.com/video/{bv}', quality=quality, codec=codec,
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bvids])
 
     async def get_series(self, url: str, quality: Union[str, int] = 0, image=False, subtitle=False,
@@ -364,7 +374,8 @@ class DownloaderBilibili(BaseDownloaderPart):
             try:
                 video_info, video_urls = choose_quality(dash, formats, quality, codec)
             except ValueError:
-                logger.warning(f"{extra.title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
+                logger.warning(
+                    f"{extra.title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
                 return
             # for audio, choose the highest quality
             audio_info = dash['audio'][0]
@@ -508,17 +519,17 @@ def handle(
     elif method == 'get_up' or method == 'up':
         cor = d.get_up_videos(
             key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy, codec=codec
         )
     elif method == 'get_cate' or method == 'cate':
         cor = d.get_cate_videos(
             key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
+            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy, codec=codec)
     elif method == 'get_favour' or method == 'fav':
-        cor = d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series,
+        cor = d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series, codec=codec,
                            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
     elif method == 'get_collect' or method == 'col':
-        cor = d.get_collect_or_list(key, quality=quality,
+        cor = d.get_collect_or_list(key, quality=quality, codec=codec,
                                     image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
                                     hierarchy=hierarchy)
     else:
