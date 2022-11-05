@@ -32,6 +32,7 @@ def choose_quality(dash, support_formats, quality: Union[str, int], codec: str =
                         return video_info, video_urls
     # 2. relative choice
     else:
+        quality = min(quality, len(set(i['id'] for i in dash['video'])) - 1)
         for q, (q_id, it) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
             if q == quality:
                 for video_info in it:
