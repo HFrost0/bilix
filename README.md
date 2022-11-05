@@ -26,6 +26,7 @@
 - [进阶使用 Advance Guide](#%E8%BF%9B%E9%98%B6%E4%BD%BF%E7%94%A8-advance-guide)
     - [方法名简写](#%E6%96%B9%E6%B3%95%E5%90%8D%E7%AE%80%E5%86%99)
     - [你是大会员？🥸](#%E4%BD%A0%E6%98%AF%E5%A4%A7%E4%BC%9A%E5%91%98%F0%9F%A5%B8)
+    - [画质和编码选择](#%E7%94%BB%E8%B4%A8%E5%92%8C%E7%BC%96%E7%A0%81%E9%80%89%E6%8B%A9)
     - [在 python 中调用](#%E5%9C%A8-python-%E4%B8%AD%E8%B0%83%E7%94%A8)
     - [关于断点重连](#%E5%85%B3%E4%BA%8E%E6%96%AD%E7%82%B9%E9%87%8D%E8%BF%9E)
 - [欢迎提问](#%E6%AC%A2%E8%BF%8E%E6%8F%90%E9%97%AE)
@@ -36,7 +37,8 @@
 
 ## 特性 Features
 
-高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP 框架 [httpx](https://www.python-httpx.org/)
+高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP
+框架 [httpx](https://www.python-httpx.org/)
 ，和 [anyio](https://anyio.readthedocs.io/en/stable/) ：
 
 * 媒体文件（音频/视频）分段异步下载，以及备选服务器的同时利用
@@ -101,7 +103,8 @@ bilix get_video 'url'
 
 ### 下载音频
 
-假设你喜欢音乐区，只想下载音频，那么可以使用可选参数`--only-audio`，例如下面是下载[A叔](https://space.bilibili.com/6075139)一个钢琴曲合集音频的例子
+假设你喜欢音乐区，只想下载音频，那么可以使用可选参数`--only-audio`，例如下面是下载[A叔](https://space.bilibili.com/6075139)
+一个钢琴曲合集音频的例子
 
 ```shell
 bilix get_series 'https://www.bilibili.com/video/BV1ts411D7mf' --only-audio
@@ -136,7 +139,8 @@ bilix get_favour 'https://space.bilibili.com/11499954/favlist?fid=1445680654' --
 ```
 
 `https://space.bilibili.com/11499954/favlist?fid=1445680654` 是收藏夹url，如果要知道一个收藏夹的url是什么，
-最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，url就会出现在浏览器的地址栏中。另外直接使用url中的fid`1445680654`替换url也是可以的。
+最简单的办法是在b站网页左侧列表中点击切换到该收藏夹，url就会出现在浏览器的地址栏中。另外直接使用url中的fid`1445680654`
+替换url也是可以的。
 
 ### 下载合集或视频列表
 
@@ -146,7 +150,9 @@ bilix get_favour 'https://space.bilibili.com/11499954/favlist?fid=1445680654' --
 bilix get_collect 'url'
 ```
 
-将`url`替换为某个合集或视频列表详情页的url（例如[这个](https://space.bilibili.com/369750017/channel/collectiondetail?sid=630)）即可下载合集或列表内所有视频
+将`url`
+替换为某个合集或视频列表详情页的url（例如[这个](https://space.bilibili.com/369750017/channel/collectiondetail?sid=630)
+）即可下载合集或列表内所有视频
 
 💡合集和视频列表有什么区别？b站的合集可以订阅，列表则没有这个功能，但是他们都在up主空间页面的合集和列表菜单中，例如[这个](https://space.bilibili.com/369750017/channel/series)
 ，`get_collect`则会根据详情页url中的信息判断这个链接是合集还是列表
@@ -179,6 +185,45 @@ bilix v 'url'
 
 另外如果你总是需要附加--cookie参数，可以使用`alias`命令，例如`alias bilix=/.../python -m bilix --cookie xxxxxxxx`
 
+### 画质和编码选择
+
+你可以使用`--quality`即`-q`参数选择画面质量，bilix支持两种不同的选择方式：
+
+* 相对选择（默认）
+
+  bilix在默认情况下会为你选择可选的最高画质进行下载（即`-q 0`），如果你想下载第二清晰的可使用`-q 1`进行指定，以此类推，指定序号越大画质越低，
+  当超过可选择范围时，默认选择到最低画质，例如你总是可以通过`-q 999`来选择到最低画质。
+* 绝对选择
+
+  在某些时候，你只希望下载720P的视频，但是720P在相对选择中并不总是处于固定的位置，这在下载收藏夹，合集等等场景中经常出现。
+  另外有可能你就是喜欢通过`-q 1080P`这样的方式来指定画质。
+  没问题，bilix同时也支持通过`-q 4K` `-q '1080P 高码率'`等字符串的形式来直接指定画质，字符串为b站显示的画质名称的子串即可。
+
+在更加专业用户的需求中，可能需要指定特定的视频编码进行下载，而b站支持的编码在网页或app中是不可见的，bilix为此设计了方法`info`
+，
+通过它你可以完全了解该视频的所有信息：
+
+```shell
+bilix info 'https://www.bilibili.com/video/BV1YW411D7ar' 
+                        
+ SpaceX 猎鹰重型 现代工程的杰作（高燃混剪）  2,044,737👀 52,415👍 21,125🪙
+┣━━ 720P 高清
+┃   ┗━━ 需要登录或大会员
+┣━━ 480P 清晰
+┃   ┣━━ codec: avc1.64001F                      total: 31.10MB
+┃   ┣━━ codec: hev1.1.6.L120.90                 total: 10.74MB
+┃   ┗━━ codec: av01.0.04M.08.0.110.01.01.01.0   total: 18.83MB
+┗━━ 360P 流畅
+    ┣━━ codec: avc1.64001E                      total: 17.29MB
+    ┣━━ codec: hev1.1.6.L120.90                 total: 14.36MB
+    ┗━━ codec: av01.0.01M.08.0.110.01.01.01.0   total: 11.40MB
+```
+
+看上去不错😇，同一种画质下居然有那么多种编码，并且大小差距还挺大，那么我要怎么才能下到指定编码的视频呢？
+
+bilix提供了另一个参数`--codec`来指定编码格式，例如你可以通过组合`-q 480P --codec hev1.1.6.L120.90`来指定下载10.74MB的那个。
+`--codec`参数与`-q`参数类似，也支持子串指定，例如你可以通过`--codec hev`来使得所有视频都选择`hev`开头的编码。
+
 ### 在 python 中调用
 
 觉得命令行太麻烦，不够强大？想要直接调用模块？下面是一个小例子。
@@ -203,10 +248,12 @@ if __name__ == '__main__':
     asyncio.run(main())
 ```
 
-`DownloaderBilibili`类的下载方法都是异步的，例如`d.get_series(...)`返回的是一个协程`Coroutine`对象，我们可以自由组合这些方法的返回值，然后通过`await asyncio.gather`
+`DownloaderBilibili`类的下载方法都是异步的，例如`d.get_series(...)`返回的是一个协程`Coroutine`
+对象，我们可以自由组合这些方法的返回值，然后通过`await asyncio.gather`
 方法并发执行这些任务。例如上面的例子中我们同时执行了三种不同的任务。
 
-你要组合很多很多任务？不用担心！`d`对象执行这些任务的并发度受到初始化参数的严格控制🫡，`video_concurrency`控制了同时下载的视频数量，而`part_concurrency`
+你要组合很多很多任务？不用担心！`d`对象执行这些任务的并发度受到初始化参数的严格控制🫡，`video_concurrency`
+控制了同时下载的视频数量，而`part_concurrency`
 则控制了每个媒体文件（音频/画面）的分段并发数，如果你不太明白可以在代码和注释中找到他们的详细作用，或者就让他们保持默认吧。
 
 ### 关于断点重连
