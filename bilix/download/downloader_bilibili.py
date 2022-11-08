@@ -394,7 +394,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                     cors.append(self.get_media(video_urls, f'{title}-video', task_id, hierarchy))
                     cors.append(self.get_media(audio_urls, f'{title}-audio', task_id, hierarchy))
             else:
-                cors.append(self.get_media(audio_urls, f'{title}.mp3', task_id, hierarchy))
+                cors.append(self.get_media(audio_urls, f'{title}.aac', task_id, hierarchy))  # bilibili use aac codec
             # additional task
             if image or subtitle or dm:
                 extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
@@ -417,7 +417,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         # make progress invisible
         if self.progress.tasks[task_id].visible:
             self.progress.update(task_id, advance=1, visible=False)
-            logger.info(f'[cyan]已完成[/cyan] {title}{".mp3" if only_audio else ".mp4"}')
+            logger.info(f'[cyan]已完成[/cyan] {title}{".aac" if only_audio else ".mp4"}')
 
     async def get_dm(self, url, update=False, convert_func=None,
                      hierarchy: str = '', extra=None):
