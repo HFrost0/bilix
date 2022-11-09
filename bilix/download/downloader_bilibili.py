@@ -17,7 +17,24 @@ from bilix.log import logger
 __all__ = ['DownloaderBilibili']
 
 
-def choose_quality(dash, support_formats, quality: Union[str, int], codec: str = '') -> Tuple[dict, Sequence]:
+def choose_quality(
+        dash,
+        support_formats,
+        quality: Union[str, int],
+        codec: str = ''
+) -> Tuple[dict, dict, Sequence, Sequence]:
+    """
+
+    :param dash:
+    :param support_formats:
+    :param quality:
+    :param codec:
+    :return: video_info, audio_info, video_urls, audio_urls
+    """
+    # for audio, choose the highest quality
+    audio_info = dash['audio'][0]
+    audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
+    # for video
     # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
     if isinstance(quality, str):
         for f_info in support_formats:
@@ -29,7 +46,7 @@ def choose_quality(dash, support_formats, quality: Union[str, int], codec: str =
                                                                 if video_info['backup_url'] else ()))
                         logger.debug(
                             f"quality <{f_info['new_description']}> codec <{video_info['codecs']}> has been chosen")
-                        return video_info, video_urls
+                        return video_info, audio_info, video_urls, audio_urls
     # 2. relative choice
     else:
         quality = min(quality, len(set(i['id'] for i in dash['video'])) - 1)
@@ -41,7 +58,7 @@ def choose_quality(dash, support_formats, quality: Union[str, int], codec: str =
                                                                 if video_info['backup_url'] else ()))
                         logger.debug(
                             f"relative quality <{quality}> codec <{video_info['codecs']}> has been chosen")
-                        return video_info, video_urls
+                        return video_info, audio_info, video_urls, audio_urls
     raise ValueError(f'Invalid quality and codec quality:{quality} codec: {codec}')
 
 
@@ -234,7 +251,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             cors.append(
                 self._get_cate_videos_by_page(cate_id, time_from, time_to, page, min(pagesize, num), order, keyword,
                                               quality, series, image=image, subtitle=subtitle, dm=dm,
-                                              only_audio=only_audio,codec=codec, hierarchy=hierarchy))
+                                              only_audio=only_audio, codec=codec, hierarchy=hierarchy))
             num -= pagesize
             page += 1
         await asyncio.gather(*cors)
@@ -373,14 +390,11 @@ class DownloaderBilibili(BaseDownloaderPart):
                 return
             # choose video quality
             try:
-                video_info, video_urls = choose_quality(dash, formats, quality, codec)
+                video_info, audio_info, video_urls, audio_urls = choose_quality(dash, formats, quality, codec)
             except ValueError:
                 logger.warning(
                     f"{extra.title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
                 return
-            # for audio, choose the highest quality
-            audio_info = dash['audio'][0]
-            audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
 
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
             task_id = self.progress.add_task(
@@ -419,8 +433,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             self.progress.update(task_id, advance=1, visible=False)
             logger.info(f'[cyan]已完成[/cyan] {title}{".aac" if only_audio else ".mp4"}')
 
-    async def get_dm(self, url, update=False, convert_func=None,
-                     hierarchy: str = '', extra=None):
+    async def get_dm(self, url, update=False, convert_func=None, hierarchy: str = '', extra=None):
         """
 
         :param url: 视频url
