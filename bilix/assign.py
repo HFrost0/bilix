@@ -8,6 +8,8 @@ class Handler:
         self.name = name
 
     def __call__(self, func):
+        if self.name in self.registered:
+            raise KeyError(f"Handler {self.name} all ready exists")
         self.registered[self.name] = func
         return func
 
