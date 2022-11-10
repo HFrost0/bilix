@@ -44,34 +44,61 @@ class InformerBilibili(BaseInformer):
 
     async def info_video(self, url: str):
         video_info = await api.get_video_info(self.client, url)
+        dash = video_info.dash
         if video_info.dash is None:
             logger.warning(f'{video_info.h1_title} 需要大会员或该地区不支持')
             return
 
-        async def make_sure_size(data):
+        async def ensure_size(data):
             if 'size' not in data:
                 res = await req_retry(self.client, data['base_url'], method='GET', headers={'Range': 'bytes=0-1'})
                 data['size'] = int(res.headers['Content-Range'].split('/')[-1])
 
-        await asyncio.gather(
-            *[make_sure_size(d) for d in video_info.dash['video']],
-            make_sure_size(video_info.dash['audio'][0])  # currently, no need for other codec
-            # *[make_sure_size(d) for d in video_info.dash['audio']],
-        )
-        len_audio = video_info.dash['audio'][0]['size']
+        cors = [ensure_size(d) for d in dash['video']]
+        cors.append(ensure_size(dash['audio'][0]))
+        if dash['dolby']['audio']:
+            cors.append(ensure_size(dash['dolby']['audio']))
+        if dash['flac'] and dash['flac']['audio']:
+            cors.append(ensure_size(dash['flac']['audio']))
+        await asyncio.gather(*cors)
+
         tree = Tree(
             f"[bold reverse] {video_info.h1_title} [/]"
             f" {video_info.status['view']:,}👀 {video_info.status['like']:,}👍 {video_info.status['coin']:,}🪙",
             guide_style="bold cyan")
+        video_tree = tree.add("[bold]画面 Video")
+        audio_tree = tree.add("[bold]声音 Audio")
+        # for video
         for f in video_info.support_formats:
-            p_tree = tree.add(f['new_description'])
+            p_tree = video_tree.add(f['new_description'])
             q_id = f['quality']
-            for v in video_info.dash['video']:  # todo can be speed up...
+            for v in dash['video']:  # todo can be speed up...
                 if v['id'] == q_id:
-                    p_tree.add(f"codec: {v['codecs']:32} total: {convert_size(len_audio + v['size'])}")
+                    p_tree.add(f"codec: {v['codecs']:32} total: {convert_size(v['size'])}")
             if len(p_tree.children) == 0:
                 p_tree.style = "rgb(242,93,142)"
                 p_tree.add("需要登录或大会员")
+        # for audio
+        audio_tree.add("默认音质").add(
+            f"codec: {dash['audio'][0]['codecs']:32} total: {convert_size(dash['audio'][0]['size'])}")
+        if dash['dolby']['type'] != 0:
+            sub_tree = audio_tree.add("杜比全景声 Dolby")
+            if dash['dolby']['audio']:
+                sub_tree.add(
+                    f"codec: {dash['dolby']['audio']['codecs']:32}"
+                    f" total: {convert_size(dash['dolby']['audio']['size'])}")
+            else:
+                sub_tree.style = "rgb(242,93,142)"
+                sub_tree.add("需要登录或大会员")
+        if dash['flac']:
+            sub_tree = audio_tree.add("Hi-Res无损")
+            if dash['flac']['audio']:
+                sub_tree.add(
+                    f"codec: {dash['flac']['audio']['codecs']:32}"
+                    f" total: {convert_size(dash['flac']['audio']['size'])}")
+            else:
+                sub_tree.style = "rgb(242,93,142)"
+                sub_tree.add("需要登录或大会员")
         self.console.print(tree)
 
 
@@ -83,12 +110,3 @@ def handle(**kwargs):
         informer = InformerBilibili(sess_data=kwargs['cookie'])
         cor = informer.info_key(key)
         return informer, cor
-
-
-if __name__ == '__main__':
-    async def main():
-        informer = InformerBilibili()
-        await informer.info_video('https://www.bilibili.com/video/BV1ce4y1t7Bs')
-
-
-    asyncio.run(main())
