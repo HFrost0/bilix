@@ -68,6 +68,16 @@ async def test_get_up_info():
 
 
 @pytest.mark.asyncio
+async def test_get_special_audio():
+    # Dolby
+    data = await api.get_video_info(client, 'https://www.bilibili.com/video/BV13L4y1K7th')
+    assert data.dash['dolby']['type'] != 0
+    # Hi-Res
+    data = await api.get_video_info(client, 'https://www.bilibili.com/video/BV16K411S7sk')
+    assert data.dash['flac']['display']
+
+
+@pytest.mark.asyncio
 async def test_get_video_info():
     # 单个bv视频
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV1sS4y1b7qb?spm_id_from=333.999.0.0")
