@@ -28,32 +28,40 @@ def choose_quality(
     :param dash:
     :param support_formats:
     :param quality:
-    :param codec:
+    :param codec: should be like xxx (for video only) :xxxx (for audio only) xxx:xxx (for video and audio)
     :return: video_info, audio_info, video_urls, audio_urls
     """
-    # for audio, choose the highest quality
-    audio_info = dash['audio'][0]
+    v_codec, a_codec, *_ = codec.split(':') + [""]
+    # for audio
+    if a_codec == '':
+        audio_info = dash['audio'][0]
+    else:
+        if dash['dolby']['audio'] and dash['dolby']['audio'][0]['codecs'].startswith(a_codec):
+            audio_info = dash['dolby']['audio'][0]
+        elif dash['flac'] and dash['flac']['audio'] and dash['flac']['audio']['codecs'].startswith(a_codec):
+            audio_info = dash['flac']['audio']
+        else:
+            raise ValueError(f'Invalid quality and codec quality:{quality} codec: {codec}')
     audio_urls = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
+
     # for video
-    # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
-    if isinstance(quality, str):
+    if isinstance(quality, str):  # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
         for f_info in support_formats:
             if f_info['new_description'].upper().startswith(quality.upper()):
                 q_id = f_info['quality']
                 for video_info in dash['video']:
-                    if video_info['id'] == q_id and (codec == '' or video_info['codecs'].startswith(codec)):
+                    if video_info['id'] == q_id and (v_codec == '' or video_info['codecs'].startswith(v_codec)):
                         video_urls = (video_info['base_url'], *(video_info['backup_url']
                                                                 if video_info['backup_url'] else ()))
                         logger.debug(
                             f"quality <{f_info['new_description']}> codec <{video_info['codecs']}> has been chosen")
                         return video_info, audio_info, video_urls, audio_urls
-    # 2. relative choice
-    else:
+    else:  # 2. relative choice
         quality = min(quality, len(set(i['id'] for i in dash['video'])) - 1)
         for q, (q_id, it) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
             if q == quality:
                 for video_info in it:
-                    if codec == '' or video_info['codecs'].startswith(codec):
+                    if v_codec == '' or video_info['codecs'].startswith(v_codec):
                         video_urls = (video_info['base_url'], *(video_info['backup_url']
                                                                 if video_info['backup_url'] else ()))
                         logger.debug(

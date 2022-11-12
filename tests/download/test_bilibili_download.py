@@ -4,6 +4,33 @@ from bilix.download import DownloaderBilibili
 
 
 @pytest.mark.asyncio
+async def test_choose_quality():
+    import os
+    from bilix.download.downloader_bilibili import choose_quality
+    import bilix.api.bilibili as api
+    from httpx import AsyncClient
+
+    client = AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'},
+                         cookies={'SESSDATA': os.getenv('BILI_TOKEN')}, http2=True)
+    # dolby
+    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV13L4y1K7th")
+    try:
+        video_info, audio_info, _, _ = choose_quality(data.dash, data.support_formats, quality=999, codec=":ec-3")
+    except ValueError:
+        assert not os.getenv("BILI_TOKEN")
+    # normal
+    choose_quality(data.dash, data.support_formats, quality="720P", codec="hev")
+    # hi-res
+    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV16K411S7sk")
+    try:
+        video_info, audio_info, _, _ = choose_quality(data.dash, data.support_formats,
+                                                      quality='1080P', codec="hev:fLaC")
+    except ValueError:
+        assert not os.getenv("BILI_TOKEN")
+    await client.aclose()
+
+
+@pytest.mark.asyncio
 async def test_get_collect_or_list():
     d = DownloaderBilibili()
     await d.get_collect_or_list('https://space.bilibili.com/54296062/channel/collectiondetail?sid=412818&ctype=0',
