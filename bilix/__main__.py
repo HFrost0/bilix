@@ -142,7 +142,7 @@ def print_help():
     )
     table.add_row(
         "--codec", '[dark_cyan]str',
-        '视频编码（可使用info查看后填写），可以使用完整名称（例如avc1.640032）或部分名称（例如avc，hev）',
+        '视频及音频编码（可使用info查看后填写，使用:分隔），可使用完整名称（例如avc1.640032，fLaC）或部分名称（例如avc，hev）',
     )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
