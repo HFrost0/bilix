@@ -36,7 +36,7 @@ jobs:
     - name: Test with pytest
       run: |
         pytest tests/api tests/dm
-    - name: bilix cli test
-      run: |
-        bilix v 'https://www.bilibili.com/video/BV1sS4y1b7qb'
+#    - name: bilix cli test
+#      run: |
+#        bilix v 'https://www.bilibili.com/video/BV1sS4y1b7qb'
         
