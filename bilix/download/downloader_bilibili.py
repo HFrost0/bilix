@@ -429,9 +429,13 @@ class DownloaderBilibili(BaseDownloaderPart):
             await asyncio.gather(*cors)
 
         if not only_audio and not os.path.exists(f'{file_dir}/{title}.mp4'):
-            await run_process(
-                ['ffmpeg', '-i', f'{file_dir}/{title}-video', '-i', f'{file_dir}/{title}-audio',
-                 '-codec', 'copy', f'{file_dir}/{title}.mp4', '-loglevel', 'quiet'])
+            cmd = ['ffmpeg', '-i', f'{file_dir}/{title}-video', '-i', f'{file_dir}/{title}-audio',
+                   '-codec', 'copy', '-loglevel', 'quiet']
+            # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
+            if audio_info['codecs'] == 'fLaC':
+                cmd.extend(['-strict', '-2'])
+            cmd.append(f'{file_dir}/{title}.mp4')
+            await run_process(cmd)
             os.remove(f'{file_dir}/{title}-video')
             os.remove(f'{file_dir}/{title}-audio')
         # make progress invisible
