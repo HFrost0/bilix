@@ -185,9 +185,9 @@ bilix v 'url'
 
 另外如果你总是需要附加--cookie参数，可以使用`alias`命令，例如`alias bilix=/.../python -m bilix --cookie xxxxxxxx`
 
-### 画质和编码选择
+### 画质，音质和编码选择
 
-你可以使用`--quality`即`-q`参数选择画面质量，bilix支持两种不同的选择方式：
+你可以使用`--quality`即`-q`参数选择画面分辨率，bilix支持两种不同的选择方式：
 
 * 相对选择（默认）
 
@@ -204,25 +204,49 @@ bilix v 'url'
 通过它你可以完全了解该视频的所有信息：
 
 ```shell
-bilix info 'https://www.bilibili.com/video/BV1YW411D7ar' 
+bilix info 'https://www.bilibili.com/video/BV1kG411t72J' --cookie 'xxxxx' 
                         
- SpaceX 猎鹰重型 现代工程的杰作（高燃混剪）  2,044,737👀 52,415👍 21,125🪙
-┣━━ 720P 高清
-┃   ┗━━ 需要登录或大会员
-┣━━ 480P 清晰
-┃   ┣━━ codec: avc1.64001F                      total: 31.10MB
-┃   ┣━━ codec: hev1.1.6.L120.90                 total: 10.74MB
-┃   ┗━━ codec: av01.0.04M.08.0.110.01.01.01.0   total: 18.83MB
-┗━━ 360P 流畅
-    ┣━━ codec: avc1.64001E                      total: 17.29MB
-    ┣━━ codec: hev1.1.6.L120.90                 total: 14.36MB
-    ┗━━ codec: av01.0.01M.08.0.110.01.01.01.0   total: 11.40MB
+ 【4K·HDR·Hi-Res】群青 - YOASOBI  33,899👀 1,098👍 201🪙
+┣━━ 画面 Video
+┃   ┣━━ HDR 真彩
+┃   ┃   ┗━━ codec: hev1.2.4.L153.90                 total: 149.86MB
+┃   ┣━━ 4K 超清
+┃   ┃   ┣━━ codec: avc1.640034                      total: 320.78MB
+┃   ┃   ┗━━ codec: hev1.1.6.L153.90                 total: 106.54MB
+┃   ┣━━ 1080P 60帧
+┃   ┃   ┣━━ codec: avc1.640032                      total: 171.91MB
+┃   ┃   ┗━━ codec: hev1.1.6.L150.90                 total: 24.66MB
+┃   ┣━━ 1080P 高清
+┃   ┃   ┣━━ codec: avc1.640032                      total: 86.01MB
+┃   ┃   ┗━━ codec: hev1.1.6.L150.90                 total: 24.18MB
+┃   ┣━━ 720P 高清
+┃   ┃   ┣━━ codec: avc1.640028                      total: 57.39MB
+┃   ┃   ┗━━ codec: hev1.1.6.L120.90                 total: 11.53MB
+┃   ┣━━ 480P 清晰
+┃   ┃   ┣━━ codec: avc1.64001F                      total: 25.87MB
+┃   ┃   ┗━━ codec: hev1.1.6.L120.90                 total: 7.61MB
+┃   ┗━━ 360P 流畅
+┃       ┣━━ codec: hev1.1.6.L120.90                 total: 5.24MB
+┃       ┗━━ codec: avc1.64001E                      total: 11.59MB
+┗━━ 声音 Audio
+    ┣━━ 默认音质
+    ┃   ┗━━ codec: mp4a.40.2                        total: 10.78MB
+    ┗━━ Hi-Res无损
+        ┗━━ codec: fLaC                             total: 94.55MB
 ```
 
-看上去不错😇，同一种画质下居然有那么多种编码，并且大小差距还挺大，那么我要怎么才能下到指定编码的视频呢？
+看上去不错😇，那么我要怎么才能下到指定编码的视频呢？
 
-bilix提供了另一个参数`--codec`来指定编码格式，例如你可以通过组合`-q 480P --codec hev1.1.6.L120.90`来指定下载10.74MB的那个。
+bilix提供了另一个参数`--codec`来指定编码格式，例如你可以通过组合`-q 480P --codec hev1.1.6.L120.90`来指定下载7.61MB的那个。
 `--codec`参数与`-q`参数类似，也支持子串指定，例如你可以通过`--codec hev`来使得所有视频都选择`hev`开头的编码。
+
+对于音质，部分视频会含有大会员专享的杜比全景声和Hi-Res无损音质，利用`--codec`参数可以指定这些音频，例如
+
+```shell
+bilix v 'https://www.bilibili.com/video/BV1kG411t72J' --cookie 'xxxxx' --codec hev:fLaC 
+```
+
+`--codec hev:fLaC`中使用`:`将画质编码和音频编码隔开，如只指定音频编码，可使用`--codec :fLaC`
 
 ### 在 python 中调用
 
