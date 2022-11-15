@@ -41,6 +41,7 @@ setup(
     entry_points={
         "console_scripts": "bilix=bilix.__main__:main",
     },
+    keywords='b站, bilix, bilibili, 抖音, 无水印, 视频下载, API, Video, Download, No Watermark, Async',
     install_requires=[
         "httpx[http2]>=0.22.0",
         'anyio',
