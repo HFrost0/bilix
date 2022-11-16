@@ -1,5 +1,4 @@
 import asyncio
-import re
 from typing import Union, Sequence
 import aiofiles
 import httpx

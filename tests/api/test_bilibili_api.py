@@ -86,6 +86,7 @@ async def test_get_video_info():
     assert data.p == 0
     assert data.bvid
     assert 'coin' in data.status
+    assert data.img_url.startswith('http://') or data.img_url.startswith('https://')
     # assert data.dash  # todo since GitHub action can not get dash, there is no dash check...
     # 多个bv视频
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV1jK4y1N7ST?p=5")

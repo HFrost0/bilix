@@ -232,6 +232,8 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
         dash, support_formats = None, None
     # extract img url
     img_url = re.search('property="og:image" content="([^"]*)"', res.text).groups()[0]
+    if not img_url.startswith('http'):  # https://github.com/HFrost0/bilix/issues/52 just for some video
+        img_url = 'http:' + img_url.split('@')[0]
     # construct data
     video_info = VideoInfo(title=title, h1_title=h1_title, aid=aid, cid=cid, status=status,
                            p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash, support_formats=support_formats)
