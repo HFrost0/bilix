@@ -15,7 +15,7 @@ async def test_choose_quality():
     # dolby
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV13L4y1K7th")
     try:
-        video_info, audio_info, _, _ = choose_quality(data.dash, data.support_formats, quality=999, codec=":ec-3")
+        video_info, audio_info = choose_quality(data.dash, data.support_formats, quality=999, codec=":ec-3")
     except ValueError:
         assert not os.getenv("BILI_TOKEN")
     # normal
@@ -23,8 +23,8 @@ async def test_choose_quality():
     # hi-res
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV16K411S7sk")
     try:
-        video_info, audio_info, _, _ = choose_quality(data.dash, data.support_formats,
-                                                      quality='1080P', codec="hev:fLaC")
+        video_info, audio_info = choose_quality(data.dash, data.support_formats,
+                                                quality='1080P', codec="hev:fLaC")
     except ValueError:
         assert not os.getenv("BILI_TOKEN")
     await client.aclose()
