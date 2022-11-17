@@ -2,7 +2,7 @@
 bilix inspired by w
 """
 
-__version__ = "0.10.3"
+__version__ = "0.10.4"
 __title__ = "bilix"
 __url__ = "https://github.com/HFrost0/bilix"
 __author__ = "HFrost0"
