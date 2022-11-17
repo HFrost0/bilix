@@ -50,9 +50,9 @@ class BaseDownloaderPart(BaseDownloader):
             return file_path
         total = await self._content_length(url_or_urls)
         if task_id is not None:
-            self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
+            await self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         else:
-            task_id = self.progress.add_task(description=media_name[:30], total=total, visible=True)
+            task_id = await self.progress.add_task(description=media_name[:30], total=total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
         part_names = []
@@ -65,7 +65,7 @@ class BaseDownloaderPart(BaseDownloader):
         file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_name=file_path)
         if self.progress.tasks[task_id].finished:
-            self.progress.update(task_id, visible=False)
+            await self.progress.update(task_id, visible=False)
             logger.info(f"[cyan]已完成[/cyan] {media_name}")
         return file_path
 
@@ -81,7 +81,7 @@ class BaseDownloaderPart(BaseDownloader):
             downloaded = os.path.getsize(file_path)
             start += downloaded
             if exception == 0:
-                self.progress.update(task_id, advance=downloaded)
+                await self.progress.update(task_id, advance=downloaded)
         if start > end:
             return file_path  # skip already finished
         try:
@@ -92,7 +92,7 @@ class BaseDownloaderPart(BaseDownloader):
                 async with aiofiles.open(file_path, 'ab') as f:
                     async for chunk in r.aiter_bytes():
                         await f.write(chunk)
-                        self.progress.update(task_id, advance=len(chunk))
+                        await self.progress.update(task_id, advance=len(chunk))
         except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
             if exception > 1:
                 logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')

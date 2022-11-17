@@ -5,10 +5,11 @@ import os
 from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn, TextColumn
 from bilix.utils import req_retry
 from bilix.log import logger
+from bilix.progress.cli_progress import CLIProgress
 
 
 class BaseDownloader:
-    progress = Progress(
+    progress = CLIProgress(
         TextColumn("[progress.description]{task.description}"),
         TextColumn("[progress.percentage]{task.percentage:>4.1f}%"),
         BarColumn(),

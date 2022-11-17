@@ -403,7 +403,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 return
 
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-            task_id = self.progress.add_task(
+            task_id = await self.progress.add_task(
                 total=1, description=title if len(title) < 33 else f'{title[:15]}...{title[-15:]}', visible=False)
             cors = []
             # add cor according to params
@@ -440,7 +440,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             os.remove(f'{file_dir}/{title}-audio')
         # make progress invisible
         if self.progress.tasks[task_id].visible:
-            self.progress.update(task_id, advance=1, visible=False)
+            await self.progress.update(task_id, advance=1, visible=False)
             logger.info(f'[cyan]已完成[/cyan] {title}{audio_info["suffix"] if only_audio else ".mp4"}')
 
     async def get_dm(self, url, update=False, convert_func=None, hierarchy: str = '', extra=None):
