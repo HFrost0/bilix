@@ -35,7 +35,7 @@ def choose_quality(dash, support_formats, quality: Union[str, int], codec: str =
         if dash['dolby']['audio'] and dash['dolby']['audio'][0]['codecs'].startswith(a_codec):
             audio_info = dash['dolby']['audio'][0]
             audio_info['suffix'] = '.eac3'  # todo other dolby codec?
-        elif 'flac' in dash and dash['flac']['audio'] and dash['flac']['audio']['codecs'].startswith(a_codec):
+        elif dash.get('flac', None) and dash['flac']['audio'] and dash['flac']['audio']['codecs'].startswith(a_codec):
             audio_info = dash['flac']['audio']
             audio_info['suffix'] = '.flac'
         else:
