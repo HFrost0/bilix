@@ -58,7 +58,7 @@ class InformerBilibili(BaseInformer):
         cors.append(ensure_size(dash['audio'][0]))
         if dash['dolby']['audio']:
             cors.append(ensure_size(dash['dolby']['audio'][0]))
-        if dash['flac'] and dash['flac']['audio']:
+        if 'flac' in dash and dash['flac']['audio']:
             cors.append(ensure_size(dash['flac']['audio']))
         await asyncio.gather(*cors)
 
@@ -90,7 +90,7 @@ class InformerBilibili(BaseInformer):
             else:
                 sub_tree.style = "rgb(242,93,142)"
                 sub_tree.add("需要登录或大会员")
-        if dash['flac']:
+        if 'flac' in dash:
             sub_tree = audio_tree.add("Hi-Res无损")
             if dash['flac']['audio']:
                 sub_tree.add(
