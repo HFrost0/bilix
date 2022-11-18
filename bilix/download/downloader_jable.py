@@ -8,10 +8,12 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
 class DownloaderJable(BaseDownloaderM3u8):
-    def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10):
+    def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
+                 progress=None):
         client = httpx.AsyncClient(
             headers={'user-agent': 'PostmanRuntime/7.29.0', "referer": "https://jable.tv"}, http2=False)
-        super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
+        super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
+                                              progress=progress)
 
     async def get_video(self, url: str, image=True, hierarchy=True):
         video_info = await api.get_video_info(self.client, url)

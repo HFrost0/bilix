@@ -14,7 +14,8 @@ from bilix.utils import req_retry, merge_files
 
 
 class BaseDownloaderM3u8(BaseDownloader):
-    def __init__(self, client: httpx.AsyncClient, videos_dir="videos", video_concurrency=3, part_concurrency=10):
+    def __init__(self, client: httpx.AsyncClient, videos_dir="videos", video_concurrency=3, part_concurrency=10,
+                 progress=None):
         """
         Base async m3u8 Downloader
 
@@ -22,8 +23,9 @@ class BaseDownloaderM3u8(BaseDownloader):
         :param videos_dir:
         :param video_concurrency:
         :param part_concurrency:
+        :param progress:
         """
-        super(BaseDownloaderM3u8, self).__init__(client, videos_dir)
+        super(BaseDownloaderM3u8, self).__init__(client, videos_dir, progress=progress)
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self.part_con = part_concurrency
         self.decrypt_cache = {}
@@ -115,7 +117,8 @@ class BaseDownloaderM3u8(BaseDownloader):
                             await self.progress.update(task_id, advance=len(chunk))
                 except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
                     if exception > 1:
-                        logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
+                        logger.warning(
+                            f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
                     await asyncio.sleep(.1)
                 except Exception as e:
                     logger.warning(f'STREAM {e.__class__.__name__} 未知异常')

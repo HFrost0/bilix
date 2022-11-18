@@ -8,9 +8,9 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
 class DownloaderCctv(BaseDownloaderM3u8):
-    def __init__(self, videos_dir='videos', video_concurrency=3, part_concurrency=10):
+    def __init__(self, videos_dir='videos', video_concurrency=3, part_concurrency=10, progress=None):
         client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-        super(DownloaderCctv, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
+        super(DownloaderCctv, self).__init__(client, videos_dir, video_concurrency, part_concurrency, progress=progress)
 
     async def get_series(self, url: str, quality=0, hierarchy=True):
         pid, vide, vida = await api.get_id(self.client, url)

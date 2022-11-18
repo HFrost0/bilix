@@ -2,24 +2,13 @@ from typing import Union
 import aiofiles
 import httpx
 import os
-from rich.progress import Progress, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn, TextColumn
 from bilix.utils import req_retry
 from bilix.log import logger
-from bilix.progress.cli_progress import CLIProgress
+from bilix.progress import get_progress
 
 
 class BaseDownloader:
-    progress = CLIProgress(
-        TextColumn("[progress.description]{task.description}"),
-        TextColumn("[progress.percentage]{task.percentage:>4.1f}%"),
-        BarColumn(),
-        DownloadColumn(),
-        TransferSpeedColumn(),
-        'ETA',
-        TimeRemainingColumn(), transient=True
-    )
-
-    def __init__(self, client: httpx.AsyncClient, videos_dir='videos'):
+    def __init__(self, client: httpx.AsyncClient, videos_dir='videos', progress=None):
         """
 
         :param client:
@@ -29,18 +18,17 @@ class BaseDownloader:
         self.videos_dir = videos_dir
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
-        self.progress.start()
+        if progress is None:
+            self.progress = get_progress()
 
     async def __aenter__(self):
         await self.client.__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        self.progress.stop()
         await self.client.__aexit__(exc_type, exc_val, exc_tb)
 
     async def aclose(self):
-        self.progress.stop()
         await self.client.aclose()
 
     def _make_hierarchy_dir(self, hierarchy: Union[bool, str], add_dir: str):

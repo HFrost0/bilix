@@ -12,15 +12,16 @@ from bilix.log import logger
 
 
 class BaseDownloaderPart(BaseDownloader):
-    def __init__(self, client: httpx.AsyncClient, videos_dir: str = 'videos', part_concurrency=10):
+    def __init__(self, client: httpx.AsyncClient, videos_dir: str = 'videos', part_concurrency=10, progress=None):
         """
         Base Async http Content-Range Downloader
 
         :param client:
         :param videos_dir:
         :param part_concurrency:
+        :param progress:
         """
-        super(BaseDownloaderPart, self).__init__(client, videos_dir)
+        super(BaseDownloaderPart, self).__init__(client, videos_dir, progress=progress)
         self.part_concurrency = part_concurrency
 
     async def _content_length(self, url_or_urls: Union[str, Sequence[str]]) -> int:
@@ -95,7 +96,8 @@ class BaseDownloaderPart(BaseDownloader):
                         await self.progress.update(task_id, advance=len(chunk))
         except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
             if exception > 1:
-                logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
+                logger.warning(
+                    f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
             await self._get_media_part(url_or_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except Exception as e:

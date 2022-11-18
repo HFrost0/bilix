@@ -9,9 +9,9 @@ from bilix.utils import legal_title, req_retry
 
 
 class DownloaderDouyin(BaseDownloaderPart):
-    def __init__(self, videos_dir='videos', part_concurrency=10):
+    def __init__(self, videos_dir='videos', part_concurrency=10, progress=None):
         client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-        super(DownloaderDouyin, self).__init__(client, videos_dir, part_concurrency)
+        super(DownloaderDouyin, self).__init__(client, videos_dir, part_concurrency, progress=progress)
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)

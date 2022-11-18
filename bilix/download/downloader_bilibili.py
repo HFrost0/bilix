@@ -69,18 +69,19 @@ def choose_quality(dash, support_formats, quality: Union[str, int], codec: str =
 
 
 class DownloaderBilibili(BaseDownloaderPart):
-    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10):
+    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10, progress=None):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
         :param sess_data: 有条件的用户填写大会员凭证，填写后可下载大会员资源
         :param video_concurrency: 限制最大同时下载的视频数量
         :param part_concurrency: 每个媒体的分段并发数
+        :param progress: 进度对象，不提供则使用rich命令行进度
         """
         cookies = {'SESSDATA': sess_data}
         headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
         client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=True)
-        super(DownloaderBilibili, self).__init__(client, videos_dir, part_concurrency)
+        super(DownloaderBilibili, self).__init__(client, videos_dir, part_concurrency, progress=progress)
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self._cate_meta = None
 

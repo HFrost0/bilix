@@ -8,6 +8,7 @@ from rich.table import Table
 from .__version__ import __version__
 from .log import logger
 from .assign import assign
+from .progress import get_progress, close_progress
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -36,7 +37,8 @@ def handle_debug(ctx: click.Context, param: typing.Union[click.Option, click.Par
 def print_help():
     console = rich.console.Console()
     console.print(f"\n[bold]bilix {__version__}", justify="center")
-    console.print("⚡️快如闪电的bilibili下载工具，基于Python现代Async特性，高速批量下载整部动漫，电视剧，up投稿等\n", justify="center")
+    console.print("⚡️快如闪电的bilibili下载工具，基于Python现代Async特性，高速批量下载整部动漫，电视剧，up投稿等\n",
+                  justify="center")
     console.print("使用方法： bilix [cyan]<method> <key> [OPTIONS][/cyan] ", justify="left")
     table = Table.grid(padding=1, pad_edge=False)
     table.add_column("Parameter", no_wrap=True, justify="left", style="bold")
@@ -301,19 +303,8 @@ def main(**kwargs):
         loop.run_until_complete(cor)
     except KeyboardInterrupt:
         logger.info('[cyan]提示：用户中断，重复执行命令可继续下载')
-    finally:  # similar to asyncio.run
-        tasks = [t for t in asyncio.all_tasks(loop)]
-        [t.cancel() for t in tasks]
-        try:
-            loop.run_until_complete(asyncio.gather(*tasks, executor.aclose(), return_exceptions=True))
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            # print('normal out')
-        except KeyboardInterrupt:
-            pass  # todo bug due to KeyboardInterrupt in python3.9 asyncio
-        finally:
-            # SingletonPPE().shutdown()
-            asyncio.set_event_loop(None)
-            loop.close()
+    finally:
+        close_progress()
 
 
 if __name__ == '__main__':

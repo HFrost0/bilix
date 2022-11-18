@@ -1,5 +1,4 @@
-import asyncio
-from typing import NewType, Optional, Any
+from typing import Optional, Any
 from functools import wraps
 
 from rich.progress import Progress, TaskID
@@ -34,10 +33,6 @@ class CLIProgress(Progress):
     ) -> None:
         return super().update(task_id, total=total, completed=completed, advance=advance, description=description,
                               visible=visible, refresh=refresh, **fields)
-
-
-def main():
-    pass
 
 
 if __name__ == '__main__':
