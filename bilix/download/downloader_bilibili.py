@@ -318,10 +318,16 @@ class DownloaderBilibili(BaseDownloaderPart):
         _, _, bvids = await api.get_up_info(self.client, url_or_mid, pn, ps, order, keyword)
         bvids = bvids[:num]
         func = self.get_series if series else self.get_video
+
         # noinspection PyArgumentList
-        await asyncio.gather(
-            *[func(f'https://www.bilibili.com/video/{bv}', quality=quality, codec=codec,
-                   image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy) for bv in bvids])
+        
+        for bv in bvids:
+            try:
+                await asyncio.gather(
+                    *[func(f'https://www.bilibili.com/video/{bv}', quality=quality, codec=codec,
+                        image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)])
+            except AttributeError as e:
+                logger.warning(f'{e} {bv}')
 
     async def get_series(self, url: str, quality: Union[str, int] = 0, image=False, subtitle=False,
                          dm=False, only_audio=False, p_range: Sequence[int] = None, codec: str = '',
