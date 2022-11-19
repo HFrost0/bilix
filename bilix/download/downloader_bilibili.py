@@ -348,7 +348,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         """
         try:
             video_info = await api.get_video_info(self.client, url)
-        except AttributeError as e:
+        except Exception as e:
             logger.warning(f'{e} {url}')
             return
         title = video_info.title
