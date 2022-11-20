@@ -293,12 +293,13 @@ class BasedQualityType(click.ParamType):
     callback=handle_debug,
 )
 def main(**kwargs):
+    loop = asyncio.new_event_loop()  # avoid deprecated warning in 3.11
+    asyncio.set_event_loop(loop)
     try:
         executor, cor = assign(**kwargs)
     except ValueError as e:
         logger.error(e)
         return
-    loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(cor)
     except KeyboardInterrupt:
