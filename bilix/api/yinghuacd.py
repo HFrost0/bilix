@@ -1,19 +1,14 @@
 import asyncio
-import json
-import os
-import random
 import re
 from dataclasses import dataclass
 from typing import Union, Sequence
 import httpx
 from bs4 import BeautifulSoup
 from bilix.log import logger
-from bilix.utils import legal_title, req_retry
+from bilix.utils import req_retry
 
 BASE_URL = "http://www.yinghuacd.com"
-_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL}
-
-m3u8_pattern = re.compile(r'http.*m3u8')
+_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0'}
 
 
 @dataclass
@@ -27,7 +22,7 @@ class VideoInfo:
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     # request
     res = await req_retry(client, url)
-    m3u8_url = m3u8_pattern.search(res.text)[0]
+    m3u8_url = re.search(r'http.*m3u8', res.text)[0]
     soup = BeautifulSoup(res.text, 'html.parser')
     h1 = soup.find('h1')
     title, sub_title = h1.a.text, h1.span.text[1:]
