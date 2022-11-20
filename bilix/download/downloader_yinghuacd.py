@@ -11,8 +11,7 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 class DownloaderYinghuacd(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10):
-        client = httpx.AsyncClient(
-            headers={'user-agent': 'PostmanRuntime/7.29.0', "Referer": "http://www.yinghuacd.com"}, http2=False)
+        client = httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'}, http2=False)
         super(DownloaderYinghuacd, self).__init__(client, videos_dir, video_concurrency, part_concurrency)
 
     async def get_series(self, url: str, p_range: Sequence[int] = None, hierarchy=True):
