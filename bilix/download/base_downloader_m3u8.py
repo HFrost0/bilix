@@ -117,6 +117,9 @@ class BaseDownloaderM3u8(BaseDownloader):
                     if exception > 1:
                         logger.warning(f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
                     await asyncio.sleep(.1)
+                except httpx.HTTPStatusError as e:
+                    logger.warning(f"STREAM {e}")
+                    await asyncio.sleep(.5)
                 except Exception as e:
                     logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
                     await asyncio.sleep(.5)
