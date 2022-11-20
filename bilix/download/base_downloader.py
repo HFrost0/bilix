@@ -20,6 +20,7 @@ class BaseDownloader:
             os.makedirs(videos_dir)
         if progress is None:
             self.progress = get_progress()
+            logger.debug("Default cli progress used")
 
     async def __aenter__(self):
         await self.client.__aenter__()

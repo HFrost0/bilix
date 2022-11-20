@@ -1,20 +1,11 @@
+from typing import Union, Coroutine, Tuple
+from bilix.handle import Handler
 from bilix.log import logger
+from bilix.download.base_downloader import BaseDownloader
+from bilix.info.base_informer import BaseInformer
 
 
-class Handler:
-    registered = {}
-
-    def __init__(self, name):
-        self.name = name
-
-    def __call__(self, func):
-        if self.name in self.registered:
-            raise KeyError(f"Handler {self.name} all ready exists")
-        self.registered[self.name] = func
-        return func
-
-
-def assign(**kwargs):
+def assign(**kwargs) -> Tuple[Union[BaseDownloader, BaseInformer], Coroutine]:
     bili_handler = Handler.registered.pop('bilibili')
     for name, handle in Handler.registered.items():
         if res := handle(**kwargs):
