@@ -8,7 +8,7 @@ from rich.table import Table
 from .__version__ import __version__
 from .log import logger
 from .assign import assign
-from .progress import get_progress, close_progress
+from .progress import CLIProgress
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -305,7 +305,7 @@ def main(**kwargs):
     except KeyboardInterrupt:
         logger.info('[cyan]提示：用户中断，重复执行命令可继续下载')
     finally:
-        close_progress()
+        CLIProgress.stop()  # stop rich progress to ensure cursor is repositioned
 
 
 if __name__ == '__main__':

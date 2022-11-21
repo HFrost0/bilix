@@ -1,11 +1,37 @@
 from typing import Optional, Any
-from functools import wraps
+from rich.progress import Progress, TaskID, TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, \
+    TimeRemainingColumn
 
-from rich.progress import Progress, TaskID
+from .base_progress import BaseProgress
 
 
-class CLIProgress(Progress):
-    @wraps(Progress.add_task)
+class CLIProgress(BaseProgress):
+    _progress = Progress(
+        TextColumn("[progress.description]{task.description}"),
+        TextColumn("[progress.percentage]{task.percentage:>4.1f}%"),
+        BarColumn(),
+        DownloadColumn(),
+        TransferSpeedColumn(),
+        'ETA',
+        TimeRemainingColumn(), transient=True
+    )
+
+    def __init__(self, holder=None):
+        super().__init__(holder=holder)
+        self._progress.start()  # ensure progress is start
+
+    @classmethod
+    def start(cls):
+        cls._progress.start()
+
+    @classmethod
+    def stop(cls):
+        cls._progress.stop()
+
+    @property
+    def tasks(self):
+        return self._progress.tasks
+
     async def add_task(
             self,
             description: str,
@@ -14,14 +40,13 @@ class CLIProgress(Progress):
             completed: int = 0,
             visible: bool = True,
             **fields: Any,
-    ) -> TaskID:
-        return super(CLIProgress, self).add_task(description=description, start=start, total=total, completed=completed,
-                                                 visible=visible, **fields)
+    ) -> int:
+        return self._progress.add_task(description=description, start=start, total=total, completed=completed,
+                                       visible=visible, **fields)
 
-    @wraps(Progress.update)
     async def update(
             self,
-            task_id: TaskID,
+            task_id: int,
             *,
             total: Optional[float] = None,
             completed: Optional[float] = None,
@@ -31,9 +56,5 @@ class CLIProgress(Progress):
             refresh: bool = False,
             **fields: Any,
     ) -> None:
-        return super().update(task_id, total=total, completed=completed, advance=advance, description=description,
-                              visible=visible, refresh=refresh, **fields)
-
-
-if __name__ == '__main__':
-    p = CLIProgress()
+        return self._progress.update(TaskID(task_id), total=total, completed=completed, advance=advance,
+                                     description=description, visible=visible, refresh=refresh, **fields)

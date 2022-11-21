@@ -4,23 +4,27 @@ import httpx
 import os
 from bilix.utils import req_retry
 from bilix.log import logger
-from bilix.progress import get_progress
+from bilix.progress import CLIProgress, BaseProgress
 
 
 class BaseDownloader:
-    def __init__(self, client: httpx.AsyncClient, videos_dir='videos', progress=None):
+    def __init__(self, client: httpx.AsyncClient, videos_dir='videos', progress: BaseProgress = None):
         """
 
-        :param client:
-        :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
+        :param client: client used for http request
+        :param videos_dir: download to which directory, default to ./videos, if not exists will be auto created
+        :param progress: progress obj
         """
         self.client = client
         self.videos_dir = videos_dir
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
         if progress is None:
-            self.progress = get_progress()
-            logger.debug("Default cli progress used")
+            # if no progress_cls provided by upper class, use cli progress by default
+            self.progress = CLIProgress(holder=self)
+        else:
+            self.progress = progress
+            progress.holder = self
 
     async def __aenter__(self):
         await self.client.__aenter__()
