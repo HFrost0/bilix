@@ -1,6 +1,10 @@
 """
 你可以同时初始化不同网站的下载器，并且利用他们方法返回的协程对象进行并发下载。
 各个下载器之间的并发控制是独立的，因此可以最大化利用自己的网络资源。
+
+You can initialize the downloaders of different websites at the same time, and use the coroutine objects returned by
+their methods to download concurrently. The concurrency control between each downloader is independent, so you can
+maximize the use of your network resources.
 """
 import asyncio
 from bilix import DownloaderBilibili, DownloaderDouyin, DownloaderCctv
