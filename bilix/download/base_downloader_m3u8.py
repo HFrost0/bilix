@@ -1,5 +1,6 @@
 import asyncio
 import re
+from typing import Union
 import aiofiles
 import httpx
 import os
