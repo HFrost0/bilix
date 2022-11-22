@@ -6,10 +6,10 @@ from bilix.download.base_downloader_part import BaseDownloaderPart
 
 
 class DownloaderHanime1(BaseDownloaderPart):
-    def __init__(self, videos_dir: str = "videos"):
+    def __init__(self, videos_dir: str = "videos", progress=None):
         client = httpx.AsyncClient(
             headers={'user-agent': 'PostmanRuntime/7.29.0', "referer": "https://hanime1.me/"}, http2=False)
-        super(DownloaderHanime1, self).__init__(client, videos_dir)
+        super(DownloaderHanime1, self).__init__(client, videos_dir, progress=progress)
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)
