@@ -1,4 +1,5 @@
 import asyncio
+from typing import Union
 import httpx
 import bilix.api.hanime1 as api
 from bilix.assign import Handler
@@ -6,10 +7,10 @@ from bilix.download.base_downloader_part import BaseDownloaderPart
 
 
 class DownloaderHanime1(BaseDownloaderPart):
-    def __init__(self, videos_dir: str = "videos", progress=None):
+    def __init__(self, videos_dir: str = "videos", speed_limit: Union[float, int] = None, progress=None):
         client = httpx.AsyncClient(
             headers={'user-agent': 'PostmanRuntime/7.29.0', "referer": "https://hanime1.me/"}, http2=False)
-        super(DownloaderHanime1, self).__init__(client, videos_dir, progress=progress)
+        super(DownloaderHanime1, self).__init__(client, videos_dir, speed_limit=speed_limit, progress=progress)
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)

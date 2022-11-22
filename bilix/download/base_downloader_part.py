@@ -12,16 +12,18 @@ from bilix.log import logger
 
 
 class BaseDownloaderPart(BaseDownloader):
-    def __init__(self, client: httpx.AsyncClient, videos_dir: str = 'videos', part_concurrency=10, progress=None):
+    def __init__(self, client: httpx.AsyncClient, videos_dir: str = 'videos', part_concurrency=10,
+                 speed_limit: Union[float, int] = None, progress=None):
         """
         Base Async http Content-Range Downloader
 
         :param client:
         :param videos_dir:
         :param part_concurrency:
+        :param speed_limit:
         :param progress:
         """
-        super(BaseDownloaderPart, self).__init__(client, videos_dir, progress=progress)
+        super(BaseDownloaderPart, self).__init__(client, videos_dir, speed_limit=speed_limit, progress=progress)
         self.part_concurrency = part_concurrency
 
     async def _content_length(self, url_or_urls: Union[str, Sequence[str]]) -> int:
@@ -74,8 +76,8 @@ class BaseDownloaderPart(BaseDownloader):
                               part_name, task_id, exception=0, hierarchy: str = ''):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if exception > 5:
-            logger.error(f'超过重试次数 {part_name}')
-            raise Exception('超过重试次数')
+            logger.error(f'STREAM 超过重试次数 {part_name}')
+            raise Exception(f'STREAM 超过重试次数 {part_name}')
         start, end = map(int, part_name.split('-')[-2:])
         file_path = f'{file_dir}/{part_name}'
         if os.path.exists(file_path):

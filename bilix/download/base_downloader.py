@@ -8,15 +8,18 @@ from bilix.progress import CLIProgress, BaseProgress
 
 
 class BaseDownloader:
-    def __init__(self, client: httpx.AsyncClient, videos_dir='videos', progress: BaseProgress = None):
+    def __init__(self, client: httpx.AsyncClient, videos_dir='videos', speed_limit: Union[float, int] = None,
+                 progress: BaseProgress = None):
         """
 
         :param client: client used for http request
         :param videos_dir: download to which directory, default to ./videos, if not exists will be auto created
+        :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit)
         :param progress: progress obj
         """
         self.client = client
         self.videos_dir = videos_dir
+        self.speed_limit = speed_limit
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
         if progress is None:

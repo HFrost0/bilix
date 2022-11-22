@@ -1,4 +1,5 @@
-from typing import Optional, Any
+import asyncio
+from typing import Optional, Any, Set
 from rich.progress import Progress, TaskID, TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, \
     TimeRemainingColumn
 
@@ -18,6 +19,7 @@ class CLIProgress(BaseProgress):
 
     def __init__(self, holder=None):
         super().__init__(holder=holder)
+        self.own_task_ids: Set[TaskID] = set()
         self._progress.start()  # ensure progress is start
 
     @classmethod
@@ -40,13 +42,24 @@ class CLIProgress(BaseProgress):
             completed: int = 0,
             visible: bool = True,
             **fields: Any,
-    ) -> int:
-        return self._progress.add_task(description=description, start=start, total=total, completed=completed,
-                                       visible=visible, **fields)
+    ) -> TaskID:
+        task_id = self._progress.add_task(description=description, start=start, total=total,
+                                          completed=completed, visible=visible, **fields)
+        self.own_task_ids.add(task_id)
+        return task_id
+
+    async def _check_speed(self):
+        if self.holder and self.holder.speed_limit:
+            speed_limit = self.holder.speed_limit
+            current_speed = sum(self._progress.tasks[task_id].speed for task_id in self.own_task_ids if
+                                self._progress.tasks[task_id].speed is not None
+                                and not self._progress.tasks[task_id].finished)
+            if current_speed > speed_limit:
+                await asyncio.sleep(.3 if (current_speed - speed_limit) / speed_limit > .05 else .1)
 
     async def update(
             self,
-            task_id: int,
+            task_id: TaskID,
             *,
             total: Optional[float] = None,
             completed: Optional[float] = None,
@@ -56,5 +69,7 @@ class CLIProgress(BaseProgress):
             refresh: bool = False,
             **fields: Any,
     ) -> None:
-        return self._progress.update(TaskID(task_id), total=total, completed=completed, advance=advance,
+        if advance:
+            await self._check_speed()
+        return self._progress.update(task_id, total=total, completed=completed, advance=advance,
                                      description=description, visible=visible, refresh=refresh, **fields)

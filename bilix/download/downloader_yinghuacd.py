@@ -1,6 +1,6 @@
 import asyncio
 import httpx
-from typing import Sequence
+from typing import Sequence, Union
 
 import bilix.api.yinghuacd as api
 from bilix.assign import Handler
@@ -11,10 +11,10 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 class DownloaderYinghuacd(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
-                 progress=None):
+                 speed_limit: Union[int, float] = None, progress=None):
         client = httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'}, http2=False)
         super(DownloaderYinghuacd, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
-                                                  progress=progress)
+                                                  speed_limit=speed_limit, progress=progress)
 
     async def get_series(self, url: str, p_range: Sequence[int] = None, hierarchy=True):
         video_info = await api.get_video_info(self.client, url)

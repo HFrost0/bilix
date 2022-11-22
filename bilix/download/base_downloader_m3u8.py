@@ -15,7 +15,7 @@ from bilix.utils import req_retry, merge_files
 
 class BaseDownloaderM3u8(BaseDownloader):
     def __init__(self, client: httpx.AsyncClient, videos_dir="videos", video_concurrency=3, part_concurrency=10,
-                 progress=None):
+                 speed_limit: Union[float, int] = None, progress=None):
         """
         Base async m3u8 Downloader
 
@@ -23,9 +23,10 @@ class BaseDownloaderM3u8(BaseDownloader):
         :param videos_dir:
         :param video_concurrency:
         :param part_concurrency:
+        :param speed_limit:
         :param progress:
         """
-        super(BaseDownloaderM3u8, self).__init__(client, videos_dir, progress=progress)
+        super(BaseDownloaderM3u8, self).__init__(client, videos_dir, speed_limit=speed_limit, progress=progress)
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self.part_con = part_concurrency
         self.decrypt_cache = {}
@@ -129,8 +130,8 @@ class BaseDownloaderM3u8(BaseDownloader):
                 else:
                     break
             else:
-                logger.error(f"超过重复次数 {ts_url}")
-                raise Exception("超过重复次数")
+                logger.error(f"STREAM 超过重复次数 {ts_url}")
+                raise Exception(f"STREAM 超过重复次数 {ts_url}")
         # in case .png
         if re.match(r'.*\.ts', ts_url) is None:
             content = content[content.find(b'\x47\x40'):]
