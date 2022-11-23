@@ -19,7 +19,7 @@ async def test_choose_quality():
     except ValueError:
         assert not os.getenv("BILI_TOKEN")
     # normal
-    choose_quality(data.dash, data.support_formats, quality="720P", codec="hev")
+    choose_quality(data.dash, data.support_formats, quality="360P", codec="hev")
     # hi-res
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV16K411S7sk")
     try:
