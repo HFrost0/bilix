@@ -37,13 +37,14 @@ class BaseDownloaderPart(BaseDownloader):
         return total
 
     async def get_media(self, url_or_urls: Union[str, Sequence[str]],
-                        media_name, task_id=None, hierarchy: str = '') -> str:
+                        media_name, task_id=None, hierarchy: str = '', retry: int = 5) -> str:
         """
 
         :param url_or_urls: media url or urls with backups
         :param media_name:
         :param task_id: if not provided, a new progress task will be created
         :param hierarchy:
+        :param retry: retry times
         :return: downloaded file path
         """
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
@@ -64,7 +65,7 @@ class BaseDownloaderPart(BaseDownloader):
             end = (i + 1) * part_length - 1 if i < self.part_concurrency - 1 else total - 1
             part_name = f'{media_name}-{start}-{end}'
             part_names.append(part_name)
-            cors.append(self._get_media_part(url_or_urls, part_name, task_id, hierarchy=hierarchy))
+            cors.append(self._get_media_part(url_or_urls, part_name, task_id, hierarchy=hierarchy, retry=retry))
         file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_name=file_path)
         if self.progress.tasks[task_id].finished:
@@ -73,9 +74,9 @@ class BaseDownloaderPart(BaseDownloader):
         return file_path
 
     async def _get_media_part(self, url_or_urls: Union[str, Sequence[str]],
-                              part_name, task_id, exception=0, hierarchy: str = ''):
+                              part_name, task_id, exception=0, hierarchy: str = '', retry: int = 5):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if exception > 5:
+        if exception > retry:
             logger.error(f'STREAM 超过重试次数 {part_name}')
             raise Exception(f'STREAM 超过重试次数 {part_name}')
         start, end = map(int, part_name.split('-')[-2:])
@@ -97,7 +98,7 @@ class BaseDownloaderPart(BaseDownloader):
                         await f.write(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
         except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
-            if exception > 1:
+            if exception > retry - 2:
                 logger.warning(
                     f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
             await asyncio.sleep(.1 * exception)
@@ -107,7 +108,8 @@ class BaseDownloaderPart(BaseDownloader):
             await asyncio.sleep(.5)
             await self._get_media_part(url_or_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         except Exception as e:
-            logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
+            if exception > 1:
+                logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
             await asyncio.sleep(.5 * exception)
             await self._get_media_part(url_or_urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
         return file_path
@@ -119,8 +121,10 @@ def handle(**kwargs):
     if key.endswith('.mp4'):
         videos_dir = kwargs['videos_dir']
         part_concurrency = kwargs['part_concurrency']
+        speed_limit = kwargs['speed_limit']
         method = kwargs['method']
-        d = BaseDownloaderPart(httpx.AsyncClient(http2=True), videos_dir=videos_dir, part_concurrency=part_concurrency)
+        d = BaseDownloaderPart(httpx.AsyncClient(http2=True), videos_dir=videos_dir, part_concurrency=part_concurrency,
+                               speed_limit=speed_limit)
         if method == 'get_video' or method == 'v':
             cor = d.get_media(key, "unnamed.mp4")
             return d, cor
