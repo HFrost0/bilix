@@ -147,6 +147,10 @@ def print_help():
         "--codec", '[dark_cyan]str',
         '视频及音频编码（可使用info查看后填写，使用:分隔），可使用完整名称（例如avc1.640032，fLaC）或部分名称（例如avc，hev）',
     )
+    table.add_row(
+        "-sl --speed-limit", '[dark_cyan]str',
+        '最大下载速度，默认无限制。例如：-sl 1.5MB (experimental)',
+    )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
     table.add_row("--debug", '', "显示debug信息")
@@ -279,7 +283,7 @@ class BasedSpeedLimit(click.ParamType):
     default=''
 )
 @click.option(
-    '--speed_limit',
+    '--speed-limit',
     '-sl',
     'speed_limit',
     type=BasedSpeedLimit(),
