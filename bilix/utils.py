@@ -21,7 +21,7 @@ def cors_slice(cors: Sequence[Coroutine], p_range: Sequence[int]):
 async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[str]], method='GET',
                     follow_redirects=False, repeat_time=3, **kwargs) -> httpx.Response:
     """Client request with multiple backup urls and retry"""
-    pre_exc = Exception("超过重复次数")  # predefine to avoid warning
+    pre_exc = Exception(f"{method} 超过重复次数")  # predefine to avoid warning
     for _ in range(repeat_time):
         url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
         try:
@@ -41,7 +41,7 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
             await asyncio.sleep(0.5)
         else:
             return res
-    logger.error(f"超过重复次数 {url_or_urls}")
+    logger.error(f"{method} 超过重复次数 {url_or_urls}")
     raise pre_exc
 
 
@@ -80,6 +80,20 @@ def _truncate(s: str, target=150):
     return s
 
 
+def parse_bilibili_url(url: str):
+    if re.match(r'https://space\.bilibili\.com/\d+/favlist\?fid=\d+', url):
+        return 'fav'
+    elif re.match(r'https://space\.bilibili\.com/\d+/channel/seriesdetail\?sid=\d+', url):
+        return 'list'
+    elif re.match(r'https://space\.bilibili\.com/\d+/channel/collectiondetail\?sid=\d+', url):
+        return 'col'
+    elif re.match(r'https://space\.bilibili\.com/\d+', url):  # up space url
+        return 'up'
+    elif re.search(r'www\.bilibili\.com', url):
+        return 'video'
+    raise ValueError(f'{url} no match for bilibili')
+
+
 def convert_size(total_bytes: int) -> str:
     unit, suffix = pick_unit_and_suffix(
         total_bytes, ["bytes", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"], 1000
@@ -98,15 +112,13 @@ def pick_unit_and_suffix(size: int, suffixes: List[str], base: int) -> Tuple[int
     return unit, suffix
 
 
-def parse_bilibili_url(url: str):
-    if re.match(r'https://space\.bilibili\.com/\d+/favlist\?fid=\d+', url):
-        return 'fav'
-    elif re.match(r'https://space\.bilibili\.com/\d+/channel/seriesdetail\?sid=\d+', url):
-        return 'list'
-    elif re.match(r'https://space\.bilibili\.com/\d+/channel/collectiondetail\?sid=\d+', url):
-        return 'col'
-    elif re.match(r'https://space\.bilibili\.com/\d+', url):  # up space url
-        return 'up'
-    elif re.search(r'www\.bilibili\.com', url):
-        return 'video'
-    raise ValueError(f'{url} no match for bilibili')
+def parse_bytes_str(s: str) -> float:
+    """"Parse a string byte quantity into an integer"""
+    units_map = {unit: i for i, unit in enumerate(['', *'KMGTPEZY'])}
+    units_re = '|'.join(units_map.keys())
+    m = re.fullmatch(rf'(?P<num>\d+(?:\.\d+)?)\s*(?P<unit>{units_re})B?', s)
+    if not m:
+        raise ValueError(f"Invalid bytes str {s} to parse to number")
+    num = float(m.group('num'))
+    mult = 1000 ** units_map[m.group('unit')]
+    return num * mult

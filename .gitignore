@@ -1,5 +1,6 @@
 .idea
 .vscode
+.fleet
 videos
 *.pyc
 .pytest_cache

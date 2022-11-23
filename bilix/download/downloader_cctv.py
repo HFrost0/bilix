@@ -42,10 +42,12 @@ def handle(**kwargs):
     if 'cctv' in key:
         video_con = kwargs['video_concurrency']
         part_con = kwargs['part_concurrency']
+        speed_limit = kwargs['speed_limit']
         videos_dir = kwargs['videos_dir']
         quality = kwargs['quality']
         method = kwargs['method']
-        d = DownloaderCctv(videos_dir=videos_dir, video_concurrency=video_con, part_concurrency=part_con)
+        d = DownloaderCctv(videos_dir=videos_dir, video_concurrency=video_con, part_concurrency=part_con,
+                           speed_limit=speed_limit)
         if method == 's' or method == 'get_series':
             cor = d.get_series(key, quality=quality)
         elif method == 'v' or method == 'get_video':

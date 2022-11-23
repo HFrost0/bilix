@@ -26,8 +26,9 @@ def handle(**kwargs):
     key = kwargs['key']
     videos_dir = kwargs['videos_dir']
     image = kwargs['image']
+    speed_limit = kwargs['speed_limit']
     if 'hanime1' in key:
-        d = DownloaderHanime1(videos_dir=videos_dir)
+        d = DownloaderHanime1(videos_dir=videos_dir, speed_limit=speed_limit)
         if method == 'get_video' or method == 'v':
             cor = d.get_video(key, image=image)
             return d, cor

@@ -9,6 +9,7 @@ from .__version__ import __version__
 from .log import logger
 from .assign import assign
 from .progress import CLIProgress
+from .utils import parse_bytes_str
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:
@@ -166,6 +167,14 @@ class BasedQualityType(click.ParamType):
             return value  # relative choice like 0, 1, 2, 999...
 
 
+class BasedSpeedLimit(click.ParamType):
+    name = "speed_limit"
+
+    def convert(self, value, param, ctx):
+        if value is not None:
+            return parse_bytes_str(value)
+
+
 @click.command(add_help_option=False)
 @click.argument("method", type=str)
 @click.argument("key", type=str)
@@ -270,6 +279,13 @@ class BasedQualityType(click.ParamType):
     default=''
 )
 @click.option(
+    '--speed_limit',
+    '-sl',
+    'speed_limit',
+    type=BasedSpeedLimit(),
+    default=None,
+)
+@click.option(
     '-h',
     "--help",
     is_flag=True,
@@ -293,6 +309,7 @@ class BasedQualityType(click.ParamType):
     callback=handle_debug,
 )
 def main(**kwargs):
+    logger.debug(f'CLI KEY METHOD and OPTIONS: {kwargs}')
     loop = asyncio.new_event_loop()  # avoid deprecated warning in 3.11
     asyncio.set_event_loop(loop)
     try:

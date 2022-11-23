@@ -53,11 +53,12 @@ def handle(**kwargs):
     videos_dir = kwargs['videos_dir']
     video_concurrency = kwargs['video_concurrency']
     part_concurrency = kwargs['part_concurrency']
+    speed_limit = kwargs['speed_limit']
     hierarchy = kwargs['hierarchy']
     p_range = kwargs['p_range']
     if 'yhdmp' in key:
         d = DownloaderYhdmp(videos_dir=videos_dir, video_concurrency=video_concurrency,
-                            part_concurrency=part_concurrency)
+                            part_concurrency=part_concurrency, speed_limit=speed_limit)
         if method == 'get_series' or method == 's':
             cor = d.get_series(key, p_range=p_range, hierarchy=hierarchy)
             return d, cor

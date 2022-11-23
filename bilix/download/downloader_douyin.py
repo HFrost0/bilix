@@ -32,10 +32,11 @@ def handle(**kwargs):
     key = kwargs['key']
     if 'douyin' in key:
         part_con = kwargs['part_concurrency']
+        speed_limit = kwargs['speed_limit']
         videos_dir = kwargs['videos_dir']
         image = kwargs['image']
         method = kwargs['method']
-        d = DownloaderDouyin(videos_dir=videos_dir, part_concurrency=part_con)
+        d = DownloaderDouyin(videos_dir=videos_dir, part_concurrency=part_con, speed_limit=speed_limit)
         if method == 'v' or method == 'get_video':
             cor = d.get_video(key, image)
             return d, cor

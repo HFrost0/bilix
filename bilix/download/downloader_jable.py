@@ -34,11 +34,12 @@ def handle(**kwargs):
     videos_dir = kwargs['videos_dir']
     video_concurrency = kwargs['video_concurrency']
     part_concurrency = kwargs['part_concurrency']
+    speed_limit = kwargs['speed_limit']
     hierarchy = kwargs['hierarchy']
     image = kwargs['image']
     if 'jable' in key or re.match(r"[A-Za-z]+-\d+", key):
         d = DownloaderJable(videos_dir=videos_dir, video_concurrency=video_concurrency,
-                            part_concurrency=part_concurrency)
+                            part_concurrency=part_concurrency, speed_limit=speed_limit)
         if method == 'get_video' or method == 'v':
             cor = d.get_video(key, image=image, hierarchy=hierarchy)
             return d, cor

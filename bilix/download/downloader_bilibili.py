@@ -1,5 +1,5 @@
 import asyncio
-from typing import Union, Sequence, Tuple
+from typing import Union, Sequence, Tuple, Optional
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
@@ -534,10 +534,12 @@ def handle(
         only_audio: bool,
         p_range,
         codec: str,
+        speed_limit: Optional[str]
 ):
     d = DownloaderBilibili(videos_dir=videos_dir,
                            video_concurrency=video_concurrency,
                            part_concurrency=part_concurrency,
+                           speed_limit=speed_limit,
                            sess_data=cookie)
     if method == 'get_series' or method == 's':
         cor = d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
