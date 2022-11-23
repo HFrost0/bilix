@@ -92,4 +92,8 @@ pytest tests/api
 5. 使用bilix命令测试一下吧
 6. 对于api模块中的接口写好相应的测试
 
-另外暂不接受需要js逆向的站点
+ps:暂不接受需要js逆向的站点
+
+当前已经有其他开发者为bilix对其他站点的适配做出了贡献🎉，
+或许被接受的[New site PR](https://github.com/HFrost0/bilix/pulls?q=is%3Apr+is%3Aclosed+label%3A%22New+site%22)也能为你提供帮助
+

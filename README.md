@@ -38,16 +38,12 @@
 ## 特性 Features
 
 高性能，高并发，Asynchronous everywhere，得益于Python对于协程的支持，以及现代 Async HTTP
-框架 [httpx](https://www.python-httpx.org/)
-，和 [anyio](https://anyio.readthedocs.io/en/stable/) ：
+框架 [httpx](https://www.python-httpx.org/)：
 
-* 媒体文件（音频/视频）分段异步下载，以及备选服务器的同时利用
-* 视频的音画异步下载与合成
-* 视频之间乃至任务之间的异步下载
-* 断点续传
-* 用户可控的并发量设置
-* 与高并发配合的很好的进度条
-* HTTP/2协议支持
+* 完整的高并发异步下载支持
+* 可控的并发量和速度设置
+* 友好的CLI及进度显示
+* 可扩展的Python模块适应更多下载场景
 
 ## 依赖环境 Environment
 
@@ -69,29 +65,20 @@ bilix提供了简单的命令行使用方式，打开终端开始下载吧～
 
 ### 批量下载
 
-批量下载整部动漫，电视剧，电影，up投稿.....只需要把命令中的`url`替换成你要下载的系列中任意一个视频的网页链接。\
+批量下载整部动漫，电视剧，纪录片，电影，up投稿.....只需要把命令中的`url`替换成你要下载的系列中任意一个视频的网页链接。\
 到 bilibili 上找一个来试试吧～，比如这个李宏毅老师的机器学习视频：[链接](https://www.bilibili.com/video/BV1JE411g7XF)
 
 ```shell
 bilix get_series 'url'
 ```
 
+`get_series`很强大，会自动识别系列所有视频并下载，当然，如果该系列只有一个视频（比如单p投稿）也是可以正常下载的。
+
 `bilix`会下载文件至命令行当前目录的`videos`文件夹中，默认自动创建。
 
-💡提示：在zsh终端中可能要用`''`将url包住，其他终端暂未测试。
-
-* 目前支持的类型
-    * 投稿视频
-    * 番剧
-    * 电视剧
-    * 纪录片
-    * 电影
-
-`get_series`很强大，会自动识别系列所有视频并下载，如果该系列只有一个视频（比如单p投稿）也是可以正常下载的。
+💡在终端中要用`''`将包含参数的url包住，而在windows的命令提示符不支持`''`，可用powershell或windows terminal代替。
 
 💡什么是一个系列：比如一个多p投稿的所有p，一部动漫的所有集。
-
-另外`get_series`支持集数选择参数`-p`，例如通过`-p 1 3`即可指定下载P1至P3的视频
 
 ### 单个下载
 
@@ -128,7 +115,7 @@ bilix get_up 'https://space.bilibili.com/672328094' --num 100
 bilix get_cate 宅舞 --keyword 超级敏感 --order click --num 20 --days 30
 ```
 
-`get_cate`支持大部分分区，可以使用排序，关键词搜索等，详细请参考`bilix -h`或代码注释
+`get_cate`支持b站的每个子分区，可以使用排序，关键词搜索等，详细请参考`bilix -h`或代码注释
 
 ### 下载收藏夹视频
 
@@ -167,7 +154,7 @@ bilix get_series 'url' --subtitle --dm --image
 
 ## 进阶使用 Advance Guide
 
-请使用`bilix -h`查看更多参数提示，包括方法名简写，视频画面质量选择，并发量控制，下载目录等。
+请使用`bilix -h`查看更多参数提示，包括方法名简写，视频画面质量选择，并发量控制，下载速度限制，下载目录等。
 
 ### 方法名简写
 
@@ -181,9 +168,9 @@ bilix v 'url'
 
 ### 你是大会员？🥸
 
-请在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频。
+请在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频，也就是说，你先得是大会员才能下哦～
 
-另外如果你总是需要附加--cookie参数，可以使用`alias`命令，例如`alias bilix=/.../python -m bilix --cookie xxxxxxxx`
+如果你总是需要附加--cookie参数，可以使用`alias`命令，例如`alias bilix=/.../python -m bilix --cookie xxxxxxxx`
 
 ### 画质，音质和编码选择
 
@@ -200,8 +187,7 @@ bilix v 'url'
   没问题，bilix同时也支持通过`-q 4K` `-q '1080P 高码率'`等字符串的形式来直接指定画质，字符串为b站显示的画质名称的子串即可。
 
 在更加专业用户的需求中，可能需要指定特定的视频编码进行下载，而b站支持的编码在网页或app中是不可见的，bilix为此设计了方法`info`
-，
-通过它你可以完全了解该视频的所有信息：
+， 通过它你可以完全了解该视频的所有信息：
 
 ```shell
 bilix info 'https://www.bilibili.com/video/BV1kG411t72J' --cookie 'xxxxx' 
@@ -280,6 +266,8 @@ if __name__ == '__main__':
 控制了同时下载的视频数量，而`part_concurrency`
 则控制了每个媒体文件（音频/画面）的分段并发数，如果你不太明白可以在代码和注释中找到他们的详细作用，或者就让他们保持默认吧。
 
+更多案例请参考：[Examples](https://github.com/HFrost0/bilix/tree/master/examples)
+
 ### 关于断点重连
 
 用户可以通过Ctrl+C中断任务，对于未完成的文件，重新执行命令会在之前的进度基础上下载，已完成的文件会进行跳过。
@@ -296,16 +284,9 @@ if __name__ == '__main__':
 
 ## 未来工作
 
-### 功能
-
 - [x] 支持杜比全景声以及Hi-Res无损
 - [ ] 支持切片下载
 
-### 工程
-
-- [ ] 每日测试（GitHub Action）
-
 ### 已知的bug 🤡
 
-* 当两个视频名字完全一样时，任务冲突但不会报错，可能导致视频缺胳膊少腿
-* 不支持少数没有音画分开下载方式（dash）的视频
+* 当两个视频名字完全一样时，任务冲突但不会报错
