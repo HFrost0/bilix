@@ -1,5 +1,5 @@
 import asyncio
-from typing import Union, Sequence
+from typing import Union, Sequence, Iterable
 import aiofiles
 import httpx
 import random
@@ -27,13 +27,10 @@ class BaseDownloaderPart(BaseDownloader):
         self.part_concurrency = part_concurrency
 
     async def _content_length(self, url_or_urls: Union[str, Sequence[str]]) -> int:
-        try:
-            res = await req_retry(self.client, url_or_urls, method='HEAD')
-            total = int(res.headers['Content-Length'])
-        except httpx.HTTPStatusError:
-            # deal with HEAD 404 bug https://github.com/HFrost0/bilix/issues/16
-            res = await req_retry(self.client, url_or_urls, method='GET', headers={'Range': 'bytes=0-1'})
-            total = int(res.headers['Content-Range'].split('/')[-1])
+        # deal with HEAD 404 bug https://github.com/HFrost0/bilix/issues/16
+        # and redirect like Douyin, TikTok
+        res = await req_retry(self.client, url_or_urls, follow_redirects=True, headers={'Range': 'bytes=0-1'})
+        total = int(res.headers['Content-Range'].split('/')[-1])
         return total
 
     async def get_media(self, url_or_urls: Union[str, Sequence[str]],
@@ -88,9 +85,9 @@ class BaseDownloaderPart(BaseDownloader):
                 await self.progress.update(task_id, advance=downloaded)
         if start > end:
             return file_path  # skip already finished
+        url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
         try:
-            url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
-            async with self.client.stream("GET", url,
+            async with self.client.stream("GET", url, follow_redirects=True,
                                           headers={'Range': f'bytes={start}-{end}'}) as r:
                 r.raise_for_status()
                 async with aiofiles.open(file_path, 'ab') as f:
