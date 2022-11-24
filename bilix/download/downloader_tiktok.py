@@ -1,13 +1,12 @@
 import asyncio
 from typing import Union
-
 import httpx
 
 import bilix.api.tiktok as api
 from bilix.api.tiktok import _dft_headers
 from bilix.assign import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
-from bilix.utils import legal_title, req_retry
+from bilix.utils import legal_title
 
 
 class DownloaderTikTok(BaseDownloaderPart):
@@ -19,9 +18,8 @@ class DownloaderTikTok(BaseDownloaderPart):
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)
         title = legal_title(video_info.author_name, video_info.title)
-        # redirect to real video location
-        res = await req_retry(self.client, video_info.nwm_urls[0], follow_redirects=True)
-        cors = [self.get_media(str(res.url), media_name=title + ".mp4")]
+        # since TikTok backup not fast enough some time, use the first one
+        cors = [self.get_media(video_info.nwm_urls[0], media_name=title + ".mp4")]
         if image:
             cors.append(self._get_static(video_info.cover, title))
         await asyncio.gather(*cors)

@@ -12,7 +12,8 @@ import httpx
 from dataclasses import dataclass
 from bilix.utils import req_retry, legal_title
 
-_dft_headers = {'user-agent': 'com.ss.android.ugc.trill/2613 (Linux; U; Android 10; en_US; Pixel 4; Build/QQ3A.200805.001; Cronet/58.0.2991.0)'}
+_dft_headers = {'user-agent': 'com.ss.android.ugc.trill/2613 (Linux; U; Android 10; en_US; Pixel 4;'
+                              ' Build/QQ3A.200805.001; Cronet/58.0.2991.0)'}
 
 
 @dataclass
@@ -34,7 +35,8 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
         key = key.groups()[0]
     else:
         key = re.search(r"/v/(\d+)", url).groups()[0]
-    res = await req_retry(client, f'https://api-h2.tiktokv.com/aweme/v1/feed/?aweme_id={key}&version_code=2613&aid=1180')
+    res = await req_retry(
+        client, f'https://api-h2.tiktokv.com/aweme/v1/feed/?aweme_id={key}&version_code=2613&aid=1180')
     data = json.loads(res.text)
     data = data['aweme_list'][0]
     # 视频标题 (如果为空则使用分享标题)
@@ -42,9 +44,9 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     # 视频作者昵称
     author_name = data['author']['nickname']
     # 有水印视频链接
-    wm_urls = data['video']['download_addr']['url_list'][0]
+    wm_urls = data['video']['download_addr']['url_list']
     # 无水印视频链接
-    nwm_urls = data['video']['bit_rate'][0]['play_addr']['url_list'][0]
+    nwm_urls = data['video']['bit_rate'][0]['play_addr']['url_list']
     # 视频封面
     cover = data['video']['cover']['url_list'][0]
     # 视频动态封面
