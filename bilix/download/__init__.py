@@ -5,6 +5,7 @@ from .base_downloader_part import BaseDownloaderPart
 from .downloader_bilibili import DownloaderBilibili
 from .downloader_jable import DownloaderJable
 from .downloader_douyin import DownloaderDouyin
+from .downloader_tiktok import DownloaderTikTok
 from .downloader_yinghuacd import DownloaderYinghuacd
 from .downloader_cctv import DownloaderCctv
 from .downloader_hanime1 import DownloaderHanime1
