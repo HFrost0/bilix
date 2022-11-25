@@ -32,13 +32,14 @@ class BaseDownloaderM3u8(BaseDownloader):
         self.part_con = part_concurrency
         self.decrypt_cache = {}
 
-    async def _decrypt(self, key: m3u8.Key, content: bytes):
+    async def _decrypt(self, seg: m3u8.Segment, content: bytes):
         async def get_key():
             key_bytes = (await req_retry(self.client, uri)).content
-            iv = bytes.fromhex(key.iv.replace('0x', ''))
+            iv = bytes.fromhex(seg.key.iv.replace('0x', '')) if seg.key.iv is not None else \
+                seg.custom_parser_values['iv']
             return AES.new(key_bytes, AES.MODE_CBC, iv)
 
-        uri = key.absolute_uri
+        uri = seg.key.absolute_uri
         if uri not in self.decrypt_cache:
             self.decrypt_cache[uri] = asyncio.ensure_future(get_key())
             self.decrypt_cache[uri] = await self.decrypt_cache[uri]
@@ -66,7 +67,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         res = await req_retry(self.client, m3u8_url)
         m3u8_info = m3u8.loads(res.text)
         if not m3u8_info.base_uri:
-            base_uri = re.search(r"(.*)/[^/]+m3u8", m3u8_url).groups()[0]
+            base_uri = re.search(r"(.*)/[^/]*m3u8", m3u8_url).groups()[0]
             m3u8_info.base_uri = base_uri
         cors = []
         p_sema = asyncio.Semaphore(self.part_con)
@@ -75,6 +76,9 @@ class BaseDownloaderM3u8(BaseDownloader):
         total_time = 0
         for idx, seg in enumerate(m3u8_info.segments):
             total_time += seg.duration
+            # https://stackoverflow.com/questions/50628791/decrypt-m3u8-playlist-encrypted-with-aes-128-without-iv
+            if seg.key and seg.key.iv is None:
+                seg.custom_parser_values['iv'] = idx.to_bytes(16, 'big')
             cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy, retry=retry))
         await self.progress.update(task_id, total=0, total_time=total_time)
         file_list = await asyncio.gather(*cors)
@@ -123,25 +127,29 @@ class BaseDownloaderM3u8(BaseDownloader):
                     if exception > retry - 2:
                         logger.warning(
                             f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
-                    await asyncio.sleep(.1)
+                    await asyncio.sleep(.1 * exception)
                 except httpx.HTTPStatusError as e:
-                    logger.warning(f"STREAM {e}")
-                    await asyncio.sleep(.5)
+                    if e.response.status_code == 403:
+                        logger.warning(f"STREAM slowing down since 403 forbidden {ts_url}")
+                        await asyncio.sleep(10. * (exception + 1))
+                    else:
+                        logger.warning(f"STREAM {e}")
+                        await asyncio.sleep(.5 * exception)
                 except Exception as e:
                     if exception > 1:
                         logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
-                    await asyncio.sleep(.5)
+                    await asyncio.sleep(.5 * exception)
                 else:
                     break
             else:
                 logger.error(f"STREAM 超过重复次数 {ts_url}")
                 raise Exception(f"STREAM 超过重复次数 {ts_url}")
         # in case .png
-        if re.match(r'.*\.ts', ts_url) is None:
+        if re.fullmatch(r'.*\.png', ts_url):
             content = content[content.find(b'\x47\x40'):]
         # in case encrypted
         if seg.key:
-            content = await self._decrypt(seg.key, content)
+            content = await self._decrypt(seg, content)
         async with aiofiles.open(file_path, 'wb') as f:
             await f.write(content)
         return file_path
@@ -150,7 +158,7 @@ class BaseDownloaderM3u8(BaseDownloader):
 @Handler(name="m3u8")
 def handle(**kwargs):
     key = kwargs['key']
-    if '.m3u8' in key:
+    if re.fullmatch(r"http.+m3u8(\?.*)?", key):
         videos_dir = kwargs['videos_dir']
         part_concurrency = kwargs['part_concurrency']
         speed_limit = kwargs['speed_limit']
