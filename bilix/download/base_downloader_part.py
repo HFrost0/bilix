@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Union, Sequence
 import aiofiles
 import httpx
@@ -115,7 +116,7 @@ class BaseDownloaderPart(BaseDownloader):
 @Handler(name="Part")
 def handle(**kwargs):
     key = kwargs['key']
-    if key.endswith('.mp4'):
+    if m := re.fullmatch(r'http.+(?P<suffix>mp4|m4s|m4a)(\?.*)?', key):
         videos_dir = kwargs['videos_dir']
         part_concurrency = kwargs['part_concurrency']
         speed_limit = kwargs['speed_limit']
@@ -123,6 +124,6 @@ def handle(**kwargs):
         d = BaseDownloaderPart(httpx.AsyncClient(http2=True), videos_dir=videos_dir, part_concurrency=part_concurrency,
                                speed_limit=speed_limit)
         if method == 'get_video' or method == 'v':
-            cor = d.get_media(key, "unnamed.mp4")
+            cor = d.get_media(key, f"unnamed.{m.group('suffix')}")
             return d, cor
         raise HandleMethodError(d, method)
