@@ -7,7 +7,7 @@ import os
 from itertools import groupby
 from anyio import run_process
 import bilix.api.bilibili as api
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.subtitle import json2srt
 from bilix.dm import dm2ass_factory
@@ -564,5 +564,5 @@ def handle(
                                     image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
                                     hierarchy=hierarchy)
     else:
-        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+        raise HandleMethodError(executor=d, method=method)
     return d, cor

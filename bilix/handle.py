@@ -1,3 +1,4 @@
+import logging
 import threading
 
 
@@ -17,3 +18,14 @@ class Handler:
 
     def __repr__(self):
         return f"Handler <name: {self.name} func:{self.registered['name']}>"
+
+
+class HandleMethodError(Exception):
+    """the error that handler can not recognize the method"""
+
+    def __init__(self, executor, method):
+        self.executor = executor
+        self.method = method
+
+    def __str__(self):
+        return f"For {self.executor.__class__.__name__} method '{self.method}' is not available"

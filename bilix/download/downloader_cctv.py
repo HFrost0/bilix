@@ -4,7 +4,7 @@ import httpx
 
 import bilix.api.cctv as api
 from bilix.api.cctv import _dft_headers
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
@@ -53,7 +53,7 @@ def handle(**kwargs):
         elif method == 'v' or method == 'get_video':
             cor = d.get_video(key, quality=quality)
         else:
-            raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+            raise HandleMethodError(d, method)
         return d, cor
 
 

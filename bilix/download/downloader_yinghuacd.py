@@ -3,7 +3,7 @@ import httpx
 from typing import Sequence, Union
 
 import bilix.api.yinghuacd as api
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.log import logger
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
@@ -58,7 +58,7 @@ def handle(**kwargs):
         elif method == 'get_video' or method == 'v':
             cor = d.get_video(key)
             return d, cor
-        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+        raise HandleMethodError(d, method)
 
 
 if __name__ == '__main__':

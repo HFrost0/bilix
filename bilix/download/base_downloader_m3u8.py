@@ -8,7 +8,7 @@ import m3u8
 from Crypto.Cipher import AES
 from m3u8 import Segment
 
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader import BaseDownloader
 from bilix.log import logger
 from bilix.utils import req_retry, merge_files
@@ -160,7 +160,7 @@ def handle(**kwargs):
         if method == 'get_video' or method == 'v':
             cor = d.get_m3u8_video(key, "unnamed")
             return d, cor
-        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+        raise HandleMethodError(d, method)
 
 
 if __name__ == '__main__':

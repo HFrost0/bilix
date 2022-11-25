@@ -2,7 +2,7 @@ import asyncio
 from typing import Union
 import httpx
 import bilix.api.hanime1 as api
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_part import BaseDownloaderPart
 
 
@@ -32,4 +32,4 @@ def handle(**kwargs):
         if method == 'get_video' or method == 'v':
             cor = d.get_video(key, image=image)
             return d, cor
-        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+        raise HandleMethodError(d, method)

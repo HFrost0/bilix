@@ -8,6 +8,7 @@ from rich.table import Table
 from .__version__ import __version__
 from .log import logger
 from .assign import assign
+from .handle import HandleMethodError
 from .progress import CLIProgress
 from .utils import parse_bytes_str
 
@@ -313,16 +314,14 @@ class BasedSpeedLimit(click.ParamType):
     callback=handle_debug,
 )
 def main(**kwargs):
-    logger.debug(f'CLI KEY METHOD and OPTIONS: {kwargs}')
     loop = asyncio.new_event_loop()  # avoid deprecated warning in 3.11
     asyncio.set_event_loop(loop)
+    logger.debug(f'CLI KEY METHOD and OPTIONS: {kwargs}')
     try:
         executor, cor = assign(**kwargs)
-    except ValueError as e:
-        logger.error(e)
-        return
-    try:
         loop.run_until_complete(cor)
+    except HandleMethodError as e:  # method no match
+        logger.error(e)
     except KeyboardInterrupt:
         logger.info('[cyan]提示：用户中断，重复执行命令可继续下载')
     finally:

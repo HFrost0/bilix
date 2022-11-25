@@ -1,11 +1,11 @@
 import asyncio
-from typing import Union, Sequence, Iterable
+from typing import Union, Sequence
 import aiofiles
 import httpx
 import random
 import os
 
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader import BaseDownloader
 from bilix.utils import req_retry, merge_files
 from bilix.log import logger
@@ -125,4 +125,4 @@ def handle(**kwargs):
         if method == 'get_video' or method == 'v':
             cor = d.get_media(key, "unnamed.mp4")
             return d, cor
-        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+        raise HandleMethodError(d, method)

@@ -3,7 +3,7 @@ import re
 from typing import Union
 import httpx
 import bilix.api.jable as api
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
@@ -43,4 +43,4 @@ def handle(**kwargs):
         if method == 'get_video' or method == 'v':
             cor = d.get_video(key, image=image, hierarchy=hierarchy)
             return d, cor
-        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+        raise HandleMethodError(d, method)

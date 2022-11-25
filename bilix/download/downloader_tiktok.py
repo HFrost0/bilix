@@ -4,7 +4,7 @@ import httpx
 
 import bilix.api.tiktok as api
 from bilix.api.tiktok import _dft_headers
-from bilix.assign import Handler
+from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title
 
@@ -38,4 +38,4 @@ def handle(**kwargs):
         if method == 'v' or method == 'get_video':
             cor = d.get_video(key, image)
             return d, cor
-        raise ValueError(f'For {d.__class__.__name__} "{method}" is not available')
+        raise HandleMethodError(d, method)
