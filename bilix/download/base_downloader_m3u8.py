@@ -32,7 +32,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         self.part_con = part_concurrency
         self.decrypt_cache = {}
 
-    async def _decrypt(self, seg: m3u8.Segment, content: bytes):
+    async def _decrypt(self, seg: m3u8.Segment, content: bytearray):
         async def get_key():
             key_bytes = (await req_retry(self.client, uri)).content
             iv = bytes.fromhex(seg.key.iv.replace('0x', '')) if seg.key.iv is not None else \
@@ -115,13 +115,13 @@ class BaseDownloaderM3u8(BaseDownloader):
             content = None
             for exception in range(retry):
                 try:
-                    content = b''
+                    content = bytearray()
                     async with self.client.stream("GET", ts_url) as r:
                         r.raise_for_status()
                         await self._update_task_total(
                             task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
                         async for chunk in r.aiter_bytes():
-                            content += chunk
+                            content.extend(chunk)
                             await self.progress.update(task_id, advance=len(chunk))
                 except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
                     if exception > retry - 2:
@@ -146,7 +146,7 @@ class BaseDownloaderM3u8(BaseDownloader):
                 raise Exception(f"STREAM 超过重复次数 {ts_url}")
         # in case .png
         if re.fullmatch(r'.*\.png', ts_url):
-            content = content[content.find(b'\x47\x40'):]
+            _, _, content = content.partition(b'\x47\x40')
         # in case encrypted
         if seg.key:
             content = await self._decrypt(seg, content)
