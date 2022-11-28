@@ -113,7 +113,7 @@ class BaseDownloaderM3u8(BaseDownloader):
 
         async with p_sema:
             content = None
-            for exception in range(retry):
+            for exception in range(1 + retry):
                 try:
                     content = bytearray()
                     async with self.client.stream("GET", ts_url) as r:
@@ -169,13 +169,3 @@ def handle(**kwargs):
             cor = d.get_m3u8_video(key, "unnamed")
             return d, cor
         raise HandleMethodError(d, method)
-
-
-if __name__ == '__main__':
-    async def main():
-        async with BaseDownloaderM3u8(httpx.AsyncClient()) as d:
-            await d.get_m3u8_video('https://tup.yinghuacd.com/cache/LycorisRecoil07.m3u8',
-                                   name="test1")
-
-
-    asyncio.run(main())
