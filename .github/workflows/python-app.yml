@@ -35,7 +35,7 @@ jobs:
         pip install -e .
     - name: Test with pytest
       run: |
-        pytest tests/api/test_bilibili_api.py tests/dm tests/utils
+        pytest tests/api/test_bilibili_api.py tests/dm tests/test_utils.py
 #    - name: bilix cli test
 #      run: |
 #        bilix v 'https://www.bilibili.com/video/BV1sS4y1b7qb'
