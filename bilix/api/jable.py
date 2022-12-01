@@ -3,7 +3,6 @@ import re
 from dataclasses import dataclass
 import httpx
 from bs4 import BeautifulSoup
-from bilix.log import logger
 from bilix.utils import legal_title, req_retry
 
 BASE_URL = "https://jable.tv"
@@ -18,6 +17,14 @@ class VideoInfo:
     model_name: str
     m3u8_url: str
     img_url: str
+
+
+async def get_model_info(client: httpx.AsyncClient, url: str):
+    res = await req_retry(client, url)
+    soup = BeautifulSoup(res.text, "html.parser")
+    model_name = soup.find('h2', class_='h3-md mb-1').text
+    urls = [h6.a['href'] for h6 in soup.find('section', class_='pb-3 pb-e-lg-40').find_all('h6')]
+    return {'model_name': model_name, 'urls': urls}
 
 
 async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoInfo:
@@ -40,16 +47,3 @@ async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoIn
     m3u8_url = re.findall(r'http.*m3u8', res.text)[0]
     video_info = VideoInfo(url=url, avid=avid, title=title, img_url=img_url, m3u8_url=m3u8_url, model_name=model_name)
     return video_info
-
-
-if __name__ == '__main__':
-    async def main():
-        _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-        return await asyncio.gather(
-            get_video_info(_dft_client, "MIAA-650"),
-        )
-
-
-    logger.setLevel("DEBUG")
-    result = asyncio.run(main())
-    print(result)

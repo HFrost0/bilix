@@ -15,6 +15,12 @@ class DownloaderJable(BaseDownloaderM3u8):
         super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
                                               speed_limit=speed_limit, progress=progress)
 
+    async def get_model(self, url: str, image=True, hierarchy=True):
+        data = await api.get_model_info(self.client, url)
+        if hierarchy:
+            hierarchy = self._make_hierarchy_dir(hierarchy, data['model_name'])
+        await asyncio.gather(*[self.get_video(url, image, hierarchy) for url in data['urls']])
+
     async def get_video(self, url: str, image=True, hierarchy=True):
         video_info = await api.get_video_info(self.client, url)
         if hierarchy:
@@ -42,5 +48,8 @@ def handle(**kwargs):
                             part_concurrency=part_concurrency, speed_limit=speed_limit)
         if method == 'get_video' or method == 'v':
             cor = d.get_video(key, image=image, hierarchy=hierarchy)
+            return d, cor
+        if method == 'get_model' or method == 'm':
+            cor = d.get_model(key, image=image, hierarchy=hierarchy)
             return d, cor
         raise HandleMethodError(d, method)
