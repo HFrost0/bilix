@@ -1,4 +1,5 @@
 from typing import Optional, Any
+from ..log import logger
 
 
 class BaseProgress:
@@ -14,6 +15,13 @@ class BaseProgress:
         if self._holder:  # ensure holder can be only set once
             raise ValueError("progress holder already exists")
         self._holder = holder
+
+    def dynamic_sleep_time(self, global_speed: float):
+        t_tgt = self.holder.chunk_size / self.holder.speed_limit * self.holder.stream_num
+        t_real = self.holder.chunk_size / global_speed
+        t = t_tgt - t_real
+        # logger.debug(f"chunk size: {self.holder.chunk_size} lt: {t} stream_num: {self.holder.stream_num}")
+        return t
 
     @property
     def tasks(self):

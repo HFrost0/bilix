@@ -92,12 +92,12 @@ class BaseDownloaderPart(BaseDownloader):
         url_idx = random.randint(0, len(urls) - 1)
         try:
             async with self.client.stream("GET", urls[url_idx], follow_redirects=True,
-                                          headers={'Range': f'bytes={start}-{end}'}) as r:
+                                          headers={'Range': f'bytes={start}-{end}'}) as r, self._activate_stream():
                 r.raise_for_status()
                 if r.history:  # avoid twice redirect
                     urls[url_idx] = r.url
                 async with aiofiles.open(file_path, 'ab') as f:
-                    async for chunk in r.aiter_bytes():
+                    async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                         await f.write(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
         except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:

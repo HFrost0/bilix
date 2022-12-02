@@ -1,4 +1,5 @@
-from typing import Union
+from typing import Union, Optional
+from contextlib import asynccontextmanager
 import aiofiles
 import httpx
 import os
@@ -8,6 +9,9 @@ from bilix.progress import CLIProgress, BaseProgress
 
 
 class BaseDownloader:
+    CHUNK_BOUND: int = 1000
+    DELAY_SLOPE: float = 0.1
+
     def __init__(self, client: httpx.AsyncClient, videos_dir='videos', speed_limit: Union[float, int] = None,
                  progress: BaseProgress = None):
         """
@@ -19,6 +23,7 @@ class BaseDownloader:
         """
         self.client = client
         self.videos_dir = videos_dir
+        assert speed_limit > 0
         self.speed_limit = speed_limit
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
@@ -28,6 +33,8 @@ class BaseDownloader:
         else:
             self.progress = progress
             progress.holder = self
+        # active stream number
+        self._stream_num = 0
 
     async def __aenter__(self):
         await self.client.__aenter__()
@@ -78,3 +85,24 @@ class BaseDownloader:
                 await f.write(content)
             logger.info(f'[cyan]已完成[/cyan] {name + file_type}')  # extra file use different color
         return file_path
+
+    @asynccontextmanager
+    async def _activate_stream(self):
+        self._stream_num += 1
+        try:
+            yield
+        finally:
+            self._stream_num -= 1
+
+    @property
+    def stream_num(self):
+        """current activate network stream number"""
+        return self._stream_num
+
+    @property
+    def chunk_size(self) -> Optional[int]:
+        if self.speed_limit and self.progress:
+            # makesure chunk size between 1 ~ chunk_bound
+            return min(max(1, int(self.speed_limit * self.DELAY_SLOPE)), self.CHUNK_BOUND)
+        # default to None setup
+        return None

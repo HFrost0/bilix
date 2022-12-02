@@ -55,7 +55,7 @@ class CLIProgress(BaseProgress):
                                 self._progress.tasks[task_id].speed is not None
                                 and not self._progress.tasks[task_id].finished)
             if current_speed > speed_limit:
-                await asyncio.sleep(.3 if (current_speed - speed_limit) / speed_limit > .05 else .1)
+                await asyncio.sleep(self.dynamic_sleep_time(current_speed))
 
     async def update(
             self,

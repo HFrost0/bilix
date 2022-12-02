@@ -116,11 +116,11 @@ class BaseDownloaderM3u8(BaseDownloader):
             for exception in range(1 + retry):
                 try:
                     content = bytearray()
-                    async with self.client.stream("GET", ts_url) as r:
+                    async with self.client.stream("GET", ts_url) as r, self._activate_stream():
                         r.raise_for_status()
                         await self._update_task_total(
                             task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
-                        async for chunk in r.aiter_bytes():
+                        async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                             content.extend(chunk)
                             await self.progress.update(task_id, advance=len(chunk))
                 except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
