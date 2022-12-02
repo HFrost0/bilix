@@ -12,8 +12,7 @@ import httpx
 from dataclasses import dataclass
 from bilix.utils import req_retry, legal_title
 
-_dft_headers = {'user-agent': 'com.ss.android.ugc.trill/2613 (Linux; U; Android 10; en_US; Pixel 4;'
-                              ' Build/QQ3A.200805.001; Cronet/58.0.2991.0)'}
+_dft_headers = {'user-agent': 'com.ss.android.ugc.trill/494+Mozilla/5.0+(Linux;+Android+12;+2112123G+Build/SKQ1.211006.001;+wv)+AppleWebKit/537.36+(KHTML,+like+Gecko)+Version/4.0+Chrome/107.0.5304.105+Mobile+Safari/537.36'}
 
 
 @dataclass
@@ -36,7 +35,7 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     else:
         key = re.search(r"/v/(\d+)", url).groups()[0]
     res = await req_retry(
-        client, f'https://api-h2.tiktokv.com/aweme/v1/feed/?aweme_id={key}&version_code=2613&aid=1180')
+        client, f'https://api.tiktokv.com/aweme/v1/feed/?aweme_id={key}&iid=6165993682518218889&device_id=6858675245898655468&aid=1180')
     data = json.loads(res.text)
     data = data['aweme_list'][0]
     # 视频标题 (如果为空则使用分享标题)
