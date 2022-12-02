@@ -23,7 +23,7 @@ class BaseDownloader:
         """
         self.client = client
         self.videos_dir = videos_dir
-        assert speed_limit > 0
+        assert speed_limit is None or speed_limit > 0
         self.speed_limit = speed_limit
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
