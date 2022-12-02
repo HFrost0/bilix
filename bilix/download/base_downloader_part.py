@@ -75,24 +75,23 @@ class BaseDownloaderPart(BaseDownloader):
         return file_path
 
     async def _get_media_part(self, urls: List[Union[str, httpx.URL]],
-                              part_name, task_id, exception=0, hierarchy: str = '', retry: int = 5):
+                              part_name, task_id, times=0, hierarchy: str = '', retry: int = 5):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if exception > retry:
-            logger.error(f'STREAM 超过重试次数 {part_name}')
+        if times > retry:
             raise Exception(f'STREAM 超过重试次数 {part_name}')
         start, end = map(int, part_name.split('-')[-2:])
         file_path = f'{file_dir}/{part_name}'
         if os.path.exists(file_path):
             downloaded = os.path.getsize(file_path)
             start += downloaded
-            if exception == 0:
+            if times == 0:
                 await self.progress.update(task_id, advance=downloaded)
         if start > end:
             return file_path  # skip already finished
         url_idx = random.randint(0, len(urls) - 1)
         try:
             async with self.client.stream("GET", urls[url_idx], follow_redirects=True,
-                                          headers={'Range': f'bytes={start}-{end}'}) as r, self._activate_stream():
+                                          headers={'Range': f'bytes={start}-{end}'}) as r, self._stream_context():
                 r.raise_for_status()
                 if r.history:  # avoid twice redirect
                     urls[url_idx] = r.url
@@ -100,21 +99,8 @@ class BaseDownloaderPart(BaseDownloader):
                     async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                         await f.write(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
-        except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
-            if exception > retry - 2:
-                logger.warning(
-                    f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
-            await asyncio.sleep(.1 * exception)
-            await self._get_media_part(urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
-        except httpx.HTTPStatusError as e:
-            logger.warning(f"STREAM {e}")
-            await asyncio.sleep(.5 * (exception + 1))
-            await self._get_media_part(urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
-        except Exception as e:
-            if exception > 1:
-                logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
-            await asyncio.sleep(.5 * exception)
-            await self._get_media_part(urls, part_name, task_id, exception=exception + 1, hierarchy=hierarchy)
+        except (httpx.TransportError, httpx.HTTPStatusError):
+            await self._get_media_part(urls, part_name, task_id, times=times + 1, hierarchy=hierarchy)
         return file_path
 
 

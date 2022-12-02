@@ -1,3 +1,4 @@
+import asyncio
 from typing import Union, Optional
 from contextlib import asynccontextmanager
 import aiofiles
@@ -87,10 +88,32 @@ class BaseDownloader:
         return file_path
 
     @asynccontextmanager
-    async def _activate_stream(self):
+    async def _stream_context(self, times: int):
+        """
+        contextmanager to print log, slow down streaming and count active stream number
+
+        :param times: error occur times which is related to sleep time
+        :return:
+        """
         self._stream_num += 1
         try:
             yield
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 403:
+                logger.warning(f"STREAM slowing down since 403 forbidden {e}")
+                await asyncio.sleep(10. * (times + 1))
+            else:
+                logger.warning(f"STREAM {e}")
+                await asyncio.sleep(.5 * (times + 1))
+            raise
+        except httpx.TransportError as e:
+            msg = f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数'
+            logger.warning(msg) if times > 2 else logger.debug(msg)
+            await asyncio.sleep(.1 * (times + 1))
+            raise
+        except Exception as e:
+            logger.warning(f'STREAM Unexpected Exception class:{e.__class__.__name__} {e}')
+            raise
         finally:
             self._stream_num -= 1
 

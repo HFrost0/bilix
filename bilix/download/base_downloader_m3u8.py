@@ -113,36 +113,20 @@ class BaseDownloaderM3u8(BaseDownloader):
 
         async with p_sema:
             content = None
-            for exception in range(1 + retry):
+            for times in range(1 + retry):
+                content = bytearray()
                 try:
-                    content = bytearray()
-                    async with self.client.stream("GET", ts_url) as r, self._activate_stream():
+                    async with self.client.stream("GET", ts_url) as r, self._stream_context(times):
                         r.raise_for_status()
                         await self._update_task_total(
                             task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
                         async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                             content.extend(chunk)
                             await self.progress.update(task_id, advance=len(chunk))
-                except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError) as e:
-                    if exception > retry - 2:
-                        logger.warning(
-                            f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数')
-                    await asyncio.sleep(.1 * exception)
-                except httpx.HTTPStatusError as e:
-                    if e.response.status_code == 403:
-                        logger.warning(f"STREAM slowing down since 403 forbidden {ts_url}")
-                        await asyncio.sleep(10. * (exception + 1))
-                    else:
-                        logger.warning(f"STREAM {e}")
-                        await asyncio.sleep(.5 * exception)
-                except Exception as e:
-                    if exception > 1:
-                        logger.warning(f'STREAM {e.__class__.__name__} 未知异常')
-                    await asyncio.sleep(.5 * exception)
-                else:
                     break
+                except (httpx.HTTPStatusError, httpx.TransportError) as e:
+                    continue
             else:
-                logger.error(f"STREAM 超过重复次数 {ts_url}")
                 raise Exception(f"STREAM 超过重复次数 {ts_url}")
         # in case .png
         if re.fullmatch(r'.*\.png', ts_url):
