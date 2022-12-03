@@ -91,7 +91,7 @@ class BaseDownloaderPart(BaseDownloader):
         url_idx = random.randint(0, len(urls) - 1)
         try:
             async with self.client.stream("GET", urls[url_idx], follow_redirects=True,
-                                          headers={'Range': f'bytes={start}-{end}'}) as r, self._stream_context():
+                                          headers={'Range': f'bytes={start}-{end}'}) as r, self._stream_context(times):
                 r.raise_for_status()
                 if r.history:  # avoid twice redirect
                     urls[url_idx] = r.url
