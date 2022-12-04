@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional, Any, Set
+from typing import Optional, Any, Set, Union
 from rich.progress import Progress, TaskID, TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, \
     TimeRemainingColumn
 
@@ -48,14 +48,17 @@ class CLIProgress(BaseProgress):
         self.own_task_ids.add(task_id)
         return task_id
 
-    async def _check_speed(self):
+    @property
+    def holder_speed(self):
+        if self.holder:
+            return sum(self._progress.tasks[task_id].speed for task_id in self.own_task_ids
+                       if self._progress.tasks[task_id].speed)
+        raise Exception("No holder, No speed")
+
+    async def _check_speed(self, chunk_size):
         if self.holder and self.holder.speed_limit:
-            speed_limit = self.holder.speed_limit
-            current_speed = sum(self._progress.tasks[task_id].speed for task_id in self.own_task_ids if
-                                self._progress.tasks[task_id].speed is not None
-                                and not self._progress.tasks[task_id].finished)
-            if current_speed > speed_limit:
-                await asyncio.sleep(self.dynamic_sleep_time(current_speed))
+            if self.holder_speed > self.holder.speed_limit:
+                await asyncio.sleep(self.dynamic_sleep_time(chunk_size))
 
     async def update(
             self,
@@ -70,6 +73,8 @@ class CLIProgress(BaseProgress):
             **fields: Any,
     ) -> None:
         if advance:
-            await self._check_speed()
-        return self._progress.update(task_id, total=total, completed=completed, advance=advance,
-                                     description=description, visible=visible, refresh=refresh, **fields)
+            await self._check_speed(chunk_size=advance)
+        self._progress.update(task_id, total=total, completed=completed, advance=advance,
+                              description=description, visible=visible, refresh=refresh, **fields)
+        if self._progress.tasks[task_id].finished and task_id in self.own_task_ids:
+            self.own_task_ids.remove(task_id)

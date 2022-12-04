@@ -13,12 +13,16 @@ class BaseProgress:
     @holder.setter
     def holder(self, holder):
         if self._holder:  # ensure holder can be only set once
-            raise ValueError("progress holder already exists")
+            raise Exception("progress holder already exists")
         self._holder = holder
 
-    def dynamic_sleep_time(self, global_speed: float):
-        t_tgt = self.holder.chunk_size / self.holder.speed_limit * self.holder.stream_num
-        t_real = self.holder.chunk_size / global_speed
+    @property
+    def holder_speed(self):
+        raise NotImplemented
+
+    def dynamic_sleep_time(self, chunk_size):
+        t_tgt = chunk_size / self.holder.speed_limit * self.holder.stream_num
+        t_real = chunk_size / self.holder_speed
         t = t_tgt - t_real
         # logger.debug(f"chunk size: {self.holder.chunk_size} lt: {t} stream_num: {self.holder.stream_num}")
         return t

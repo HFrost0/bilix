@@ -10,7 +10,7 @@ from bilix.progress import CLIProgress, BaseProgress
 
 
 class BaseDownloader:
-    CHUNK_BOUND: int = 1000
+    LIMIT_BOUND: float = 1e5
     DELAY_SLOPE: float = 0.1
 
     def __init__(self, client: httpx.AsyncClient, videos_dir='videos', speed_limit: Union[float, int] = None,
@@ -124,8 +124,8 @@ class BaseDownloader:
 
     @property
     def chunk_size(self) -> Optional[int]:
-        if self.speed_limit and self.progress:
-            # makesure chunk size between 1 ~ chunk_bound
-            return min(max(1, int(self.speed_limit * self.DELAY_SLOPE)), self.CHUNK_BOUND)
+        if self.speed_limit and self.progress and self.speed_limit < self.LIMIT_BOUND:
+            # only restrict chunk_size when speed_limit is too low
+            return int(self.speed_limit * self.DELAY_SLOPE)
         # default to None setup
         return None
