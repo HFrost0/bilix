@@ -21,20 +21,21 @@ def cors_slice(cors: Sequence[Coroutine], p_range: Sequence[int]):
 async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[str]], method='GET',
                     follow_redirects=False, retry=3, **kwargs) -> httpx.Response:
     """Client request with multiple backup urls and retry"""
-    pre_exc = Exception(f"{method} 超过重复次数")  # predefine to avoid warning
-    for _ in range(1 + retry):
+    pre_exc = None  # predefine to avoid warning
+    for times in range(1 + retry):
         url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
         try:
             res = await client.request(method, url, follow_redirects=follow_redirects, **kwargs)
             res.raise_for_status()
-        except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.ConnectError) as e:
-            logger.warning(f'{method} {e.__class__.__name__} url: {url}')
+        except httpx.TransportError as e:
+            msg = f'{method} {e.__class__.__name__} url: {url}'
+            logger.warning(msg) if times > 0 else logger.debug(msg)
             pre_exc = e
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(.1 * (times + 1))
         except httpx.HTTPStatusError as e:
             logger.warning(f'{method} {e.response.status_code} {url}')
             pre_exc = e
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1. * (times + 1))
         except Exception as e:
             logger.warning(f'{method} {e.__class__.__name__} 未知异常 url: {url}')
             pre_exc = e

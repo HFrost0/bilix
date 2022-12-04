@@ -17,54 +17,52 @@ from bilix.log import logger
 __all__ = ['DownloaderBilibili']
 
 
-def choose_quality(dash, support_formats, quality: Union[str, int], codec: str = '') -> Tuple[dict, dict]:
+def choose_quality(video_info: api.VideoInfo, quality: Union[str, int], codec: str = '') -> Tuple[dict, dict]:
     """
 
-    :param dash:
-    :param support_formats:
+    :param video_info:
     :param quality:
     :param codec: should be like xxx (for video only) :xxxx (for audio only) xxx:xxx (for video and audio)
-    :return: video_info, audio_info, video_urls, audio_urls
+    :return: video, audio, video_urls, audio_urls
     """
+    dash, support_formats = video_info.dash, video_info.support_formats
     v_codec, a_codec, *_ = codec.split(':') + [""]
     # for audio
     if a_codec == '':
-        audio_info = dash['audio'][0]
-        audio_info['suffix'] = '.aac'
+        audio = dash['audio'][0]
+        audio['suffix'] = '.aac'
     else:
         if dash['dolby']['audio'] and dash['dolby']['audio'][0]['codecs'].startswith(a_codec):
-            audio_info = dash['dolby']['audio'][0]
-            audio_info['suffix'] = '.eac3'  # todo other dolby codec?
+            audio = dash['dolby']['audio'][0]
+            audio['suffix'] = '.eac3'  # todo other dolby codec?
         elif dash.get('flac', None) and dash['flac']['audio'] and dash['flac']['audio']['codecs'].startswith(a_codec):
-            audio_info = dash['flac']['audio']
-            audio_info['suffix'] = '.flac'
+            audio = dash['flac']['audio']
+            audio['suffix'] = '.flac'
         else:
             raise ValueError(f'Invalid quality and codec quality:{quality} codec: {codec}')
-    audio_info['urls'] = (audio_info['base_url'], *(audio_info['backup_url'] if audio_info['backup_url'] else ()))
+    audio['urls'] = (audio['base_url'], *(audio['backup_url'] if audio['backup_url'] else ()))
 
     # for video
     if isinstance(quality, str):  # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
         for f_info in support_formats:
             if f_info['new_description'].upper().startswith(quality.upper()):
                 q_id = f_info['quality']
-                for video_info in dash['video']:
-                    if video_info['id'] == q_id and (v_codec == '' or video_info['codecs'].startswith(v_codec)):
-                        video_info['urls'] = (video_info['base_url'], *(video_info['backup_url']
-                                                                        if video_info['backup_url'] else ()))
-                        logger.debug(f"quality <{f_info['new_description']}>"
-                                     f" codec <{video_info['codecs']}:{audio_info['codecs']}> has been chosen")
-                        return video_info, audio_info
+                for video in dash['video']:
+                    if video['id'] == q_id and (v_codec == '' or video['codecs'].startswith(v_codec)):
+                        video['urls'] = (video['base_url'], *(video['backup_url'] if video['backup_url'] else ()))
+                        logger.debug(f"'{video_info.title}' quality <{f_info['new_description']}>"
+                                     f" codec <{video['codecs']}:{audio['codecs']}> has been chosen")
+                        return video, audio
     else:  # 2. relative choice
         quality = min(quality, len(set(i['id'] for i in dash['video'])) - 1)
         for q, (q_id, it) in enumerate(groupby(dash['video'], key=lambda x: x['id'])):
             if q == quality:
-                for video_info in it:
-                    if v_codec == '' or video_info['codecs'].startswith(v_codec):
-                        video_info['urls'] = (video_info['base_url'], *(video_info['backup_url']
-                                                                        if video_info['backup_url'] else ()))
-                        logger.debug(f"relative quality <{quality}>"
-                                     f" codec <{video_info['codecs']}:{audio_info['codecs']}> has been chosen")
-                        return video_info, audio_info
+                for video in it:
+                    if v_codec == '' or video['codecs'].startswith(v_codec):
+                        video['urls'] = (video['base_url'], *(video['backup_url'] if video['backup_url'] else ()))
+                        logger.debug(f"'{video_info.title}' relative quality <{quality}>"
+                                     f" codec <{video['codecs']}:{audio['codecs']}> has been chosen")
+                        return video, audio
     raise ValueError(f'Invalid quality and codec quality:{quality} codec: {codec}')
 
 
@@ -360,14 +358,14 @@ class DownloaderBilibili(BaseDownloaderPart):
         cors = [self.get_video(p_url, quality, add_name,
                                image=image,
                                subtitle=subtitle, dm=dm, only_audio=only_audio, codec=codec, hierarchy=hierarchy,
-                               extra=video_info if idx == p else None)
+                               video_info=video_info if idx == p else None)
                 for idx, (add_name, p_url) in enumerate(pages)]
         if p_range:
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: Union[str, int] = 0, add_name='', image=False, subtitle=False,
-                        dm=False, only_audio=False, codec: str = '', hierarchy: str = '', extra=None):
+                        dm=False, only_audio=False, codec: str = '', hierarchy: str = '', video_info=None):
         """
         下载单个视频
 
@@ -380,31 +378,29 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param only_audio: 是否仅下载音频
         :param codec: 视频编码（可通过codec获取）
         :param hierarchy:
-        :param extra: 额外数据，提供时不用再次请求页面
+        :param video_info: 额外数据，提供时不用再次请求页面
         :return:
         """
         async with self.v_sema:
-            if not extra:
+            if not video_info:
                 try:
-                    extra = await api.get_video_info(self.client, url)
+                    video_info = await api.get_video_info(self.client, url)
                 except AttributeError as e:
                     logger.warning(f'{url} {e}')
                     return
-            title = extra.h1_title
+            title = video_info.h1_title
             title = legal_title(title, add_name)
-            extra.title = title  # update extra title
-            dash = extra.dash
-            img_url = extra.img_url
-            formats = extra.support_formats
-            if not dash:
-                logger.warning(f'{extra.title} 需要大会员或该地区不支持')
+            video_info.title = title  # update video_info title
+            img_url = video_info.img_url
+            if not video_info.dash:
+                logger.warning(f'{video_info.title} 需要大会员或该地区不支持')
                 return
             # choose video quality
             try:
-                video_info, audio_info = choose_quality(dash, formats, quality, codec)
+                video, audio = choose_quality(video_info, quality, codec)
             except ValueError:
                 logger.warning(
-                    f"{extra.title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
+                    f"{video_info.title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
                 return
 
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
@@ -416,28 +412,29 @@ class DownloaderBilibili(BaseDownloaderPart):
                 if os.path.exists(f'{file_dir}/{title}.mp4'):
                     logger.info(f'[green]已存在[/green] {title}.mp4')
                 else:
-                    cors.append(self.get_media(video_info['urls'], f'{title}-video', task_id, hierarchy))
-                    cors.append(self.get_media(audio_info['urls'], f'{title}-audio', task_id, hierarchy))
+                    cors.append(self.get_media(video['urls'], f'{title}-video', task_id, hierarchy))
+                    cors.append(self.get_media(audio['urls'], f'{title}-audio', task_id, hierarchy))
             else:
-                cors.append(self.get_media(audio_info['urls'], f'{title}{audio_info["suffix"]}', task_id, hierarchy))
+                cors.append(self.get_media(audio['urls'], f'{title}{audio["suffix"]}', task_id, hierarchy))
             # additional task
             if image or subtitle or dm:
                 extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
                 if image:
                     cors.append(self._get_static(img_url, title, hierarchy=extra_hierarchy))
                 if subtitle:
-                    cors.append(self.get_subtitle(url, extra=extra, hierarchy=extra_hierarchy))
+                    cors.append(self.get_subtitle(url, hierarchy=extra_hierarchy, video_info=video_info))
                 if dm:
-                    w, h = video_info['width'], video_info['height']
+                    w, h = video['width'], video['height']
                     cors.append(
-                        self.get_dm(url, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy, extra=extra))
+                        self.get_dm(url, convert_func=dm2ass_factory(w, h), hierarchy=extra_hierarchy,
+                                    video_info=video_info))
             await asyncio.gather(*cors)
 
         if not only_audio and not os.path.exists(f'{file_dir}/{title}.mp4'):
             cmd = ['ffmpeg', '-i', f'{file_dir}/{title}-video', '-i', f'{file_dir}/{title}-audio',
                    '-codec', 'copy', '-loglevel', 'quiet']
             # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
-            if audio_info['codecs'] == 'fLaC':
+            if audio['codecs'] == 'fLaC':
                 cmd.extend(['-strict', '-2'])
             cmd.append(f'{file_dir}/{title}.mp4')
             await run_process(cmd)
@@ -446,22 +443,22 @@ class DownloaderBilibili(BaseDownloaderPart):
         # make progress invisible
         if self.progress.tasks[task_id].visible:
             await self.progress.update(task_id, advance=1, visible=False)
-            logger.info(f'[cyan]已完成[/cyan] {title}{audio_info["suffix"] if only_audio else ".mp4"}')
+            logger.info(f'[cyan]已完成[/cyan] {title}{audio["suffix"] if only_audio else ".mp4"}')
 
-    async def get_dm(self, url, update=False, convert_func=None, hierarchy: str = '', extra=None):
+    async def get_dm(self, url, update=False, convert_func=None, hierarchy: str = '', video_info=None):
         """
 
         :param url: 视频url
         :param update: 是否更新覆盖之前下载的弹幕文件
         :param convert_func:
         :param hierarchy:
-        :param extra: 额外数据，提供则不再访问前端
+        :param video_info: 额外数据，提供则不再访问前端
         :return:
         """
-        if not extra:
-            extra = await api.get_video_info(self.client, url)
-        title = extra.title
-        aid, cid = extra.aid, extra.cid
+        if not video_info:
+            video_info = await api.get_video_info(self.client, url)
+        title = video_info.title
+        aid, cid = video_info.aid, video_info.cid
 
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
@@ -482,25 +479,24 @@ class DownloaderBilibili(BaseDownloaderPart):
         logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
-    async def get_subtitle(self, url, convert=True, hierarchy: str = '', extra=None):
+    async def get_subtitle(self, url, convert=True, hierarchy: str = '', video_info=None):
         """
         获取某个视频的字幕文件
 
         :param url: 视频url
         :param convert: 是否转换成srt
         :param hierarchy:
-        :param extra: 额外数据，提供则不再访问前端
+        :param video_info: 额外数据，提供则不再访问前端
         :return:
         """
-        if not extra:
-            extra = await api.get_video_info(self.client, url)
-        bvid = extra.bvid
-        p, cid = extra.p, extra.cid
-        title = extra.title
-        add_name = extra.pages[p][0]
+        if not video_info:
+            video_info = await api.get_video_info(self.client, url)
+        p, cid = video_info.p, video_info.cid
+        title = video_info.title
+        add_name = video_info.pages[p][0]
         title = legal_title(title, add_name)
         try:
-            subtitles = await api.get_subtitle_info(self.client, bvid, cid)
+            subtitles = await api.get_subtitle_info(self.client, video_info.bvid, cid)
         except AttributeError as e:
             logger.warning(f'{url} {e}')
             return
