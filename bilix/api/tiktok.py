@@ -39,7 +39,7 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
         key = re.search(r"/v/(\d+)", url).groups()[0]
     params = {'aweme_id': key, 'aid': 1180, 'iid': 6165993682518218889,
               'device_id': random.randint(10 * 10 * 10, 9 * 10 ** 10)}
-    res = await req_retry(client, 'https://api.tiktokv.com/aweme/v1/feed/', params=params)
+    res = await req_retry(client, 'https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/', params=params)
     data = json.loads(res.text)
     data = data['aweme_list'][0]
     # 视频标题 (如果为空则使用分享标题)
