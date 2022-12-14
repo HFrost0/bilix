@@ -56,28 +56,23 @@ async def merge_files(file_list: Sequence[str], new_name: str):
     os.rename(first_file, new_name)
 
 
-def legal_title(title, add_name=''):
+def legal_title(*parts: str, join_str: str = '-', max_length=100):
     """
+    join several string parts to os illegal file/dir name (no illegal character and not too long)
 
-    :param title: 主标题
-    :param add_name: 分P名
+    :param parts:
+    :param join_str: the string to join each part
+    :param max_length: joined file name max length, tail will be truncated if overly long
     :return:
     """
-    title, add_name = _replace(title), _replace(add_name)
-    title = _truncate(title)  # avoid OSError caused by title too long
-    return f'{title}-{add_name}' if add_name else title
+    return f'{join_str.join(map(replace_illegal, parts)):.{max_length}}'
 
 
-def _replace(s: str):
+def replace_illegal(s: str):
+    """strip, unescape html and replace os illegal character in s"""
     s = s.strip()
     s = html.unescape(s)  # handel & "...
     s = re.sub(r"[/\\:*?\"<>|\n]", '', s)  # replace illegal filename character
-    return s
-
-
-def _truncate(s: str, target=150):
-    while len(s.encode('utf8')) > target - 3:
-        s = s[:-1]
     return s
 
 
