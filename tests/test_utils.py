@@ -1,4 +1,8 @@
-from bilix.utils import parse_bytes_str
+from bilix.utils import parse_bytes_str, legal_title
+
+
+def test_legal_file_name():
+    pass
 
 
 def test_parse_bytes():

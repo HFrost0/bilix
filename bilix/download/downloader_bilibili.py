@@ -40,7 +40,7 @@ def choose_quality(video_info: api.VideoInfo, quality: Union[str, int], codec: s
             audio['suffix'] = '.flac'
         else:
             raise ValueError(f'Invalid quality and codec quality:{quality} codec: {codec}')
-    audio['urls'] = (audio['base_url'], *(audio['backup_url'] if audio['backup_url'] else ()))
+    audio['urls'] = (audio['base_url'], *audio.get('backup_url', ()))
 
     # for video
     if isinstance(quality, str):  # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
@@ -49,7 +49,7 @@ def choose_quality(video_info: api.VideoInfo, quality: Union[str, int], codec: s
                 q_id = f_info['quality']
                 for video in dash['video']:
                     if video['id'] == q_id and (v_codec == '' or video['codecs'].startswith(v_codec)):
-                        video['urls'] = (video['base_url'], *(video['backup_url'] if video['backup_url'] else ()))
+                        video['urls'] = (video['base_url'], *video.get('backup_url', ()))
                         logger.debug(f"'{video_info.title}' quality <{f_info['new_description']}>"
                                      f" codec <{video['codecs']}:{audio['codecs']}> has been chosen")
                         return video, audio
@@ -59,7 +59,7 @@ def choose_quality(video_info: api.VideoInfo, quality: Union[str, int], codec: s
             if q == quality:
                 for video in it:
                     if v_codec == '' or video['codecs'].startswith(v_codec):
-                        video['urls'] = (video['base_url'], *(video['backup_url'] if video['backup_url'] else ()))
+                        video['urls'] = (video['base_url'], *video.get('backup_url', ()))
                         logger.debug(f"'{video_info.title}' relative quality <{quality}>"
                                      f" codec <{video['codecs']}:{audio['codecs']}> has been chosen")
                         return video, audio
@@ -104,57 +104,14 @@ class DownloaderBilibili(BaseDownloaderPart):
         """
         t = parse_bilibili_url(url)
         if t == 'list':
-            cor = self.get_list
+            list_name, up_name, bvids = await api.get_list_info(self.client, url)
+            name = legal_title(f"【视频列表】{up_name}", list_name)
         elif t == 'col':
-            cor = self.get_collect
+            col_name, up_name, bvids = await api.get_collect_info(self.client, url)
+            name = legal_title(f"【合集】{up_name}", col_name)
         else:
             raise ValueError(f'{url} invalid for get_collect_or_list')
-        # noinspection PyArgumentList
-        await cor(url=url, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                  codec=codec, hierarchy=hierarchy)
-
-    async def get_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                       codec: str = '', hierarchy: Union[bool, str] = True):
-        """
-        下载视频列表
-
-        :param url: 列表详情页url
-        :param quality:
-        :param image:
-        :param subtitle:
-        :param dm:
-        :param only_audio:
-        :param codec
-        :param hierarchy:
-        :return:
-        """
-        list_name, up_name, bvids = await api.get_list_info(self.client, url)
         if hierarchy:
-            name = legal_title(f"【视频列表】{up_name}-{list_name}")
-            hierarchy = self._make_hierarchy_dir(hierarchy, name)
-        await asyncio.gather(
-            *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality, codec=codec,
-                              image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
-              for i in bvids])
-
-    async def get_collect(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
-                          codec: str = '', hierarchy: Union[bool, str] = True):
-        """
-        下载合集
-
-        :param url: 合集详情页url
-        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
-        :param image: 是否下载封面
-        :param subtitle: 是否下载字幕
-        :param dm: 是否下载弹幕
-        :param only_audio: 是否仅下载音频
-        :param codec:
-        :param hierarchy:
-        :return:
-        """
-        col_name, up_name, bvids = await api.get_collect_info(self.client, url)
-        if hierarchy:
-            name = legal_title(f"【合集】{up_name}-{col_name}")
             hierarchy = self._make_hierarchy_dir(hierarchy, name)
         await asyncio.gather(
             *[self.get_series(f"https://www.bilibili.com/video/{i}", quality=quality, codec=codec,

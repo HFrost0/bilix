@@ -7,7 +7,7 @@ import bilix.api.douyin as api
 from bilix.api.douyin import _dft_headers
 from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_part import BaseDownloaderPart
-from bilix.utils import legal_title, req_retry
+from bilix.utils import legal_title
 
 
 class DownloaderDouyin(BaseDownloaderPart):

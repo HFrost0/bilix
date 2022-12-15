@@ -64,7 +64,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             logger.info(f"[green]已存在[/green] {name}.ts")
             return file_path
         await self.v_sema.acquire()
-        res = await req_retry(self.client, m3u8_url)
+        res = await req_retry(self.client, m3u8_url, follow_redirects=True)
         m3u8_info = m3u8.loads(res.text)
         if not m3u8_info.base_uri:
             base_uri = re.search(r"(.*)/[^/]*m3u8", m3u8_url).groups()[0]
@@ -124,7 +124,7 @@ class BaseDownloaderM3u8(BaseDownloader):
                             content.extend(chunk)
                             await self.progress.update(task_id, advance=len(chunk))
                     break
-                except (httpx.HTTPStatusError, httpx.TransportError) as e:
+                except (httpx.HTTPStatusError, httpx.TransportError):
                     continue
             else:
                 raise Exception(f"STREAM 超过重复次数 {ts_url}")
