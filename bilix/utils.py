@@ -56,16 +56,17 @@ async def merge_files(file_list: Sequence[str], new_name: str):
     os.rename(first_file, new_name)
 
 
-def legal_title(*parts: str, join_str: str = '-', max_length=100):
+def legal_title(*parts: str, join_str: str = '-', max_length=150):
     """
-    join several string parts to os illegal file/dir name (no illegal character and not too long)
+    join several string parts to os illegal file/dir name (no illegal character and not too long).
+    auto skip empty.
 
     :param parts:
     :param join_str: the string to join each part
     :param max_length: joined file name max length, tail will be truncated if overly long
     :return:
     """
-    return f'{join_str.join(map(replace_illegal, parts)):.{max_length}}'
+    return f'{join_str.join(filter(lambda x: len(x) > 0, map(replace_illegal, parts))):.{max_length}}'
 
 
 def replace_illegal(s: str):

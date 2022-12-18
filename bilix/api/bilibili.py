@@ -150,11 +150,11 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
 @dataclass
 class VideoInfo:
     title: str
-    h1_title: str
+    h1_title: str  # for bv same to title, but for tv or bangumi title will be more specific
     aid: Union[str, int]
     cid: Union[str, int]
     p: int
-    pages: Sequence[Sequence[str]]
+    pages: Sequence[Sequence[str]]  # [[p_name, p_url], ...]
     img_url: str
     status: dict
     bvid: str = None
@@ -197,8 +197,8 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
         base_url = url.split('?')[0]
         for idx, i in enumerate(init_info['videoData']['pages']):
             p_url = f"{base_url}?p={idx + 1}"
-            add_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
-            pages.append([add_name, p_url])
+            p_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
+            pages.append([p_name, p_url])
     elif 'initEpList' in init_info:  # 动漫，电视剧，电影
         stat = init_info['mediaInfo']['stat']
         status = {
@@ -218,8 +218,8 @@ async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
         title = legal_title(re.search('property="og:title" content="([^"]*)"', res.text).groups()[0])
         for idx, i in enumerate(init_info['initEpList']):
             p_url = i['link']
-            add_name = i['title']
-            pages.append([add_name, p_url])
+            p_name = i['title']
+            pages.append([p_name, p_url])
     else:
         raise AttributeError("未知类型")
 

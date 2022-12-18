@@ -312,23 +312,20 @@ class DownloaderBilibili(BaseDownloaderPart):
             hierarchy = self._make_hierarchy_dir(hierarchy, title)
         else:
             hierarchy = hierarchy if type(hierarchy) is str else ''  # incase hierarchy is False
-        cors = [self.get_video(p_url, quality, add_name,
-                               image=image,
-                               subtitle=subtitle, dm=dm, only_audio=only_audio, codec=codec, hierarchy=hierarchy,
-                               video_info=video_info if idx == p else None)
-                for idx, (add_name, p_url) in enumerate(pages)]
+        cors = [self.get_video(p_url, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
+                               codec=codec, hierarchy=hierarchy, video_info=video_info if idx == p else None)
+                for idx, (_, p_url) in enumerate(pages)]
         if p_range:
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, quality: Union[str, int] = 0, add_name='', image=False, subtitle=False,
+    async def get_video(self, url: str, quality: Union[str, int] = 0, image=False, subtitle=False,
                         dm=False, only_audio=False, codec: str = '', hierarchy: str = '', video_info=None):
         """
         下载单个视频
 
         :param url: 视频的url
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
-        :param add_name: 给文件的额外添加名，用户请直接保持默认
         :param image: 是否下载封面
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
@@ -345,19 +342,20 @@ class DownloaderBilibili(BaseDownloaderPart):
                 except AttributeError as e:
                     logger.warning(f'{url} {e}')
                     return
-            title = video_info.h1_title
-            title = legal_title(title, add_name)
-            video_info.title = title  # update video_info title
+            p = video_info.p
+            p_name = video_info.pages[p][0]
+            # join p_name and title
+            title = legal_title(video_info.h1_title, p_name)
             img_url = video_info.img_url
             if not video_info.dash:
-                logger.warning(f'{video_info.title} 需要大会员或该地区不支持')
+                logger.warning(f'{title} 需要大会员或该地区不支持')
                 return
             # choose video quality
             try:
                 video, audio = choose_quality(video_info, quality, codec)
             except ValueError:
                 logger.warning(
-                    f"{video_info.title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
+                    f"{title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
                 return
 
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
@@ -414,12 +412,10 @@ class DownloaderBilibili(BaseDownloaderPart):
         """
         if not video_info:
             video_info = await api.get_video_info(self.client, url)
-        title = video_info.title
         aid, cid = video_info.aid, video_info.cid
-
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
-        file_name = f"{title}-弹幕{file_type}"
+        file_name = legal_title(video_info.h1_title, video_info.pages[video_info.p][0], "弹幕") + file_type
         file_path = f'{file_dir}/{file_name}'
         if not update and os.path.exists(file_path):
             logger.info(f"[green]已存在[/green] {file_name}")
@@ -436,12 +432,12 @@ class DownloaderBilibili(BaseDownloaderPart):
         logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
-    async def get_subtitle(self, url, convert=True, hierarchy: str = '', video_info=None):
+    async def get_subtitle(self, url, convert_func=json2srt, hierarchy: str = '', video_info=None):
         """
         获取某个视频的字幕文件
 
         :param url: 视频url
-        :param convert: 是否转换成srt
+        :param convert_func: function used to convert original subtitle text
         :param hierarchy:
         :param video_info: 额外数据，提供则不再访问前端
         :return:
@@ -449,9 +445,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         if not video_info:
             video_info = await api.get_video_info(self.client, url)
         p, cid = video_info.p, video_info.cid
-        title = video_info.title
-        add_name = video_info.pages[p][0]
-        title = legal_title(title, add_name)
+        p_name = video_info.pages[p][0]
         try:
             subtitles = await api.get_subtitle_info(self.client, video_info.bvid, cid)
         except AttributeError as e:
@@ -459,9 +453,8 @@ class DownloaderBilibili(BaseDownloaderPart):
             return
         cors = []
         for sub_url, sub_name in subtitles:
-            file_name = f"{title}-{sub_name}"
-            cors.append(self._get_static(sub_url, file_name, convert_func=json2srt if convert else None,
-                                         hierarchy=hierarchy))
+            file_name = legal_title(video_info.h1_title, p_name, sub_name)
+            cors.append(self._get_static(sub_url, file_name, convert_func=convert_func, hierarchy=hierarchy))
         paths = await asyncio.gather(*cors)
         return paths
 
