@@ -38,9 +38,9 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
         key = key.groups()[0]
     else:
         key = re.search(r"modal_id=(\d+)", url).groups()[0]
-    res = await req_retry(client, f'https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids={key}')
+    res = await req_retry(client, f'https://www.iesdouyin.com/aweme/v1/web/aweme/detail/?aweme_id={key}')
     data = json.loads(res.text)
-    data = data['item_list'][0]
+    data = data['aweme_detail']
     # 视频标题
     title = legal_title(data['desc'])
     # 视频作者昵称
