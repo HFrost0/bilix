@@ -13,7 +13,7 @@ __all__ = ['InformerBilibili']
 
 class InformerBilibili(BaseInformer):
     def __init__(self, sess_data: str = ''):
-        cookies = {'SESSDATA': sess_data}
+        cookies = {'SESSDATA': sess_data, 'CURRENT_FNVAL': '4048'}
         headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
         client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=True)
         super().__init__(client)
