@@ -8,7 +8,10 @@ from bilix.log import logger
 from bilix.utils import req_retry
 
 BASE_URL = "http://www.yinghuacd.com"
-_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0'}
+dft_client_settings = {
+    'headers': {'user-agent': 'PostmanRuntime/7.29.0'},
+    'http2': False
+}
 
 
 @dataclass
@@ -33,15 +36,15 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     return video_info
 
 
-async def main():
-    _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-
-    return await asyncio.gather(
-        get_video_info(_dft_client, "http://www.yinghuacd.com/v/5606-7.html"),
-    )
-
-
 if __name__ == '__main__':
+    async def main():
+        _dft_client = httpx.AsyncClient(**dft_client_settings)
+
+        return await asyncio.gather(
+            get_video_info(_dft_client, "http://www.yinghuacd.com/v/5606-7.html"),
+        )
+
+
     logger.setLevel("DEBUG")
     result = asyncio.run(main())
     print(result)

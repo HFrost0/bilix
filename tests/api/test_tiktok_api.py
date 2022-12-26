@@ -1,10 +1,8 @@
 import httpx
 import pytest
-import asyncio
 import bilix.api.tiktok as api
-from bilix.api.tiktok import _dft_headers
 
-client = httpx.AsyncClient(headers=_dft_headers)
+client = httpx.AsyncClient(**api.dft_client_settings)
 
 
 @pytest.mark.asyncio

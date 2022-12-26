@@ -13,9 +13,12 @@ import httpx
 from dataclasses import dataclass
 from bilix.utils import req_retry, legal_title
 
-_dft_headers = {'user-agent': 'com.ss.android.ugc.trill/494+Mozilla/5.0+(Linux;+Android+12;'
+dft_client_settings = {
+    'headers': {'user-agent': 'com.ss.android.ugc.trill/494+Mozilla/5.0+(Linux;+Android+12;'
                               '+2112123G+Build/SKQ1.211006.001;+wv)+AppleWebKit/537.36+'
-                              '(KHTML,+like+Gecko)+Version/4.0+Chrome/107.0.5304.105+Mobile+Safari/537.36'}
+                              '(KHTML,+like+Gecko)+Version/4.0+Chrome/107.0.5304.105+Mobile+Safari/537.36'},
+    'http2': True
+}
 
 
 @dataclass
@@ -63,7 +66,7 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
 
 if __name__ == '__main__':
     async def main():
-        _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+        _dft_client = httpx.AsyncClient(**dft_client_settings)
         data = await get_video_info(_dft_client, 'https://www.tiktok.com/@evil0ctal/video/7156033831819037994')
         print(data)
 

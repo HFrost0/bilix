@@ -6,7 +6,10 @@ from bs4 import BeautifulSoup
 from bilix.utils import legal_title, req_retry
 
 BASE_URL = "https://jable.tv"
-_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL}
+dft_client_settings = {
+    'headers': {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL},
+    'http2': False
+}
 
 
 @dataclass

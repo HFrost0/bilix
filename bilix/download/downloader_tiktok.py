@@ -3,7 +3,6 @@ from typing import Union
 import httpx
 
 import bilix.api.tiktok as api
-from bilix.api.tiktok import _dft_headers
 from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title
@@ -11,7 +10,7 @@ from bilix.utils import legal_title
 
 class DownloaderTikTok(BaseDownloaderPart):
     def __init__(self, videos_dir='videos', part_concurrency=10, speed_limit: Union[float, int] = None, progress=None):
-        client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+        client = httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderTikTok, self).__init__(client, videos_dir, part_concurrency,
                                                speed_limit=speed_limit, progress=progress)
 

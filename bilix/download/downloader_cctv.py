@@ -3,7 +3,6 @@ from typing import Union
 import httpx
 
 import bilix.api.cctv as api
-from bilix.api.cctv import _dft_headers
 from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
@@ -11,7 +10,7 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 class DownloaderCctv(BaseDownloaderM3u8):
     def __init__(self, videos_dir='videos', video_concurrency=3, part_concurrency=10,
                  speed_limit: Union[float, int] = None, progress=None):
-        client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+        client = httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderCctv, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
                                              speed_limit=speed_limit, progress=progress)
 

@@ -1,9 +1,8 @@
 import httpx
 import pytest
-import asyncio
 import bilix.api.jable as api
 
-client = httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://jable.tv'})
+client = httpx.AsyncClient(**api.dft_client_settings)
 
 
 @pytest.mark.asyncio

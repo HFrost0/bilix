@@ -12,7 +12,7 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 class DownloaderYinghuacd(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
                  speed_limit: Union[int, float] = None, progress=None):
-        client = httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'}, http2=False)
+        client = httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderYinghuacd, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
                                                   speed_limit=speed_limit, progress=progress)
 
@@ -59,13 +59,3 @@ def handle(**kwargs):
             cor = d.get_video(key)
             return d, cor
         raise HandleMethodError(d, method)
-
-
-if __name__ == '__main__':
-    async def main():
-        async with DownloaderYinghuacd() as d:
-            await d.get_series("http://www.yinghuacd.com/v/5606-7.html")
-
-
-    logger.setLevel('DEBUG')
-    asyncio.run(main())

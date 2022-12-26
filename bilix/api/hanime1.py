@@ -6,7 +6,10 @@ from bilix.utils import legal_title, req_retry
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://hanime1.me"
-_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL}
+dft_client_settings = {
+    'headers': {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL},
+    'http2': False
+}
 
 
 @dataclass
@@ -37,7 +40,7 @@ async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoIn
 
 if __name__ == '__main__':
     async def main():
-        _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=False)
+        _dft_client = httpx.AsyncClient(**dft_client_settings)
         return await asyncio.gather(
             get_video_info(_dft_client, "39466"),
         )

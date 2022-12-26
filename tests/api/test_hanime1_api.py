@@ -1,9 +1,8 @@
 import httpx
 import pytest
-import asyncio
 import bilix.api.hanime1 as api
 
-client = httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://hanime1.me'})
+client = httpx.AsyncClient(**api.dft_client_settings)
 
 
 @pytest.mark.asyncio

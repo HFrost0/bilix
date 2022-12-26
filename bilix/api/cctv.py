@@ -8,7 +8,10 @@ import m3u8
 from bilix.log import logger
 from bilix.utils import legal_title, req_retry
 
-_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0'}
+dft_client_settings = {
+    'headers': {'user-agent': 'PostmanRuntime/7.29.0'},
+    'http2': True
+}
 
 
 async def get_id(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str]:
@@ -66,11 +69,11 @@ async def get_series_info(client: httpx.AsyncClient, vide: str, vida: str) -> Tu
 
 if __name__ == '__main__':
     async def main():
-        _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+        client = httpx.AsyncClient(**dft_client_settings)
 
         return await asyncio.gather(
             get_id(
-                _dft_client,
+                client,
                 "https://tv.cctv.com/2012/05/02/VIDE1355968282695723.shtml?spm=C55853485115.P6UrzpiudtDc.0.0"
             ))
 

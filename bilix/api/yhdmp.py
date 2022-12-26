@@ -13,7 +13,10 @@ import bilix.utils
 from bilix.utils import legal_title
 
 BASE_URL = "https://www.yhdmp.cc"
-_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL}
+dft_client_settings = {
+    'headers': {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL},
+    'http2': False
+}
 
 with open(f'{os.path.dirname(bilix.__file__)}/js/yhdmp.js', 'r') as f:
     js = execjs.compile(f.read())
@@ -90,16 +93,16 @@ async def get_m3u8_url(client: httpx.AsyncClient, url):
     return m3u8_url
 
 
-async def main():
-    _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
-
-    return await asyncio.gather(
-        get_video_info(_dft_client, "https://www.yhdmp.cc/vp/22224-1-0.html"),
-        get_m3u8_url(_dft_client, "https://www.yhdmp.cc/vp/18261-2-0.html"),
-    )
-
-
 if __name__ == '__main__':
+    async def main():
+        _dft_client = httpx.AsyncClient(**dft_client_settings)
+
+        return await asyncio.gather(
+            get_video_info(_dft_client, "https://www.yhdmp.cc/vp/22224-1-0.html"),
+            get_m3u8_url(_dft_client, "https://www.yhdmp.cc/vp/18261-2-0.html"),
+        )
+
+
     logger.setLevel("DEBUG")
     result = asyncio.run(main())
     print(result)
