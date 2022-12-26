@@ -11,12 +11,13 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 class DownloaderYhdmp(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
                  speed_limit: Union[float, int] = None, progress=None):
-        client = httpx.AsyncClient(**api.dft_client_settings)
-        super(DownloaderYhdmp, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
+        stream_client = httpx.AsyncClient()
+        super(DownloaderYhdmp, self).__init__(stream_client, videos_dir, video_concurrency, part_concurrency,
                                               speed_limit=speed_limit, progress=progress)
+        self.api_client = httpx.AsyncClient(**api.dft_client_settings)
 
     async def get_series(self, url: str, p_range: Sequence[int] = None, hierarchy=True):
-        video_info = await api.get_video_info(self.client, url)
+        video_info = await api.get_video_info(self.api_client, url)
         ep_idx = video_info.ep_idx
         play_idx = video_info.play_idx
         title = video_info.title
@@ -25,7 +26,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
 
         # no need to reuse get_video since we only need m3u8_url
         async def get_video(page_url, name):
-            m3u8_url = await api.get_m3u8_url(self.client, page_url)
+            m3u8_url = await api.get_m3u8_url(self.api_client, page_url)
             await self.get_m3u8_video(m3u8_url=m3u8_url, name=name, hierarchy=hierarchy if hierarchy else '')
 
         cors = []
@@ -40,9 +41,9 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, hierarchy: str = ''):
-        video_info = await api.get_video_info(self.client, url)
+        video_info = await api.get_video_info(self.api_client, url)
         name = legal_title(video_info.title, video_info.sub_title)
-        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
+        await super().get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
 
 
 @Handler(name='樱花动漫P')
