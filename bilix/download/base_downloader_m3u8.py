@@ -116,7 +116,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             for times in range(1 + retry):
                 content = bytearray()
                 try:
-                    async with self.client.stream("GET", ts_url) as r, self._stream_context(times):
+                    async with self.client.stream("GET", ts_url, follow_redirects=True) as r, self._stream_context(times):
                         r.raise_for_status()
                         await self._update_task_total(
                             task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
