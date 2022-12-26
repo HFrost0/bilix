@@ -12,13 +12,7 @@ from httpx import AsyncClient
 async def main():
     # 需要先实例化一个用来进行http请求的client
     # first we should initialize a http client
-    client = AsyncClient(
-        headers={'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'},
-        # bilibili 全面支持http2协议，因此我们打开http2，这会使得我们的速度更快，同时给b站服务器造成的压力更小
-        # bilibili support http2 protocol, turn http2 on, and it will make network request faster and cause less
-        # pressure to the server
-        http2=True
-    )
+    client = AsyncClient(**bilibili.dft_client_settings)
     data = await bilibili.get_video_info(client, 'https://www.bilibili.com/bangumi/play/ep90849')
     print(data)
 

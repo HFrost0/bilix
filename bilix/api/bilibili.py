@@ -9,7 +9,11 @@ import json5
 from bilix.dm import parse_view
 from bilix.utils import req_retry, legal_title
 
-_dft_headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
+dft_client_settings = {
+    'headers': {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'},
+    'cookies': {'CURRENT_FNVAL': '4048'},
+    'http2': True
+}
 
 
 async def get_cate_meta(client: httpx.AsyncClient) -> dict:
@@ -264,9 +268,9 @@ if __name__ == '__main__':
 
     # result = asyncio.run(get_cate_meta())
     # rich.print(result)
-    _dft_client = httpx.AsyncClient(headers=_dft_headers, http2=True)
+    client = httpx.AsyncClient(**dft_client_settings)
     result = asyncio.run(get_video_info(
-        _dft_client,
+        client,
         "https://www.bilibili.com/video/BV1fK4y1t7hj"
     ))
     rich.print(result)

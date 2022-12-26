@@ -10,21 +10,20 @@ async def test_choose_quality():
     import bilix.api.bilibili as api
     from httpx import AsyncClient
 
-    client = AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'},
-                         cookies={'SESSDATA': os.getenv('BILI_TOKEN')}, http2=True)
+    client = AsyncClient(**api.dft_client_settings)
+    client.cookies.set('SESSDATA', os.getenv('BILI_TOKEN'))
     # dolby
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV13L4y1K7th")
     try:
-        video_info, audio_info = choose_quality(data.dash, data.support_formats, quality=999, codec=":ec-3")
+        video, audio = choose_quality(data, quality=999, codec=":ec-3")
     except ValueError:
         assert not os.getenv("BILI_TOKEN")
     # normal
-    choose_quality(data.dash, data.support_formats, quality="360P", codec="hev")
+    choose_quality(data, quality="360P", codec="hev")
     # hi-res
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV16K411S7sk")
     try:
-        video_info, audio_info = choose_quality(data.dash, data.support_formats,
-                                                quality='1080P', codec="hev:fLaC")
+        video, audio = choose_quality(data, quality='1080P', codec="hev:fLaC")
     except ValueError:
         assert not os.getenv("BILI_TOKEN")
     await client.aclose()

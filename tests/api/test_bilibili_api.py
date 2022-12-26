@@ -4,8 +4,7 @@ import asyncio
 from datetime import datetime, timedelta
 import bilix.api.bilibili as api
 
-client = httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'},
-                           http2=True)
+client = httpx.AsyncClient(**api.dft_client_settings)
 
 
 # https://stackoverflow.com/questions/61022713/pytest-asyncio-has-a-closed-event-loop-but-only-when-running-all-tests
