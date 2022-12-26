@@ -13,9 +13,8 @@ __all__ = ['InformerBilibili']
 
 class InformerBilibili(BaseInformer):
     def __init__(self, sess_data: str = ''):
-        cookies = {'SESSDATA': sess_data, 'CURRENT_FNVAL': '4048'}
-        headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
-        client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=True)
+        client = httpx.AsyncClient(**api.dft_client_settings)
+        client.cookies.set('SESSDATA', sess_data)
         super().__init__(client)
         self.type_map = {
             'up': self.info_up,

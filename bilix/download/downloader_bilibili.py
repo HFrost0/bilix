@@ -78,9 +78,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param speed_limit: 下载速度限制，单位B/s
         :param progress: 进度对象，不提供则使用rich命令行进度
         """
-        cookies = {'SESSDATA': sess_data, 'CURRENT_FNVAL': '4048'}
-        headers = {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'}
-        client = httpx.AsyncClient(headers=headers, cookies=cookies, http2=True)
+        client = httpx.AsyncClient(**api.dft_client_settings)
+        client.cookies.set('SESSDATA', sess_data)
         super(DownloaderBilibili, self).__init__(client, videos_dir, part_concurrency, speed_limit=speed_limit,
                                                  progress=progress)
         self.speed_limit = speed_limit
