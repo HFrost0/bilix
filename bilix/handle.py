@@ -1,13 +1,12 @@
 import functools
-import typing
 import inspect
-from typing import Callable, Tuple, Union
+from typing import Callable, Union, Dict
 
 from bilix.log import logger
 
 
 class Handler:
-    _registered: dict[str, Callable] = {}
+    _registered: Dict[str, Callable] = {}
 
     @classmethod
     def check(cls, name: str, handle_func: Callable):
