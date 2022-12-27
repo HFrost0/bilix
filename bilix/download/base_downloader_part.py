@@ -13,7 +13,7 @@ from bilix.log import logger
 
 
 class BaseDownloaderPart(BaseDownloader):
-    def __init__(self, client: httpx.AsyncClient, videos_dir: str = 'videos', part_concurrency=10,
+    def __init__(self, client: httpx.AsyncClient = None, videos_dir: str = 'videos', part_concurrency=10,
                  speed_limit: Union[float, int] = None, progress=None):
         """
         Base Async http Content-Range Downloader
@@ -112,7 +112,7 @@ def handle(**kwargs):
         part_concurrency = kwargs['part_concurrency']
         speed_limit = kwargs['speed_limit']
         method = kwargs['method']
-        d = BaseDownloaderPart(httpx.AsyncClient(http2=True), videos_dir=videos_dir, part_concurrency=part_concurrency,
+        d = BaseDownloaderPart(videos_dir=videos_dir, part_concurrency=part_concurrency,
                                speed_limit=speed_limit)
         if method == 'get_video' or method == 'v':
             cor = d.get_media(key, f"unnamed.{m.group('suffix')}")

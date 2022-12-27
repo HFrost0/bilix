@@ -15,7 +15,7 @@ from bilix.utils import req_retry, merge_files
 
 
 class BaseDownloaderM3u8(BaseDownloader):
-    def __init__(self, client: httpx.AsyncClient, videos_dir="videos", video_concurrency=3, part_concurrency=10,
+    def __init__(self, client: httpx.AsyncClient = None, videos_dir="videos", video_concurrency=3, part_concurrency=10,
                  speed_limit: Union[float, int] = None, progress=None):
         """
         Base async m3u8 Downloader
@@ -116,7 +116,8 @@ class BaseDownloaderM3u8(BaseDownloader):
             for times in range(1 + retry):
                 content = bytearray()
                 try:
-                    async with self.client.stream("GET", ts_url, follow_redirects=True) as r, self._stream_context(times):
+                    async with self.client.stream("GET", ts_url,
+                                                  follow_redirects=True) as r, self._stream_context(times):
                         r.raise_for_status()
                         await self._update_task_total(
                             task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
@@ -147,7 +148,7 @@ def handle(**kwargs):
         part_concurrency = kwargs['part_concurrency']
         speed_limit = kwargs['speed_limit']
         method = kwargs['method']
-        d = BaseDownloaderM3u8(httpx.AsyncClient(), videos_dir=videos_dir, part_concurrency=part_concurrency,
+        d = BaseDownloaderM3u8(videos_dir=videos_dir, part_concurrency=part_concurrency,
                                speed_limit=speed_limit)
         if method == 'get_video' or method == 'v':
             cor = d.get_m3u8_video(key, "unnamed")

@@ -7,8 +7,7 @@ from rich.table import Table
 
 from .__version__ import __version__
 from .log import logger
-from .assign import assign
-from .handle import HandleMethodError
+from .handle import Handler, HandleMethodError
 from .progress import CLIProgress
 from .utils import parse_bytes_str
 
@@ -318,7 +317,7 @@ def main(**kwargs):
     asyncio.set_event_loop(loop)
     logger.debug(f'CLI KEY METHOD and OPTIONS: {kwargs}')
     try:
-        executor, cor = assign(**kwargs)
+        executor, cor = Handler.assign(kwargs)
         loop.run_until_complete(cor)
     except HandleMethodError as e:  # method no match
         logger.error(e)

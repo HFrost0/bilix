@@ -5,7 +5,7 @@ from rich.tree import Tree
 import bilix.api.bilibili as api
 from bilix.log import logger
 from bilix.utils import req_retry, convert_size, parse_bilibili_url
-from bilix.assign import Handler
+from bilix.handle import Handler
 from bilix.info.base_informer import BaseInformer
 
 __all__ = ['InformerBilibili']

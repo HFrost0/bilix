@@ -13,7 +13,7 @@ class BaseDownloader:
     LIMIT_BOUND: float = 1e5
     DELAY_SLOPE: float = 0.1
 
-    def __init__(self, client: httpx.AsyncClient, videos_dir='videos', speed_limit: Union[float, int] = None,
+    def __init__(self, client: httpx.AsyncClient = None, videos_dir='videos', speed_limit: Union[float, int] = None,
                  progress: BaseProgress = None):
         """
 
@@ -22,7 +22,7 @@ class BaseDownloader:
         :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit)
         :param progress: progress obj
         """
-        self.client = client
+        self.client = client if client else httpx.AsyncClient()
         self.videos_dir = videos_dir
         assert speed_limit is None or speed_limit > 0
         self.speed_limit = speed_limit
