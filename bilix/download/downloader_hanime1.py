@@ -19,8 +19,8 @@ class DownloaderHanime1(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
 
-@Handler('hanime1')
-def handle(**kwargs):
+@Handler.register('hanime1')
+def handle(kwargs):
     method = kwargs['method']
     key = kwargs['key']
     videos_dir = kwargs['videos_dir']

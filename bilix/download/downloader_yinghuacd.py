@@ -40,23 +40,16 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
 
 
-@Handler(name='樱花动漫')
-def handle(**kwargs):
+@Handler.register(name='樱花动漫')
+def handle(kwargs):
     method = kwargs['method']
     key = kwargs['key']
-    videos_dir = kwargs['videos_dir']
-    video_concurrency = kwargs['video_concurrency']
-    part_concurrency = kwargs['part_concurrency']
-    speed_limit = kwargs['speed_limit']
-    hierarchy = kwargs['hierarchy']
-    p_range = kwargs['p_range']
     if 'yinghuacd' in key:
-        d = DownloaderYinghuacd(videos_dir=videos_dir, video_concurrency=video_concurrency,
-                                part_concurrency=part_concurrency, speed_limit=speed_limit)
+        d = DownloaderYinghuacd
         if method == 'get_series' or method == 's':
-            cor = d.get_series(key, p_range=p_range, hierarchy=hierarchy)
-            return d, cor
+            m = d.get_series
         elif method == 'get_video' or method == 'v':
-            cor = d.get_video(key)
-            return d, cor
-        raise HandleMethodError(d, method)
+            m = d.get_video
+        else:
+            raise HandleMethodError(d, method)
+        return d, m

@@ -140,8 +140,8 @@ class BaseDownloaderM3u8(BaseDownloader):
         return file_path
 
 
-@Handler(name="m3u8")
-def handle(**kwargs):
+@Handler.register(name="m3u8")
+def handle(kwargs):
     key = kwargs['key']
     if re.fullmatch(r"http.+m3u8(\?.*)?", key):
         videos_dir = kwargs['videos_dir']

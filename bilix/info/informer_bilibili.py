@@ -100,8 +100,8 @@ class InformerBilibili(BaseInformer):
         self.console.print(tree)
 
 
-@Handler("bilibili info")
-def handle(**kwargs):
+@Handler.register("bilibili info")
+def handle(kwargs):
     key = kwargs['key']
     method = kwargs['method']
     if 'bilibili' in key and 'info' == method:

@@ -35,25 +35,19 @@ class DownloaderCctv(BaseDownloaderM3u8):
         return file_path
 
 
-@Handler(name='CCTV')
-def handle(**kwargs):
+@Handler.register(name='CCTV')
+def handle(kwargs):
     key = kwargs['key']
+    method = kwargs['method']
     if 'cctv' in key:
-        video_con = kwargs['video_concurrency']
-        part_con = kwargs['part_concurrency']
-        speed_limit = kwargs['speed_limit']
-        videos_dir = kwargs['videos_dir']
-        quality = kwargs['quality']
-        method = kwargs['method']
-        d = DownloaderCctv(videos_dir=videos_dir, video_concurrency=video_con, part_concurrency=part_con,
-                           speed_limit=speed_limit)
+        d = DownloaderCctv
         if method == 's' or method == 'get_series':
-            cor = d.get_series(key, quality=quality)
+            m = d.get_series
         elif method == 'v' or method == 'get_video':
-            cor = d.get_video(key, quality=quality)
+            m = d.get_video
         else:
             raise HandleMethodError(d, method)
-        return d, cor
+        return d, m
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Union, Sequence, Tuple, Optional
+from typing import Union, Sequence, Tuple
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
@@ -458,56 +458,23 @@ class DownloaderBilibili(BaseDownloaderPart):
         return paths
 
 
-@Handler(name='bilibili')
-def handle(
-        method: str,
-        key: str,
-        videos_dir: str,
-        video_concurrency: int,
-        part_concurrency: int,
-        cookie: str,
-        quality: Union[str, int],
-        days: int,
-        num: int,
-        order: str,
-        keyword: str,
-        no_series: bool,
-        hierarchy: bool,
-        image: bool,
-        subtitle: bool,
-        dm: bool,
-        only_audio: bool,
-        p_range,
-        codec: str,
-        speed_limit: Optional[str]
-):
-    d = DownloaderBilibili(videos_dir=videos_dir,
-                           video_concurrency=video_concurrency,
-                           part_concurrency=part_concurrency,
-                           speed_limit=speed_limit,
-                           sess_data=cookie)
+@Handler.register(name='bilibili')
+def handle(cli_kwargs):
+    d = DownloaderBilibili(sess_data=cli_kwargs['cookie'],
+                           **Handler.kwargs_filter(DownloaderBilibili, cli_kwargs=cli_kwargs))
+    method = cli_kwargs['method']
     if method == 'get_series' or method == 's':
-        cor = d.get_series(key, quality=quality, image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                           p_range=p_range, hierarchy=hierarchy, codec=codec)
+        m = d.get_series
     elif method == 'get_video' or method == 'v':
-        cor = d.get_video(key, quality=quality,
-                          image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, codec=codec)
+        m = d.get_video
     elif method == 'get_up' or method == 'up':
-        cor = d.get_up_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy, codec=codec
-        )
+        m = d.get_up_videos
     elif method == 'get_cate' or method == 'cate':
-        cor = d.get_cate_videos(
-            key, quality=quality, num=num, order=order, keyword=keyword, days=days, series=no_series,
-            image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy, codec=codec)
+        m = d.get_cate_videos
     elif method == 'get_favour' or method == 'fav':
-        cor = d.get_favour(key, quality=quality, num=num, keyword=keyword, series=no_series, codec=codec,
-                           image=image, subtitle=subtitle, dm=dm, only_audio=only_audio, hierarchy=hierarchy)
+        m = d.get_favour
     elif method == 'get_collect' or method == 'col':
-        cor = d.get_collect_or_list(key, quality=quality, codec=codec,
-                                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio,
-                                    hierarchy=hierarchy)
+        m = d.get_collect_or_list
     else:
-        raise HandleMethodError(executor=d, method=method)
-    return d, cor
+        raise HandleMethodError(DownloaderBilibili, method=method)
+    return d, m

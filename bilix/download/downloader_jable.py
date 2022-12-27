@@ -32,23 +32,16 @@ class DownloaderJable(BaseDownloaderM3u8):
         await asyncio.gather(*cors)
 
 
-@Handler('jable')
-def handle(**kwargs):
-    method = kwargs['method']
+@Handler.register('jable')
+def handle(kwargs):
     key = kwargs['key']
-    videos_dir = kwargs['videos_dir']
-    video_concurrency = kwargs['video_concurrency']
-    part_concurrency = kwargs['part_concurrency']
-    speed_limit = kwargs['speed_limit']
-    hierarchy = kwargs['hierarchy']
-    image = kwargs['image']
+    method = kwargs['method']
     if 'jable' in key or re.match(r"[A-Za-z]+-\d+", key):
-        d = DownloaderJable(videos_dir=videos_dir, video_concurrency=video_concurrency,
-                            part_concurrency=part_concurrency, speed_limit=speed_limit)
+        d = DownloaderJable
         if method == 'get_video' or method == 'v':
-            cor = d.get_video(key, image=image, hierarchy=hierarchy)
-            return d, cor
-        if method == 'get_model' or method == 'm':
-            cor = d.get_model(key, image=image, hierarchy=hierarchy)
-            return d, cor
-        raise HandleMethodError(d, method)
+            m = d.get_video
+        elif method == 'get_model' or method == 'm':
+            m = d.get_model
+        else:
+            raise HandleMethodError(DownloaderJable, method)
+        return d, m

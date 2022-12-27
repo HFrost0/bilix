@@ -237,7 +237,7 @@ class BasedSpeedLimit(click.ParamType):
 )
 @click.option(
     '--no-series',
-    'no_series',
+    'series',
     is_flag=True,
     default=True,
 )

@@ -24,17 +24,14 @@ class DownloaderDouyin(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
 
-@Handler(name='抖音')
-def handle(**kwargs):
+@Handler.register(name='抖音')
+def handle(kwargs):
     key = kwargs['key']
+    method = kwargs['method']
     if 'douyin' in key:
-        part_con = kwargs['part_concurrency']
-        speed_limit = kwargs['speed_limit']
-        videos_dir = kwargs['videos_dir']
-        image = kwargs['image']
-        method = kwargs['method']
-        d = DownloaderDouyin(videos_dir=videos_dir, part_concurrency=part_con, speed_limit=speed_limit)
+        d = DownloaderDouyin
         if method == 'v' or method == 'get_video':
-            cor = d.get_video(key, image)
-            return d, cor
-        raise HandleMethodError(d, method)
+            m = d.get_video
+        else:
+            raise HandleMethodError(d, method)
+        return d, m

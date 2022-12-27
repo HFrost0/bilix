@@ -104,8 +104,8 @@ class BaseDownloaderPart(BaseDownloader):
         return file_path
 
 
-@Handler(name="Part")
-def handle(**kwargs):
+@Handler.register(name="Part")
+def handle(kwargs):
     key = kwargs['key']
     if m := re.fullmatch(r'http.+(?P<suffix>mp4|m4s|m4a)(\?.*)?', key):
         videos_dir = kwargs['videos_dir']

@@ -24,8 +24,8 @@ class DownloaderTikTok(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
 
-@Handler(name='TikTok')
-def handle(**kwargs):
+@Handler.register(name='TikTok')
+def handle(kwargs):
     key = kwargs['key']
     if 'tiktok' in key:
         part_con = kwargs['part_concurrency']
