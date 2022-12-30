@@ -53,7 +53,8 @@ setup(
         'pyexecjs',
         'pycryptodome',
         'protobuf>=4.21.1',
-        'biliass==1.3.5'
+        'biliass==1.3.5',
+        'pydantic'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

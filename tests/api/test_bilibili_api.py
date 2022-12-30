@@ -84,7 +84,6 @@ async def test_get_video_info():
     assert len(data.pages) == 1
     assert data.p == 0
     assert data.bvid
-    assert 'coin' in data.status
     assert data.img_url.startswith('http://') or data.img_url.startswith('https://')
     # assert data.dash  # todo since GitHub action can not get dash, there is no dash check...
     # 多个bv视频
@@ -95,20 +94,42 @@ async def test_get_video_info():
     # 电视剧
     data = await api.get_video_info(client, "https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0")
     assert len(data.pages) > 1
-    assert 'favorites' in data.status
+    assert data.status.follow
     # 动漫
     data = await api.get_video_info(client, "https://www.bilibili.com/bangumi/play/ss5043?spm_id_from=333.337.0.0")
     assert len(data.pages) > 1
-    assert 'favorites' in data.status
+    assert data.status.follow
+
     # 电影
     data = await api.get_video_info(client,
                                     "https://www.bilibili.com/bangumi/play/ss33343?theme=movie&spm_id_from=333.337.0.0")
     assert data.title == '天气之子'
-    assert 'favorites' in data.status
+    assert data.status.follow
     # 纪录片
     data = await api.get_video_info(client, "https://www.bilibili.com/bangumi/play/ss40509?from_spmid=666.9.hotlist.3")
     assert len(data.pages) > 1
-    assert 'favorites' in data.status
+    assert data.status.follow
+
+
+@pytest.mark.asyncio
+async def test_choose_quality():
+    import os
+
+    client.cookies.set('SESSDATA', os.getenv('BILI_TOKEN'))
+    # dolby
+    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV13L4y1K7th")
+    try:
+        video, audio = data.dash.choose_quality(quality=999, codec=":ec-3")
+    except KeyError:
+        assert not os.getenv("BILI_TOKEN")
+    # normal
+    data.dash.choose_quality(quality="360P", codec="hev")
+    # hi-res
+    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV16K411S7sk")
+    try:
+        video, audio = data.dash.choose_quality(quality='1080P', codec="hev:fLaC")
+    except KeyError:
+        assert not os.getenv("BILI_TOKEN")
 
 
 @pytest.mark.asyncio

@@ -43,57 +43,41 @@ class InformerBilibili(BaseInformer):
 
     async def info_video(self, url: str):
         video_info = await api.get_video_info(self.client, url)
-        dash = video_info.dash
         if video_info.dash is None:
             logger.warning(f'{video_info.h1_title} 需要大会员或该地区不支持')
             return
 
-        async def ensure_size(data):
-            if 'size' not in data:
-                res = await req_retry(self.client, data['base_url'], method='GET', headers={'Range': 'bytes=0-1'})
-                data['size'] = int(res.headers['Content-Range'].split('/')[-1])
+        async def ensure_size(m: api.Media):
+            if m.size is None:
+                res = await req_retry(self.client, m.base_url, method='GET', headers={'Range': 'bytes=0-1'})
+                m.size = int(res.headers['Content-Range'].split('/')[-1])
 
-        cors = [ensure_size(d) for d in dash['video']]
-        cors.append(ensure_size(dash['audio'][0]))
-        if dash['dolby']['audio']:
-            cors.append(ensure_size(dash['dolby']['audio'][0]))
-        if dash.get('flac', None) and dash['flac']['audio']:  # for some video there is no 'flac' key
-            cors.append(ensure_size(dash['flac']['audio']))
+        dash = video_info.dash
+        cors = [ensure_size(m) for m in dash.videos] + [ensure_size(m) for m in dash.audios]
         await asyncio.gather(*cors)
 
         tree = Tree(
             f"[bold reverse] {video_info.h1_title} [/]"
-            f" {video_info.status['view']:,}👀 {video_info.status['like']:,}👍 {video_info.status['coin']:,}🪙",
+            f" {video_info.status.view:,}👀 {video_info.status.like:,}👍 {video_info.status.coin:,}🪙",
             guide_style="bold cyan")
         video_tree = tree.add("[bold]画面 Video")
         audio_tree = tree.add("[bold]声音 Audio")
         leaf_fmt = "codec: {codec:32} size: {size}"
         # for video
-        for f in video_info.support_formats:
-            p_tree = video_tree.add(f['new_description'])
-            q_id = f['quality']
-            for v in dash['video']:  # todo can be speed up...
-                if v['id'] == q_id:
-                    p_tree.add(leaf_fmt.format(codec=v['codecs'], size=convert_size(v['size'])))
+        for quality in dash.video_formats:
+            p_tree = video_tree.add(quality)
+            for c in dash.video_formats[quality]:
+                m = dash.video_formats[quality][c]
+                p_tree.add(leaf_fmt.format(codec=m.codec, size=convert_size(m.size)))
             if len(p_tree.children) == 0:
                 p_tree.style = "rgb(242,93,142)"
                 p_tree.add("需要登录或大会员")
         # for audio
-        audio_tree.add("默认音质").add(
-            leaf_fmt.format(codec=dash['audio'][0]['codecs'], size=convert_size(dash['audio'][0]['size'])))
-        if dash['dolby']['type'] != 0:
-            sub_tree = audio_tree.add("杜比全景声 Dolby")
-            if dash['dolby']['audio']:
-                sub_tree.add(leaf_fmt.format(codec=dash['dolby']['audio'][0]['codecs'],
-                                             size=convert_size(dash['dolby']['audio'][0]['size'])))
-            else:
-                sub_tree.style = "rgb(242,93,142)"
-                sub_tree.add("需要登录或大会员")
-        if dash.get('flac', None):
-            sub_tree = audio_tree.add("Hi-Res无损")
-            if dash['flac']['audio']:
-                sub_tree.add(leaf_fmt.format(codec=dash['flac']['audio']['codecs'],
-                                             size=convert_size(dash['flac']['audio']['size'])))
+        name_map = {"default": "默认音质", "dolby": "杜比全景声 Dolby", "flac": "Hi-Res无损"}
+        for k in dash.audio_formats:
+            sub_tree = audio_tree.add(name_map[k])
+            if m := dash.audio_formats[k]:
+                sub_tree.add(leaf_fmt.format(codec=m.codec, size=convert_size(m.size)))
             else:
                 sub_tree.style = "rgb(242,93,142)"
                 sub_tree.add("需要登录或大会员")
