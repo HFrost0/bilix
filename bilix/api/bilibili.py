@@ -153,7 +153,7 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
 
 class Media(BaseModel):
     base_url: str
-    backup_url: List[str] = Field(default_factory=list)
+    backup_url: List[str] = None
     size: int = None
     width: int = None
     height: int = None
@@ -164,7 +164,7 @@ class Media(BaseModel):
     @property
     def urls(self):
         """the copy of all url including backup"""
-        return [self.base_url, *self.backup_url]
+        return [self.base_url, *self.backup_url] if self.backup_url else [self.base_url]
 
 
 class Dash(BaseModel):
