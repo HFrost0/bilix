@@ -1,3 +1,4 @@
+import httpx
 import pytest
 from bilix.dm import dm2json, dm2ass_factory
 from bilix.download import DownloaderBilibili
@@ -64,3 +65,26 @@ async def test_get_subtitle():
     d = DownloaderBilibili()
     await d.get_subtitle("https://www.bilibili.com/video/BV1hS4y1m7Ma")
     await d.aclose()
+
+
+@pytest.mark.asyncio
+async def test_choose_quality():
+    import os
+    from bilix.api import bilibili as api
+
+    client = httpx.AsyncClient()
+    client.cookies.set('SESSDATA', os.getenv('BILI_TOKEN'))
+    # dolby
+    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV13L4y1K7th")
+    try:
+        video, audio = data.dash.choose_quality(quality=999, codec=":ec-3")
+    except KeyError:
+        assert not os.getenv("BILI_TOKEN")
+    # normal
+    data.dash.choose_quality(quality="360P", codec="hev")
+    # hi-res
+    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV16K411S7sk")
+    try:
+        video, audio = data.dash.choose_quality(quality='1080P', codec="hev:fLaC")
+    except KeyError:
+        assert not os.getenv("BILI_TOKEN")
