@@ -18,7 +18,7 @@ class DownloaderTikTok(BaseDownloaderPart):
         video_info = await api.get_video_info(self.client, url)
         title = legal_title(video_info.author_name, video_info.title)
         # since TikTok backup not fast enough some time, use the first one
-        cors = [self.get_media(video_info.nwm_urls[0], media_name=title + ".mp4")]
+        cors = [self.get_file(video_info.nwm_urls[0], file_name=title + ".mp4")]
         if image:
             cors.append(self._get_static(video_info.cover, title))
         await asyncio.gather(*cors)

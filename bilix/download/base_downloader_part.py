@@ -36,46 +36,46 @@ class BaseDownloaderPart(BaseDownloader):
             urls[0] = res.url
         return total
 
-    async def get_media(self, url_or_urls: Union[str, Iterable[str]],
-                        media_name: str, task_id=None, hierarchy: str = '', retry: int = 5) -> str:
+    async def get_file(self, url_or_urls: Union[str, Iterable[str]],
+                       file_name: str, task_id=None, hierarchy: str = '', retry: int = 5) -> str:
         """
 
-        :param url_or_urls: media url or urls with backups
-        :param media_name:
+        :param url_or_urls: file url or urls with backups
+        :param file_name:
         :param task_id: if not provided, a new progress task will be created
         :param hierarchy:
         :param retry: retry times
         :return: downloaded file path
         """
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        file_path = f'{file_dir}/{media_name}'
+        file_path = f'{file_dir}/{file_name}'
         urls = [url_or_urls] if isinstance(url_or_urls, str) else [url for url in url_or_urls]
         if os.path.exists(file_path):
-            logger.info(f'[green]已存在[/green] {media_name}')
+            logger.info(f'[green]已存在[/green] {file_name}')
             return file_path
         total = await self._content_length(urls)
         if task_id is not None:
             await self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         else:
-            task_id = await self.progress.add_task(description=media_name[:30], total=total, visible=True)
+            task_id = await self.progress.add_task(description=file_name[:30], total=total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
         part_names = []
         for i in range(self.part_concurrency):
             start = i * part_length
             end = (i + 1) * part_length - 1 if i < self.part_concurrency - 1 else total - 1
-            part_name = f'{media_name}-{start}-{end}'
+            part_name = f'{file_name}-{start}-{end}'
             part_names.append(part_name)
-            cors.append(self._get_media_part(urls, part_name, task_id, hierarchy=hierarchy, retry=retry))
+            cors.append(self._get_file_part(urls, part_name, task_id, hierarchy=hierarchy, retry=retry))
         file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_name=file_path)
         if self.progress.tasks[task_id].finished:
             await self.progress.update(task_id, visible=False)
-            logger.info(f"[cyan]已完成[/cyan] {media_name}")
+            logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
-    async def _get_media_part(self, urls: List[Union[str, httpx.URL]],
-                              part_name, task_id, times=0, hierarchy: str = '', retry: int = 5):
+    async def _get_file_part(self, urls: List[Union[str, httpx.URL]],
+                             part_name, task_id, times=0, hierarchy: str = '', retry: int = 5):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         if times > retry:
             raise Exception(f'STREAM 超过重试次数 {part_name}')
@@ -100,21 +100,20 @@ class BaseDownloaderPart(BaseDownloader):
                         await f.write(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
         except (httpx.TransportError, httpx.HTTPStatusError):
-            await self._get_media_part(urls, part_name, task_id, times=times + 1, hierarchy=hierarchy)
+            await self._get_file_part(urls, part_name, task_id, times=times + 1, hierarchy=hierarchy)
         return file_path
 
 
 @Handler.register(name="Part")
 def handle(kwargs):
     key = kwargs['key']
-    if m := re.fullmatch(r'http.+(?P<suffix>mp4|m4s|m4a)(\?.*)?', key):
+    method = kwargs['method']
+    if method == 'f' or method == 'get_file':
         videos_dir = kwargs['videos_dir']
         part_concurrency = kwargs['part_concurrency']
         speed_limit = kwargs['speed_limit']
-        method = kwargs['method']
         d = BaseDownloaderPart(videos_dir=videos_dir, part_concurrency=part_concurrency,
                                speed_limit=speed_limit)
-        if method == 'get_video' or method == 'v':
-            cor = d.get_media(key, f"unnamed.{m.group('suffix')}")
-            return d, cor
-        raise HandleMethodError(d, method)
+        file_name = key.split('/')[-1].split('?')[0]
+        cor = d.get_file(key, file_name)
+        return d, cor

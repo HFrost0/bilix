@@ -289,7 +289,10 @@ class DownloaderBilibili(BaseDownloaderPart):
                     logger.warning(f'{url} {e}')
                     return
             # join p_name and title
-            title = legal_title(video_info.h1_title, video_info.pages[video_info.p].p_name)
+            p_name = video_info.pages[video_info.p].p_name
+            title = legal_title(video_info.h1_title, p_name)
+            # to avoid file name too long bug
+            file_name = p_name if len(video_info.h1_title) > 50 and hierarchy else title
             if not video_info.dash:
                 logger.warning(f'{title} 需要大会员或该地区不支持')
                 return
@@ -307,18 +310,18 @@ class DownloaderBilibili(BaseDownloaderPart):
             cors = []
             # add cor according to params
             if not only_audio:
-                if os.path.exists(f'{file_dir}/{title}.mp4'):
-                    logger.info(f'[green]已存在[/green] {title}.mp4')
+                if os.path.exists(f'{file_dir}/{file_name}.mp4'):
+                    logger.info(f'[green]已存在[/green] {file_name}.mp4')
                 else:
-                    cors.append(self.get_media(video.urls, f'{title}-video', task_id, hierarchy))
-                    cors.append(self.get_media(audio.urls, f'{title}-audio', task_id, hierarchy))
+                    cors.append(self.get_file(video.urls, f'{file_name}-video', task_id, hierarchy))
+                    cors.append(self.get_file(audio.urls, f'{file_name}-audio', task_id, hierarchy))
             else:
-                cors.append(self.get_media(audio.urls, f'{title}{audio.suffix}', task_id, hierarchy))
+                cors.append(self.get_file(audio.urls, f'{file_name}{audio.suffix}', task_id, hierarchy))
             # additional task
             if image or subtitle or dm:
                 extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
                 if image:
-                    cors.append(self._get_static(video_info.img_url, title, hierarchy=extra_hierarchy))
+                    cors.append(self._get_static(video_info.img_url, file_name, hierarchy=extra_hierarchy))
                 if subtitle:
                     cors.append(self.get_subtitle(url, hierarchy=extra_hierarchy, video_info=video_info))
                 if dm:
@@ -326,20 +329,20 @@ class DownloaderBilibili(BaseDownloaderPart):
                                             hierarchy=extra_hierarchy, video_info=video_info))
             await asyncio.gather(*cors)
 
-        if not only_audio and not os.path.exists(f'{file_dir}/{title}.mp4'):
-            cmd = ['ffmpeg', '-i', f'{file_dir}/{title}-video', '-i', f'{file_dir}/{title}-audio',
+        if not only_audio and not os.path.exists(f'{file_dir}/{file_name}.mp4'):
+            cmd = ['ffmpeg', '-i', f'{file_dir}/{file_name}-video', '-i', f'{file_dir}/{file_name}-audio',
                    '-codec', 'copy', '-loglevel', 'quiet']
             # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
             if audio.codec == 'fLaC':
                 cmd.extend(['-strict', '-2'])
-            cmd.append(f'{file_dir}/{title}.mp4')
+            cmd.append(f'{file_dir}/{file_name}.mp4')
             await run_process(cmd)
-            os.remove(f'{file_dir}/{title}-video')
-            os.remove(f'{file_dir}/{title}-audio')
+            os.remove(f'{file_dir}/{file_name}-video')
+            os.remove(f'{file_dir}/{file_name}-audio')
         # make progress invisible
         if self.progress.tasks[task_id].visible:
             await self.progress.update(task_id, advance=1, visible=False)
-            logger.info(f'[cyan]已完成[/cyan] {title}{audio.suffix if only_audio else ".mp4"}')
+            logger.info(f'[cyan]已完成[/cyan] {file_name}{audio.suffix if only_audio else ".mp4"}')
 
     async def get_dm(self, url, update=False, convert_func=None, hierarchy: str = '', video_info=None):
         """
@@ -356,7 +359,10 @@ class DownloaderBilibili(BaseDownloaderPart):
         aid, cid = video_info.aid, video_info.cid
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
-        file_name = legal_title(video_info.h1_title, video_info.pages[video_info.p].p_name, "弹幕") + file_type
+        if len(video_info.h1_title) > 50 and hierarchy:  # to avoid file name too long bug
+            file_name = legal_title(video_info.pages[video_info.p].p_name, "弹幕") + file_type
+        else:
+            file_name = legal_title(video_info.h1_title, video_info.pages[video_info.p].p_name, "弹幕") + file_type
         file_path = f'{file_dir}/{file_name}'
         if not update and os.path.exists(file_path):
             logger.info(f"[green]已存在[/green] {file_name}")
@@ -393,8 +399,12 @@ class DownloaderBilibili(BaseDownloaderPart):
             logger.warning(f'{url} {e}')
             return
         cors = []
+
         for sub_url, sub_name in subtitles:
-            file_name = legal_title(video_info.h1_title, p_name, sub_name)
+            if len(video_info.h1_title) > 50 and hierarchy:  # to avoid file name too long bug
+                file_name = legal_title(p_name, sub_name)
+            else:
+                file_name = legal_title(video_info.h1_title, p_name, sub_name)
             cors.append(self._get_static(sub_url, file_name, convert_func=convert_func, hierarchy=hierarchy))
         paths = await asyncio.gather(*cors)
         return paths
