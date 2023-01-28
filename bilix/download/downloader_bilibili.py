@@ -292,7 +292,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             p_name = video_info.pages[video_info.p].p_name
             title = legal_title(video_info.h1_title, p_name)
             # to avoid file name too long bug
-            file_name = p_name if len(video_info.h1_title) > 50 and hierarchy else title
+            file_name = p_name if len(video_info.h1_title) > 50 and hierarchy and p_name else title
             if not video_info.dash:
                 logger.warning(f'{title} 需要大会员或该地区不支持')
                 return
@@ -359,10 +359,11 @@ class DownloaderBilibili(BaseDownloaderPart):
         aid, cid = video_info.aid, video_info.cid
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
-        if len(video_info.h1_title) > 50 and hierarchy:  # to avoid file name too long bug
-            file_name = legal_title(video_info.pages[video_info.p].p_name, "弹幕") + file_type
+        p_name = video_info.pages[video_info.p].p_name
+        if len(video_info.h1_title) > 50 and hierarchy and p_name:  # to avoid file name too long bug
+            file_name = legal_title(p_name, "弹幕") + file_type
         else:
-            file_name = legal_title(video_info.h1_title, video_info.pages[video_info.p].p_name, "弹幕") + file_type
+            file_name = legal_title(video_info.h1_title, p_name, "弹幕") + file_type
         file_path = f'{file_dir}/{file_name}'
         if not update and os.path.exists(file_path):
             logger.info(f"[green]已存在[/green] {file_name}")
@@ -401,7 +402,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         cors = []
 
         for sub_url, sub_name in subtitles:
-            if len(video_info.h1_title) > 50 and hierarchy:  # to avoid file name too long bug
+            if len(video_info.h1_title) > 50 and hierarchy and p_name:  # to avoid file name too long bug
                 file_name = legal_title(p_name, sub_name)
             else:
                 file_name = legal_title(video_info.h1_title, p_name, sub_name)
