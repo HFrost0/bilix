@@ -143,7 +143,7 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
     else:
         mid = url_or_mid
     params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
-    res = await req_retry(client, 'https://api.bilibili.com/x/space/arc/search', params=params)
+    res = await req_retry(client, 'https://api.bilibili.com/x/space/wbi/arc/search', params=params)
     info = json.loads(res.text)
     up_name = info['data']['list']['vlist'][0]['author']
     total_size = info['data']['page']['count']
