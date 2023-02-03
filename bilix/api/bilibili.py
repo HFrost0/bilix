@@ -298,7 +298,7 @@ class VideoInfo(BaseModel):
             if dash['dolby']['type'] != 0:
                 quality = "dolby"
                 audio_formats[quality] = None
-                if dash['dolby']['audio']:
+                if dash['dolby'].get('audio', None):
                     d = dash['dolby']['audio'][0]
                     m = Media(quality=quality, suffix='.eac3', codec=d['codecs'], **d)
                     audios.append(m)
