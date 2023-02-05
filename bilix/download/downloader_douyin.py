@@ -10,9 +10,10 @@ from bilix.utils import legal_title
 
 
 class DownloaderDouyin(BaseDownloaderPart):
-    def __init__(self, videos_dir='videos', part_concurrency=10, speed_limit: Union[float, int] = None, progress=None):
+    def __init__(self, videos_dir='videos', part_concurrency=10, stream_retry=5,
+                 speed_limit: Union[float, int] = None, progress=None):
         client = httpx.AsyncClient(**api.dft_client_settings)
-        super(DownloaderDouyin, self).__init__(client, videos_dir, part_concurrency,
+        super(DownloaderDouyin, self).__init__(client, videos_dir, part_concurrency, stream_retry=stream_retry,
                                                speed_limit=speed_limit, progress=progress)
 
     async def get_video(self, url: str, image=False):
@@ -26,9 +27,9 @@ class DownloaderDouyin(BaseDownloaderPart):
 
 @Handler.register(name='抖音')
 def handle(kwargs):
-    key = kwargs['key']
-    method = kwargs['method']
-    if 'douyin' in key:
+    keys = kwargs['keys']
+    if 'douyin' in keys[0]:
+        method = kwargs['method']
         d = DownloaderDouyin
         if method == 'v' or method == 'get_video':
             m = d.get_video

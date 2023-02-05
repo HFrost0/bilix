@@ -86,9 +86,16 @@ class InformerBilibili(BaseInformer):
 
 @Handler.register("bilibili info")
 def handle(kwargs):
-    key = kwargs['key']
+    keys = kwargs['keys']
     method = kwargs['method']
-    if 'bilibili' in key and 'info' == method:
+    if 'bilibili' in keys[0] and 'info' == method:
         informer = InformerBilibili(sess_data=kwargs['cookie'])
-        cor = informer.info_key(key)
-        return informer, cor
+
+        # in order to maintain order
+        async def temp():
+            for key in keys:
+                if len(keys) > 1:
+                    logger.info(f"For {key}")
+                await informer.info_key(key)
+
+        return informer, temp()

@@ -1,12 +1,11 @@
 import asyncio
-import re
 from typing import Union, List, Iterable
 import aiofiles
 import httpx
 import random
 import os
 
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.download.base_downloader import BaseDownloader
 from bilix.utils import req_retry, merge_files
 from bilix.log import logger
@@ -14,7 +13,7 @@ from bilix.log import logger
 
 class BaseDownloaderPart(BaseDownloader):
     def __init__(self, client: httpx.AsyncClient = None, videos_dir: str = 'videos', part_concurrency=10,
-                 speed_limit: Union[float, int] = None, progress=None):
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         """
         Base Async http Content-Range Downloader
 
@@ -24,7 +23,8 @@ class BaseDownloaderPart(BaseDownloader):
         :param speed_limit:
         :param progress:
         """
-        super(BaseDownloaderPart, self).__init__(client, videos_dir, speed_limit=speed_limit, progress=progress)
+        super(BaseDownloaderPart, self).__init__(
+            client, videos_dir, stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
         self.part_concurrency = part_concurrency
 
     async def _content_length(self, urls: List[Union[str, httpx.URL]]) -> int:
@@ -37,14 +37,13 @@ class BaseDownloaderPart(BaseDownloader):
         return total
 
     async def get_file(self, url_or_urls: Union[str, Iterable[str]],
-                       file_name: str, task_id=None, hierarchy: str = '', retry: int = 5) -> str:
+                       file_name: str, task_id=None, hierarchy: str = '') -> str:
         """
 
         :param url_or_urls: file url or urls with backups
         :param file_name:
         :param task_id: if not provided, a new progress task will be created
         :param hierarchy:
-        :param retry: retry times
         :return: downloaded file path
         """
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
@@ -66,7 +65,7 @@ class BaseDownloaderPart(BaseDownloader):
             end = (i + 1) * part_length - 1 if i < self.part_concurrency - 1 else total - 1
             part_name = f'{file_name}-{start}-{end}'
             part_names.append(part_name)
-            cors.append(self._get_file_part(urls, part_name, task_id, hierarchy=hierarchy, retry=retry))
+            cors.append(self._get_file_part(urls, part_name, task_id, hierarchy=hierarchy))
         file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_name=file_path)
         if self.progress.tasks[task_id].finished:
@@ -75,9 +74,9 @@ class BaseDownloaderPart(BaseDownloader):
         return file_path
 
     async def _get_file_part(self, urls: List[Union[str, httpx.URL]],
-                             part_name, task_id, times=0, hierarchy: str = '', retry: int = 5):
+                             part_name, task_id, times=0, hierarchy: str = ''):
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        if times > retry:
+        if times > self.stream_retry:
             raise Exception(f'STREAM 超过重试次数 {part_name}')
         start, end = map(int, part_name.split('-')[-2:])
         file_path = f'{file_dir}/{part_name}'
@@ -106,7 +105,6 @@ class BaseDownloaderPart(BaseDownloader):
 
 @Handler.register(name="Part")
 def handle(kwargs):
-    key = kwargs['key']
     method = kwargs['method']
     if method == 'f' or method == 'get_file':
         videos_dir = kwargs['videos_dir']
@@ -114,6 +112,8 @@ def handle(kwargs):
         speed_limit = kwargs['speed_limit']
         d = BaseDownloaderPart(videos_dir=videos_dir, part_concurrency=part_concurrency,
                                speed_limit=speed_limit)
-        file_name = key.split('/')[-1].split('?')[0]
-        cor = d.get_file(key, file_name)
-        return d, cor
+        cors = []
+        for key in kwargs['keys']:
+            file_name = key.split('/')[-1].split('?')[0]
+            cors.append(d.get_file(key, file_name))
+        return d, asyncio.gather(*cors)

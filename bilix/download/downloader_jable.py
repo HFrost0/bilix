@@ -9,10 +9,10 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 class DownloaderJable(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
-                 speed_limit: Union[float, int] = None, progress=None):
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         client = httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
-                                              speed_limit=speed_limit, progress=progress)
+                                              stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
 
     async def get_model(self, url: str, image=True, hierarchy=True):
         data = await api.get_model_info(self.client, url)
@@ -34,9 +34,9 @@ class DownloaderJable(BaseDownloaderM3u8):
 
 @Handler.register('jable')
 def handle(kwargs):
-    key = kwargs['key']
+    keys = kwargs['keys']
     method = kwargs['method']
-    if 'jable' in key or re.match(r"[A-Za-z]+-\d+", key):
+    if 'jable' in keys[0] or re.match(r"[A-Za-z]+-\d+", keys[0]):
         d = DownloaderJable
         if method == 'get_video' or method == 'v':
             m = d.get_video

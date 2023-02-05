@@ -9,10 +9,11 @@ from bilix.utils import legal_title
 
 
 class DownloaderTikTok(BaseDownloaderPart):
-    def __init__(self, videos_dir='videos', part_concurrency=10, speed_limit: Union[float, int] = None, progress=None):
+    def __init__(self, videos_dir='videos', part_concurrency=10,
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         client = httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderTikTok, self).__init__(client, videos_dir, part_concurrency,
-                                               speed_limit=speed_limit, progress=progress)
+                                               stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)
@@ -26,15 +27,11 @@ class DownloaderTikTok(BaseDownloaderPart):
 
 @Handler.register(name='TikTok')
 def handle(kwargs):
-    key = kwargs['key']
-    if 'tiktok' in key:
-        part_con = kwargs['part_concurrency']
-        speed_limit = kwargs['speed_limit']
-        videos_dir = kwargs['videos_dir']
-        image = kwargs['image']
+    keys = kwargs['keys']
+    if 'tiktok' in keys[0]:
         method = kwargs['method']
-        d = DownloaderTikTok(videos_dir=videos_dir, part_concurrency=part_con, speed_limit=speed_limit)
+        d = DownloaderTikTok
         if method == 'v' or method == 'get_video':
-            cor = d.get_video(key, image)
-            return d, cor
+            m = d.get_video
+            return d, m
         raise HandleMethodError(d, method)

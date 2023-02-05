@@ -7,9 +7,11 @@ from bilix.download.base_downloader_part import BaseDownloaderPart
 
 
 class DownloaderHanime1(BaseDownloaderPart):
-    def __init__(self, videos_dir: str = "videos", speed_limit: Union[float, int] = None, progress=None):
+    def __init__(self, videos_dir: str = "videos", stream_retry=5,
+                 speed_limit: Union[float, int] = None, progress=None):
         client = httpx.AsyncClient(**api.dft_client_settings)
-        super(DownloaderHanime1, self).__init__(client, videos_dir, speed_limit=speed_limit, progress=progress)
+        super(DownloaderHanime1, self).__init__(client, videos_dir, speed_limit=speed_limit,
+                                                stream_retry=stream_retry, progress=progress)
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)
@@ -21,14 +23,11 @@ class DownloaderHanime1(BaseDownloaderPart):
 
 @Handler.register('hanime1')
 def handle(kwargs):
+    keys = kwargs['keys']
     method = kwargs['method']
-    key = kwargs['key']
-    videos_dir = kwargs['videos_dir']
-    image = kwargs['image']
-    speed_limit = kwargs['speed_limit']
-    if 'hanime1' in key:
-        d = DownloaderHanime1(videos_dir=videos_dir, speed_limit=speed_limit)
+    if 'hanime1' in keys[0]:
+        d = DownloaderHanime1
         if method == 'get_video' or method == 'v':
-            cor = d.get_video(key, image=image)
-            return d, cor
+            m = d.get_video
+            return d, m
         raise HandleMethodError(d, method)

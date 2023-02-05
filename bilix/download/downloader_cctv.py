@@ -8,11 +8,11 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
 class DownloaderCctv(BaseDownloaderM3u8):
-    def __init__(self, videos_dir='videos', video_concurrency=3, part_concurrency=10,
+    def __init__(self, videos_dir='videos', video_concurrency=3, part_concurrency=10, stream_retry=5,
                  speed_limit: Union[float, int] = None, progress=None):
         client = httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderCctv, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
-                                             speed_limit=speed_limit, progress=progress)
+                                             stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
 
     async def get_series(self, url: str, quality=0, hierarchy=True):
         pid, vide, vida = await api.get_id(self.client, url)
@@ -37,9 +37,9 @@ class DownloaderCctv(BaseDownloaderM3u8):
 
 @Handler.register(name='CCTV')
 def handle(kwargs):
-    key = kwargs['key']
+    keys = kwargs['keys']
     method = kwargs['method']
-    if 'cctv' in key:
+    if 'cctv' in keys[0]:
         d = DownloaderCctv
         if method == 's' or method == 'get_series':
             m = d.get_series

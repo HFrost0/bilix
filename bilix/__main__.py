@@ -40,29 +40,29 @@ def print_help():
     console.print(f"\n[bold]bilix {__version__}", justify="center")
     console.print("⚡️快如闪电的bilibili下载工具，基于Python现代Async特性，高速批量下载整部动漫，电视剧，up投稿等\n",
                   justify="center")
-    console.print("使用方法： bilix [cyan]<method> <key> [OPTIONS][/cyan] ", justify="left")
+    console.print("使用方法： bilix [cyan]<method> <key1, key2...> [OPTIONS][/cyan] ", justify="left")
     table = Table.grid(padding=1, pad_edge=False)
     table.add_column("Parameter", no_wrap=True, justify="left", style="bold")
     table.add_column("Description")
 
     table.add_row(
         "[cyan]<method>",
-        'get_series 或 s：获取整个系列的视频（包括多p投稿，动漫，电视剧，电影，纪录片），也可以下载单个视频\n'
-        'get_video 或 v：获取特定的单个视频，在用户不希望下载系列其他视频的时候可以使用\n'
-        'get_up 或 up：获取某个up的所有投稿视频，支持数量选择，关键词搜索，排序\n'
-        'get_cate 或 cate：获取分区视频，支持数量选择，关键词搜索，排序\n'
-        'get_favour 或 fav：获取收藏夹内视频，支持数量选择，关键词搜索\n'
+        'get_series 或 s：   获取整个系列的视频（包括多p投稿，动漫，电视剧，电影，纪录片），也可以下载单个视频\n'
+        'get_video 或 v：    获取特定的单个视频，在用户不希望下载系列其他视频的时候可以使用\n'
+        'get_up 或 up：      获取某个up的所有投稿视频，支持数量选择，关键词搜索，排序\n'
+        'get_cate 或 cate：  获取分区视频，支持数量选择，关键词搜索，排序\n'
+        'get_favour 或 fav： 获取收藏夹内视频，支持数量选择，关键词搜索\n'
         'get_collect 或 col：获取合集或视频列表内视频\n'
-        'info：打印url所属资源的详细信息（例如点赞数，画质，编码格式等）'
+        'info：              打印url所属资源的详细信息（例如点赞数，画质，编码格式等）'
     )
     table.add_row(
-        "[cyan]<key>",
-        '如果使用get_video或get_series，在此填写视频的url\n'
-        '如果使用get_up，则在该位置填写b站用户空间页url或用户id\n'
-        '如果使用get_cate，则在该位置填写分区名称\n'
-        '如果使用get_favour，则在该位置填写收藏夹页url或收藏夹id\n'
-        '如果使用get_collect，则在该位置填写合集或者视频列表详情页url\n'
-        '如果使用info，则在该位置填写任意资源url'
+        "[cyan]<key>[/cyan]",
+        '如使用get_video/get_series，填写视频的url\n'
+        '如使用get_up，填写b站用户空间页url或用户id\n'
+        '如使用get_cate，填写分区名称\n'
+        '如使用get_favour，填写收藏夹页url或收藏夹id\n'
+        '如使用get_collect，填写合集或者视频列表详情页url\n'
+        '如使用info，填写任意资源url'
     )
     console.print(table)
     # console.rule("OPTIONS参数")
@@ -151,6 +151,10 @@ def print_help():
         "-sl --speed-limit", '[dark_cyan]str',
         '最大下载速度，默认无限制。例如：-sl 1.5MB (experimental)',
     )
+    table.add_row(
+        "-sr --stream-retry", '[dark_cyan]int',
+        '下载过程中发生网络错误后最大重试数，默认5',
+    )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
     table.add_row("--debug", '', "显示debug信息")
@@ -181,7 +185,7 @@ class BasedSpeedLimit(click.ParamType):
 
 @click.command(add_help_option=False)
 @click.argument("method", type=str)
-@click.argument("key", type=str)
+@click.argument("keys", type=str, nargs=-1, required=True)
 @click.option(
     "--dir",
     "videos_dir",
@@ -288,6 +292,13 @@ class BasedSpeedLimit(click.ParamType):
     'speed_limit',
     type=BasedSpeedLimit(),
     default=None,
+)
+@click.option(
+    '--stream-retry',
+    '-sr',
+    'stream_retry',
+    type=int,
+    default=5
 )
 @click.option(
     '-h',

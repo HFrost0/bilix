@@ -17,7 +17,7 @@ __all__ = ['DownloaderBilibili']
 
 
 class DownloaderBilibili(BaseDownloaderPart):
-    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10,
+    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10, stream_retry=5,
                  speed_limit: Union[float, int] = None, progress=None):
         """
 
@@ -25,13 +25,14 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param sess_data: 有条件的用户填写大会员凭证，填写后可下载大会员资源
         :param video_concurrency: 限制最大同时下载的视频数量
         :param part_concurrency: 每个媒体的分段并发数
+        :param stream_retry:
         :param speed_limit: 下载速度限制，单位B/s
         :param progress: 进度对象，不提供则使用rich命令行进度
         """
         client = httpx.AsyncClient(**api.dft_client_settings)
         client.cookies.set('SESSDATA', sess_data)
         super(DownloaderBilibili, self).__init__(client, videos_dir, part_concurrency, speed_limit=speed_limit,
-                                                 progress=progress)
+                                                 stream_retry=stream_retry, progress=progress)
         self.speed_limit = speed_limit
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self._cate_meta = None

@@ -11,10 +11,10 @@ from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 class DownloaderYinghuacd(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
-                 speed_limit: Union[int, float] = None, progress=None):
+                 stream_retry=5, speed_limit: Union[int, float] = None, progress=None):
         stream_client = httpx.AsyncClient()
         super(DownloaderYinghuacd, self).__init__(stream_client, videos_dir, video_concurrency, part_concurrency,
-                                                  speed_limit=speed_limit, progress=progress)
+                                                  stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
         self.api_client = httpx.AsyncClient(**api.dft_client_settings)
 
     async def get_series(self, url: str, p_range: Sequence[int] = None, hierarchy=True):
@@ -43,8 +43,8 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
 @Handler.register(name='樱花动漫')
 def handle(kwargs):
     method = kwargs['method']
-    key = kwargs['key']
-    if 'yinghuacd' in key:
+    keys = kwargs['keys']
+    if 'yinghuacd' in keys[0]:
         d = DownloaderYinghuacd
         if method == 'get_series' or method == 's':
             m = d.get_series

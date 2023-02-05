@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import inspect
 from typing import Callable, Union, Dict
@@ -63,11 +64,14 @@ class Handler:
                 if inspect.iscoroutinefunction(cor):  # handle func return async function instead of coroutine
                     sig = inspect.signature(cor)
                     kwargs = cls.kwargs_filter(cor, cli_kwargs)
-                    if 'self' in sig.parameters:  # coroutine function has not bound to instance
-                        cor = cor(executor, cli_kwargs['key'], **kwargs)  # bound executor to self
-                    else:
-                        cor = cor(cli_kwargs['key'], **kwargs)
-                    logger.debug(f"auto assemble {cor} by {kwargs}")
+                    cors = []
+                    for key in cli_kwargs['keys']:
+                        if 'self' in sig.parameters:  # coroutine function has not bound to instance
+                            cors.append(cor(executor, key, **kwargs))  # bound executor to self
+                        else:
+                            cors.append(cor(key, **kwargs))
+                        logger.debug(f"auto assemble {cor} by {kwargs}")
+                    cor = asyncio.gather(*cors)
                 return executor, cor
 
             cls._registered[name] = wrapped

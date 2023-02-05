@@ -19,7 +19,7 @@ def cors_slice(cors: Sequence[Coroutine], p_range: Sequence[int]):
 
 
 async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[str]], method='GET',
-                    follow_redirects=False, retry=3, **kwargs) -> httpx.Response:
+                    follow_redirects=False, retry=5, **kwargs) -> httpx.Response:
     """Client request with multiple backup urls and retry"""
     pre_exc = None  # predefine to avoid warning
     for times in range(1 + retry):
@@ -38,8 +38,7 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
             await asyncio.sleep(1. * (times + 1))
         except Exception as e:
             logger.warning(f'{method} {e.__class__.__name__} 未知异常 url: {url}')
-            pre_exc = e
-            await asyncio.sleep(0.5)
+            raise e
         else:
             return res
     logger.error(f"{method} 超过重复次数 {url_or_urls}")

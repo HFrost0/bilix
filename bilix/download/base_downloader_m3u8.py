@@ -8,7 +8,7 @@ import m3u8
 from Crypto.Cipher import AES
 from m3u8 import Segment
 
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.download.base_downloader import BaseDownloader
 from bilix.log import logger
 from bilix.utils import req_retry, merge_files
@@ -16,7 +16,7 @@ from bilix.utils import req_retry, merge_files
 
 class BaseDownloaderM3u8(BaseDownloader):
     def __init__(self, client: httpx.AsyncClient = None, videos_dir="videos", video_concurrency=3, part_concurrency=10,
-                 speed_limit: Union[float, int] = None, progress=None):
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         """
         Base async m3u8 Downloader
 
@@ -27,7 +27,8 @@ class BaseDownloaderM3u8(BaseDownloader):
         :param speed_limit:
         :param progress:
         """
-        super(BaseDownloaderM3u8, self).__init__(client, videos_dir, speed_limit=speed_limit, progress=progress)
+        super(BaseDownloaderM3u8, self).__init__(
+            client, videos_dir, stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self.part_con = part_concurrency
         self.decrypt_cache = {}
@@ -48,14 +49,13 @@ class BaseDownloaderM3u8(BaseDownloader):
         cipher = self.decrypt_cache[uri]
         return cipher.decrypt(content)
 
-    async def get_m3u8_video(self, m3u8_url: str, name: str, hierarchy: str = '', retry: int = 5) -> str:
+    async def get_m3u8_video(self, m3u8_url: str, name: str, hierarchy: str = '') -> str:
         """
         download
 
         :param m3u8_url:
         :param name:
         :param hierarchy:
-        :param retry:
         :return: downloaded file path
         """
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
@@ -79,7 +79,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             # https://stackoverflow.com/questions/50628791/decrypt-m3u8-playlist-encrypted-with-aes-128-without-iv
             if seg.key and seg.key.iv is None:
                 seg.custom_parser_values['iv'] = idx.to_bytes(16, 'big')
-            cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy, retry=retry))
+            cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy))
         await self.progress.update(task_id, total=0, total_time=total_time)
         file_list = await asyncio.gather(*cors)
         self.v_sema.release()
@@ -100,8 +100,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         predicted_total = confirmed_b / confirmed_t * task.fields['total_time']
         await self.progress.update(task_id, total=predicted_total, confirmed_t=confirmed_t, confirmed_b=confirmed_b)
 
-    async def _get_ts(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = '',
-                      retry: int = 5) -> str:
+    async def _get_ts(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = '') -> str:
         ts_url = seg.absolute_uri
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
         file_path = f"{base_path}/{name}"
@@ -113,7 +112,7 @@ class BaseDownloaderM3u8(BaseDownloader):
 
         async with p_sema:
             content = None
-            for times in range(1 + retry):
+            for times in range(1 + self.stream_retry):
                 content = bytearray()
                 try:
                     async with self.client.stream("GET", ts_url,
@@ -142,15 +141,14 @@ class BaseDownloaderM3u8(BaseDownloader):
 
 @Handler.register(name="m3u8")
 def handle(kwargs):
-    key = kwargs['key']
-    if re.fullmatch(r"http.+m3u8(\?.*)?", key):
+    method = kwargs['method']
+    if method == 'm3u8' or method == 'get_m3u8':
         videos_dir = kwargs['videos_dir']
         part_concurrency = kwargs['part_concurrency']
         speed_limit = kwargs['speed_limit']
-        method = kwargs['method']
         d = BaseDownloaderM3u8(videos_dir=videos_dir, part_concurrency=part_concurrency,
                                speed_limit=speed_limit)
-        if method == 'get_video' or method == 'v':
-            cor = d.get_m3u8_video(key, "unnamed")
-            return d, cor
-        raise HandleMethodError(d, method)
+        cors = []
+        for i, key in enumerate(kwargs['keys']):
+            cors.append(d.get_m3u8_video(key, f"{i}.ts"))
+        return d, asyncio.gather(*cors)

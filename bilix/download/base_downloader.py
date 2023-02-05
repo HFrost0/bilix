@@ -14,7 +14,7 @@ class BaseDownloader:
     DELAY_SLOPE: float = 0.1
 
     def __init__(self, client: httpx.AsyncClient = None, videos_dir='videos', speed_limit: Union[float, int] = None,
-                 progress: BaseProgress = None):
+                 stream_retry=5, progress: BaseProgress = None):
         """
 
         :param client: client used for http request
@@ -34,6 +34,7 @@ class BaseDownloader:
         else:
             self.progress = progress
             progress.holder = self
+        self.stream_retry = stream_retry
         # active stream number
         self._stream_num = 0
 
