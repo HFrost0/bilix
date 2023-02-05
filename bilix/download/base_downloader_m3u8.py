@@ -150,5 +150,5 @@ def handle(kwargs):
                                speed_limit=speed_limit)
         cors = []
         for i, key in enumerate(kwargs['keys']):
-            cors.append(d.get_m3u8_video(key, f"{i}.ts"))
+            cors.append(d.get_m3u8_video(key, str(i)))
         return d, asyncio.gather(*cors)

@@ -24,7 +24,7 @@ class DownloaderCctv(BaseDownloaderM3u8):
                 hierarchy = self._make_hierarchy_dir(hierarchy, title)
             await asyncio.gather(*[self.get_video(pid, quality, hierarchy if hierarchy else '') for pid in pids])
 
-    async def get_video(self, url_or_pid: str, quality=0, hierarchy=''):
+    async def get_video(self, url_or_pid: str, quality=0, hierarchy: str = ''):
         if url_or_pid.startswith('http'):
             pid, _, _ = await api.get_id(self.client, url_or_pid)
         else:

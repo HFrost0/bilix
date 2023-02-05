@@ -42,7 +42,7 @@ setup(
         "console_scripts": "bilix=bilix.__main__:main",
     },
     install_requires=[
-        "httpx[http2]>=0.22.0",
+        "httpx[http2]>=0.23.3",
         'anyio',
         'aiofiles>=0.8.0',
         'rich',
