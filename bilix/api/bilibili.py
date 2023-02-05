@@ -286,6 +286,8 @@ class VideoInfo(BaseModel):
                 video_formats[d['new_description']] = {}
             videos = []
             for d in dash['video']:
+                if d['id'] not in quality_map:
+                    continue  # https://github.com/HFrost0/bilix/issues/93
                 quality = quality_map[d['id']]
                 m = Media(quality=quality, codec=d['codecs'], **d)
                 video_formats[quality][m.codec] = m
