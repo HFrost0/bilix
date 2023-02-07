@@ -83,7 +83,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         await self.progress.update(task_id, total=0, total_time=total_time)
         file_list = await asyncio.gather(*cors)
         self.v_sema.release()
-        await merge_files(file_list, new_name=file_path)
+        await merge_files(file_list, new_path=file_path)
         logger.info(f"[cyan]已完成[/cyan] {name}.ts")
         await self.progress.update(task_id, visible=False)
         return file_path

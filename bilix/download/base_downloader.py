@@ -22,7 +22,7 @@ class BaseDownloader:
         :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit)
         :param progress: progress obj
         """
-        self.client = client if client else httpx.AsyncClient()
+        self.client = client if client else httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'})
         self.videos_dir = videos_dir
         assert speed_limit is None or speed_limit > 0
         self.speed_limit = speed_limit

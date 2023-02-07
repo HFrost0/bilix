@@ -45,14 +45,14 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
     raise pre_exc
 
 
-async def merge_files(file_list: Sequence[str], new_name: str):
+async def merge_files(file_list: Sequence[str], new_path: str):
     first_file = file_list[0]
     async with aiofiles.open(first_file, 'ab') as f:
         for idx in range(1, len(file_list)):
             async with aiofiles.open(file_list[idx], 'rb') as fa:
                 await f.write(await fa.read())
             os.remove(file_list[idx])
-    os.rename(first_file, new_name)
+    os.rename(first_file, new_path)
 
 
 def legal_title(*parts: str, join_str: str = '-'):

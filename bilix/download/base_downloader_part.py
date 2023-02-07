@@ -1,9 +1,10 @@
 import asyncio
-from typing import Union, List, Iterable
+from typing import Union, List, Iterable, Tuple
 import aiofiles
 import httpx
 import random
 import os
+import cgi
 
 from bilix.handle import Handler
 from bilix.download.base_downloader import BaseDownloader
@@ -27,17 +28,23 @@ class BaseDownloaderPart(BaseDownloader):
             client, videos_dir, stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
         self.part_concurrency = part_concurrency
 
-    async def _content_length(self, urls: List[Union[str, httpx.URL]]) -> int:
+    async def _pre_req(self, urls: List[Union[str, httpx.URL]]) -> Tuple[int, str]:
         # use GET instead of HEAD due to 404 bug https://github.com/HFrost0/bilix/issues/16
         res = await req_retry(self.client, urls[0], follow_redirects=True, headers={'Range': 'bytes=0-1'})
         total = int(res.headers['Content-Range'].split('/')[-1])
+        # get filename
+        if content_disposition := res.headers.get('Content-Disposition', None):
+            key, pdict = cgi.parse_header(content_disposition)
+            filename = pdict['filename']
+        else:
+            filename = ''
         # change origin url to redirected position to avoid twice redirect
         if res.history:
             urls[0] = res.url
-        return total
+        return total, filename
 
     async def get_file(self, url_or_urls: Union[str, Iterable[str]],
-                       file_name: str, task_id=None, hierarchy: str = '') -> str:
+                       file_name: str = None, task_id=None, hierarchy: str = '') -> str:
         """
 
         :param url_or_urls: file url or urls with backups
@@ -46,13 +53,22 @@ class BaseDownloaderPart(BaseDownloader):
         :param hierarchy:
         :return: downloaded file path
         """
-        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        file_path = f'{file_dir}/{file_name}'
         urls = [url_or_urls] if isinstance(url_or_urls, str) else [url for url in url_or_urls]
+        file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
+
+        if file_name and os.path.exists(f'{file_dir}/{file_name}'):
+            logger.info(f'[green]已存在[/green] {file_name}')
+            return f'{file_dir}/{file_name}'
+
+        total, req_filename = await self._pre_req(urls)
+
+        if not file_name:
+            file_name = req_filename if req_filename else str(urls[0]).split('/')[-1].split('?')[0]
+        file_path = f'{file_dir}/{file_name}'
         if os.path.exists(file_path):
             logger.info(f'[green]已存在[/green] {file_name}')
             return file_path
-        total = await self._content_length(urls)
+
         if task_id is not None:
             await self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         else:
@@ -67,7 +83,7 @@ class BaseDownloaderPart(BaseDownloader):
             part_names.append(part_name)
             cors.append(self._get_file_part(urls, part_name, task_id, hierarchy=hierarchy))
         file_list = await asyncio.gather(*cors)
-        await merge_files(file_list, new_name=file_path)
+        await merge_files(file_list, new_path=file_path)
         if self.progress.tasks[task_id].finished:
             await self.progress.update(task_id, visible=False)
             logger.info(f"[cyan]已完成[/cyan] {file_name}")
@@ -114,6 +130,5 @@ def handle(kwargs):
                                speed_limit=speed_limit)
         cors = []
         for key in kwargs['keys']:
-            file_name = key.split('/')[-1].split('?')[0]
-            cors.append(d.get_file(key, file_name))
+            cors.append(d.get_file(key))
         return d, asyncio.gather(*cors)
