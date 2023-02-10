@@ -37,6 +37,7 @@ class Handler:
                             isinstance(cli_kwargs[k], p.annotation):
                         return True
                     else:
+                        logger.debug(f"kwarg {k}:{cli_kwargs[k]} has been drop due to type hint missmatch")
                         return False
                 except TypeError:  # https://peps.python.org/pep-0604/#isinstance-and-issubclass
                     # lower than 3.10, Union

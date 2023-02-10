@@ -15,7 +15,8 @@ from bilix.utils import req_retry, merge_files
 
 
 class BaseDownloaderM3u8(BaseDownloader):
-    def __init__(self, client: httpx.AsyncClient = None, videos_dir="videos", video_concurrency=3, part_concurrency=10,
+    def __init__(self, client: httpx.AsyncClient = None, videos_dir="videos",
+                 video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
                  stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         """
         Base async m3u8 Downloader
@@ -27,10 +28,8 @@ class BaseDownloaderM3u8(BaseDownloader):
         :param speed_limit:
         :param progress:
         """
-        super(BaseDownloaderM3u8, self).__init__(
-            client, videos_dir, stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
-        self.v_sema = asyncio.Semaphore(video_concurrency)
-        self.part_con = part_concurrency
+        super(BaseDownloaderM3u8, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
+                                                 stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
         self.decrypt_cache = {}
 
     async def _decrypt(self, seg: m3u8.Segment, content: bytearray):
@@ -63,26 +62,25 @@ class BaseDownloaderM3u8(BaseDownloader):
         if os.path.exists(file_path):
             logger.info(f"[green]已存在[/green] {name}.ts")
             return file_path
-        await self.v_sema.acquire()
-        res = await req_retry(self.client, m3u8_url, follow_redirects=True)
-        m3u8_info = m3u8.loads(res.text)
-        if not m3u8_info.base_uri:
-            base_uri = re.search(r"(.*)/[^/]*m3u8", m3u8_url).groups()[0]
-            m3u8_info.base_uri = base_uri
-        cors = []
-        p_sema = asyncio.Semaphore(self.part_con)
-        task_id = await self.progress.add_task(  # invisible at first and create task id for _get_ts
-            description=name if len(name) < 33 else f'{name[:15]}...{name[-15:]}', visible=False)
-        total_time = 0
-        for idx, seg in enumerate(m3u8_info.segments):
-            total_time += seg.duration
-            # https://stackoverflow.com/questions/50628791/decrypt-m3u8-playlist-encrypted-with-aes-128-without-iv
-            if seg.key and seg.key.iv is None:
-                seg.custom_parser_values['iv'] = idx.to_bytes(16, 'big')
-            cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy))
-        await self.progress.update(task_id, total=0, total_time=total_time)
-        file_list = await asyncio.gather(*cors)
-        self.v_sema.release()
+        async with self.v_sema:
+            res = await req_retry(self.client, m3u8_url, follow_redirects=True)
+            m3u8_info = m3u8.loads(res.text)
+            if not m3u8_info.base_uri:
+                base_uri = re.search(r"(.*)/[^/]*m3u8", m3u8_url).groups()[0]
+                m3u8_info.base_uri = base_uri
+            cors = []
+            p_sema = asyncio.Semaphore(self.part_concurrency)
+            task_id = await self.progress.add_task(  # invisible at first and create task id for _get_ts
+                description=name if len(name) < 33 else f'{name[:15]}...{name[-15:]}', visible=False)
+            total_time = 0
+            for idx, seg in enumerate(m3u8_info.segments):
+                total_time += seg.duration
+                # https://stackoverflow.com/questions/50628791/decrypt-m3u8-playlist-encrypted-with-aes-128-without-iv
+                if seg.key and seg.key.iv is None:
+                    seg.custom_parser_values['iv'] = idx.to_bytes(16, 'big')
+                cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy))
+            await self.progress.update(task_id, total=0, total_time=total_time)
+            file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_path=file_path)
         logger.info(f"[cyan]已完成[/cyan] {name}.ts")
         await self.progress.update(task_id, visible=False)

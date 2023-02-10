@@ -17,8 +17,9 @@ __all__ = ['DownloaderBilibili']
 
 
 class DownloaderBilibili(BaseDownloaderPart):
-    def __init__(self, videos_dir='videos', sess_data='', video_concurrency=3, part_concurrency=10, stream_retry=5,
-                 speed_limit: Union[float, int] = None, progress=None):
+    def __init__(self, videos_dir='videos', sess_data='',
+                 video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建

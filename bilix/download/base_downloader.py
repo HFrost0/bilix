@@ -13,8 +13,9 @@ class BaseDownloader:
     LIMIT_BOUND: float = 1e5
     DELAY_SLOPE: float = 0.1
 
-    def __init__(self, client: httpx.AsyncClient = None, videos_dir='videos', speed_limit: Union[float, int] = None,
-                 stream_retry=5, progress: BaseProgress = None):
+    def __init__(self, client: httpx.AsyncClient = None, videos_dir='videos',
+                 video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
+                 speed_limit: Union[float, int] = None, stream_retry=5, progress: BaseProgress = None):
         """
 
         :param client: client used for http request
@@ -35,6 +36,8 @@ class BaseDownloader:
             self.progress = progress
             progress.holder = self
         self.stream_retry = stream_retry
+        self.v_sema = asyncio.Semaphore(video_concurrency) if type(video_concurrency) is int else video_concurrency
+        self.part_concurrency = part_concurrency
         # active stream number
         self._stream_num = 0
 

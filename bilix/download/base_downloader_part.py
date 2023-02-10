@@ -13,7 +13,8 @@ from bilix.log import logger
 
 
 class BaseDownloaderPart(BaseDownloader):
-    def __init__(self, client: httpx.AsyncClient = None, videos_dir: str = 'videos', part_concurrency=10,
+    def __init__(self, client: httpx.AsyncClient = None, videos_dir: str = 'videos',
+                 video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
                  stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         """
         Base Async http Content-Range Downloader
@@ -24,9 +25,8 @@ class BaseDownloaderPart(BaseDownloader):
         :param speed_limit:
         :param progress:
         """
-        super(BaseDownloaderPart, self).__init__(
-            client, videos_dir, stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
-        self.part_concurrency = part_concurrency
+        super(BaseDownloaderPart, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
+                                                 stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
 
     async def _pre_req(self, urls: List[Union[str, httpx.URL]]) -> Tuple[int, str]:
         # use GET instead of HEAD due to 404 bug https://github.com/HFrost0/bilix/issues/16
