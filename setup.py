@@ -56,6 +56,12 @@ setup(
         'biliass==1.3.5',
         'pydantic'
     ],
+    extras_require={
+        "serve": [
+            "fastapi", "starlette",
+            "passlib[bcrypt]", "python-jose[cryptography]"
+        ],
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",
