@@ -328,6 +328,7 @@ def main(**kwargs):
     asyncio.set_event_loop(loop)
     logger.debug(f'CLI KEY METHOD and OPTIONS: {kwargs}')
     try:
+        CLIProgress.start()  # start progress
         executor, cor = Handler.assign(kwargs)
         loop.run_until_complete(cor)
     except HandleMethodError as e:  # method no match

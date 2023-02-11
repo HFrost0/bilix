@@ -307,8 +307,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 return
 
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-            task_id = await self.progress.add_task(
-                total=1, description=title if len(title) < 33 else f'{title[:15]}...{title[-15:]}', visible=False)
+            task_id = await self.progress.add_task(total=1, description=title, visible=False)
             cors = []
             # add cor according to params
             if not only_audio:

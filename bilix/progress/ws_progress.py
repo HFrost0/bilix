@@ -8,7 +8,6 @@ class WebSocketProgress(CLIProgress):
     def __init__(self, sockets, holder=None):
         super().__init__(holder)
         self._sockets = sockets
-        self._progress.stop()  # todo when use websocket progress, cli progress is not allowed
 
     async def broadcast(self, msg: str):
         cors = [s.send_text(msg) for s in self._sockets]

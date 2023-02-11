@@ -70,8 +70,8 @@ class BaseDownloaderM3u8(BaseDownloader):
                 m3u8_info.base_uri = base_uri
             cors = []
             p_sema = asyncio.Semaphore(self.part_concurrency)
-            task_id = await self.progress.add_task(  # invisible at first and create task id for _get_ts
-                total=1, description=name if len(name) < 33 else f'{name[:15]}...{name[-15:]}', visible=False)
+            # invisible at first and create task id for _get_ts
+            task_id = await self.progress.add_task(total=1, description=name, visible=False)
             total_time = 0
             for idx, seg in enumerate(m3u8_info.segments):
                 total_time += seg.duration

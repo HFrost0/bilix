@@ -72,7 +72,7 @@ class BaseDownloaderPart(BaseDownloader):
         if task_id is not None:
             await self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
         else:
-            task_id = await self.progress.add_task(description=file_name[:30], total=total, visible=True)
+            task_id = await self.progress.add_task(description=file_name, total=total, visible=True)
         part_length = total // self.part_concurrency
         cors = []
         part_names = []
