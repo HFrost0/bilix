@@ -95,7 +95,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         else:
             confirmed_t = time_part + task.fields['confirmed_t']
             confirmed_b = update_size + task.fields['confirmed_b']
-        predicted_total = confirmed_b / confirmed_t * task.fields['total_time']
+        predicted_total = task.fields['total_time'] * confirmed_b / confirmed_t + 1
         await self.progress.update(task_id, total=predicted_total, confirmed_t=confirmed_t, confirmed_b=confirmed_b)
 
     async def _get_seg(self, seg: Segment, file_name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = '') -> str:
