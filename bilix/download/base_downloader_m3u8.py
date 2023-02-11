@@ -48,19 +48,19 @@ class BaseDownloaderM3u8(BaseDownloader):
         cipher = self.decrypt_cache[uri]
         return cipher.decrypt(content)
 
-    async def get_m3u8_video(self, m3u8_url: str, name: str, hierarchy: str = '') -> str:
+    async def get_m3u8_video(self, m3u8_url: str, file_name: str, hierarchy: str = '') -> str:
         """
         download
 
         :param m3u8_url:
-        :param name:
+        :param file_name:
         :param hierarchy:
         :return: downloaded file path
         """
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
-        file_path = f"{base_path}/{name}.ts"
+        file_path = f"{base_path}/{file_name}"
         if os.path.exists(file_path):
-            logger.info(f"[green]已存在[/green] {name}.ts")
+            logger.info(f"[green]已存在[/green] {file_name}")
             return file_path
         async with self.v_sema:
             res = await req_retry(self.client, m3u8_url, follow_redirects=True)
@@ -70,19 +70,19 @@ class BaseDownloaderM3u8(BaseDownloader):
                 m3u8_info.base_uri = base_uri
             cors = []
             p_sema = asyncio.Semaphore(self.part_concurrency)
-            # invisible at first and create task id for _get_ts
-            task_id = await self.progress.add_task(total=1, description=name, visible=False)
+            # invisible at first and create task id for _get_seg
+            task_id = await self.progress.add_task(total=1, description=file_name, visible=False)
             total_time = 0
             for idx, seg in enumerate(m3u8_info.segments):
                 total_time += seg.duration
                 # https://stackoverflow.com/questions/50628791/decrypt-m3u8-playlist-encrypted-with-aes-128-without-iv
                 if seg.key and seg.key.iv is None:
                     seg.custom_parser_values['iv'] = idx.to_bytes(16, 'big')
-                cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy))
+                cors.append(self._get_seg(seg, f"{file_name}-{idx}.ts", task_id, p_sema, hierarchy))
             await self.progress.update(task_id, total_time=total_time)
             file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_path=file_path)
-        logger.info(f"[cyan]已完成[/cyan] {name}.ts")
+        logger.info(f"[cyan]已完成[/cyan] {file_name}")
         await self.progress.update(task_id, advance=1, visible=False)
         return file_path
 
@@ -98,10 +98,10 @@ class BaseDownloaderM3u8(BaseDownloader):
         predicted_total = confirmed_b / confirmed_t * task.fields['total_time']
         await self.progress.update(task_id, total=predicted_total, confirmed_t=confirmed_t, confirmed_b=confirmed_b)
 
-    async def _get_ts(self, seg: Segment, name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = '') -> str:
-        ts_url = seg.absolute_uri
+    async def _get_seg(self, seg: Segment, file_name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = '') -> str:
+        seg_url = seg.absolute_uri
         base_path = f"{self.videos_dir}/{hierarchy}" if hierarchy else self.videos_dir
-        file_path = f"{base_path}/{name}"
+        file_path = f"{base_path}/{file_name}"
         if os.path.exists(file_path):
             downloaded = os.path.getsize(file_path)
             await self._update_task_total(task_id, time_part=seg.duration, update_size=downloaded)
@@ -113,7 +113,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             for times in range(1 + self.stream_retry):
                 content = bytearray()
                 try:
-                    async with self.client.stream("GET", ts_url,
+                    async with self.client.stream("GET", seg_url,
                                                   follow_redirects=True) as r, self._stream_context(times):
                         r.raise_for_status()
                         await self._update_task_total(
@@ -125,9 +125,9 @@ class BaseDownloaderM3u8(BaseDownloader):
                 except (httpx.HTTPStatusError, httpx.TransportError):
                     continue
             else:
-                raise Exception(f"STREAM 超过重复次数 {ts_url}")
+                raise Exception(f"STREAM 超过重复次数 {seg_url}")
         # in case .png
-        if re.fullmatch(r'.*\.png', ts_url):
+        if re.fullmatch(r'.*\.png', seg_url):
             _, _, content = content.partition(b'\x47\x40')
         # in case encrypted
         if seg.key:
@@ -148,5 +148,5 @@ def handle(kwargs):
                                speed_limit=speed_limit)
         cors = []
         for i, key in enumerate(kwargs['keys']):
-            cors.append(d.get_m3u8_video(key, str(i)))
+            cors.append(d.get_m3u8_video(key, f'{i}.ts'))
         return d, asyncio.gather(*cors)

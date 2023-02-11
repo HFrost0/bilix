@@ -24,7 +24,7 @@ class DownloaderJable(BaseDownloaderM3u8):
         video_info = await api.get_video_info(self.client, url)
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, f"{video_info.avid} {video_info.model_name}")
-        cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=video_info.title,
+        cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, file_name=video_info.title + '.ts',
                                     hierarchy=hierarchy if hierarchy else '')]
         if image:
             cors.append(self._get_static(video_info.img_url, name=video_info.title,

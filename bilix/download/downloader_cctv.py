@@ -31,7 +31,7 @@ class DownloaderCctv(BaseDownloaderM3u8):
             pid = url_or_pid
         title, m3u8_urls = await api.get_media_info(self.client, pid)
         m3u8_url = m3u8_urls[min(quality, len(m3u8_urls) - 1)]
-        file_path = await self.get_m3u8_video(m3u8_url, title, hierarchy)
+        file_path = await self.get_m3u8_video(m3u8_url, title + ".ts", hierarchy)
         return file_path
 
 

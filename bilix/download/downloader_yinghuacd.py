@@ -37,7 +37,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         else:
             video_info = extra
         name = legal_title(video_info.title, video_info.sub_title)
-        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
+        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, file_name=name + '.ts', hierarchy=hierarchy)
 
 
 @Handler.register(name='樱花动漫')

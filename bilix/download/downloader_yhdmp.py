@@ -27,12 +27,13 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         # no need to reuse get_video since we only need m3u8_url
         async def get_video(page_url, name):
             m3u8_url = await api.get_m3u8_url(self.api_client, page_url)
-            await self.get_m3u8_video(m3u8_url=m3u8_url, name=name, hierarchy=hierarchy if hierarchy else '')
+            await self.get_m3u8_video(m3u8_url=m3u8_url, file_name=name, hierarchy=hierarchy if hierarchy else '')
 
         cors = []
         for idx, (sub_title, url) in enumerate(video_info.play_info[play_idx]):
             if ep_idx == idx:
-                cors.append(self.get_m3u8_video(m3u8_url=video_info.m3u8_url, name=legal_title(title, sub_title),
+                cors.append(self.get_m3u8_video(m3u8_url=video_info.m3u8_url,
+                                                file_name=legal_title(title, sub_title) + '.ts',
                                                 hierarchy=hierarchy if hierarchy else ''))
             else:
                 cors.append(get_video(url, legal_title(title, sub_title)))
@@ -43,7 +44,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
     async def get_video(self, url: str, hierarchy: str = ''):
         video_info = await api.get_video_info(self.api_client, url)
         name = legal_title(video_info.title, video_info.sub_title)
-        await super().get_m3u8_video(m3u8_url=video_info.m3u8_url, name=name, hierarchy=hierarchy)
+        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, file_name=name + '.ts', hierarchy=hierarchy)
 
 
 @Handler.register(name='樱花动漫P')
