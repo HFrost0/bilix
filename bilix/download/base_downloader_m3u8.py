@@ -71,7 +71,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             cors = []
             p_sema = asyncio.Semaphore(self.part_concurrency)
             task_id = await self.progress.add_task(  # invisible at first and create task id for _get_ts
-                description=name if len(name) < 33 else f'{name[:15]}...{name[-15:]}', visible=False)
+                total=1, description=name if len(name) < 33 else f'{name[:15]}...{name[-15:]}', visible=False)
             total_time = 0
             for idx, seg in enumerate(m3u8_info.segments):
                 total_time += seg.duration
@@ -79,11 +79,11 @@ class BaseDownloaderM3u8(BaseDownloader):
                 if seg.key and seg.key.iv is None:
                     seg.custom_parser_values['iv'] = idx.to_bytes(16, 'big')
                 cors.append(self._get_ts(seg, f"{name}-{idx}.ts", task_id, p_sema, hierarchy))
-            await self.progress.update(task_id, total=0, total_time=total_time)
+            await self.progress.update(task_id, total_time=total_time)
             file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_path=file_path)
         logger.info(f"[cyan]已完成[/cyan] {name}.ts")
-        await self.progress.update(task_id, visible=False)
+        await self.progress.update(task_id, advance=1, visible=False)
         return file_path
 
     async def _update_task_total(self, task_id, time_part: float, update_size: int):
