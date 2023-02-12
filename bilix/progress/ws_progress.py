@@ -5,8 +5,8 @@ from bilix.progress.cli_progress import CLIProgress
 
 
 class WebSocketProgress(CLIProgress):
-    def __init__(self, sockets, holder=None):
-        super().__init__(holder)
+    def __init__(self, sockets):
+        super().__init__()
         self._sockets = sockets
 
     async def broadcast(self, msg: str):

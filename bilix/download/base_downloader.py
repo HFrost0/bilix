@@ -10,9 +10,6 @@ from bilix.progress import CLIProgress
 
 
 class BaseDownloader:
-    LIMIT_BOUND: float = 1e5
-    DELAY_SLOPE: float = 0.1
-
     def __init__(self, client: httpx.AsyncClient = None, videos_dir='videos',
                  video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
                  speed_limit: Union[float, int] = None, stream_retry=5, progress: CLIProgress = None):
@@ -29,12 +26,8 @@ class BaseDownloader:
         self.speed_limit = speed_limit
         if not os.path.exists(self.videos_dir):
             os.makedirs(videos_dir)
-        if progress is None:
-            # if no progress_cls provided by upper class, use cli progress by default
-            self.progress = CLIProgress(holder=self)
-        else:
-            self.progress = progress
-            progress.holder = self
+        # if no progress_cls provided by upper class, use cli progress by default
+        self.progress = progress or CLIProgress()
         self.stream_retry = stream_retry
         self.v_sema = asyncio.Semaphore(video_concurrency) if type(video_concurrency) is int else video_concurrency
         self.part_concurrency = part_concurrency
@@ -126,10 +119,20 @@ class BaseDownloader:
         """current activate network stream number"""
         return self._stream_num
 
+    LIMIT_BOUND: float = 1e5
+    DELAY_SLOPE: float = 0.1
+
     @property
     def chunk_size(self) -> Optional[int]:
-        if self.speed_limit and self.progress and self.speed_limit < self.LIMIT_BOUND:
+        if self.speed_limit and self.speed_limit < self.LIMIT_BOUND:
             # only restrict chunk_size when speed_limit is too low
             return int(self.speed_limit * self.DELAY_SLOPE)
         # default to None setup
         return None
+
+    async def _check_speed(self, content_size):
+        if self.speed_limit and (cur_speed := self.progress.active_speed) > self.speed_limit:
+            t_tgt = content_size / self.speed_limit * self.stream_num
+            t_real = content_size / cur_speed
+            t = t_tgt - t_real
+            await asyncio.sleep(t)

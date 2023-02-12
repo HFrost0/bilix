@@ -121,6 +121,7 @@ class BaseDownloaderM3u8(BaseDownloader):
                         async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                             content.extend(chunk)
                             await self.progress.update(task_id, advance=len(chunk))
+                            await self._check_speed(len(chunk))
                     break
                 except (httpx.HTTPStatusError, httpx.TransportError):
                     continue

@@ -114,6 +114,7 @@ class BaseDownloaderPart(BaseDownloader):
                     async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                         await f.write(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
+                        await self._check_speed(len(chunk))
         except (httpx.TransportError, httpx.HTTPStatusError):
             await self._get_file_part(urls, part_name, task_id, times=times + 1, hierarchy=hierarchy)
         return file_path
