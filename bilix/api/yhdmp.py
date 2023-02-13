@@ -3,8 +3,8 @@ import json
 import os
 import random
 import re
-from dataclasses import dataclass
-from typing import Union, Sequence
+from pydantic import BaseModel
+from typing import Union, List
 import httpx
 import execjs
 from bs4 import BeautifulSoup
@@ -31,7 +31,7 @@ def _decode(data: str) -> str:
     return js.call('__getplay_rev_data', data)
 
 
-async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[str]],
+async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, List[str]],
                     method: str = 'GET',
                     follow_redirects: bool = False,
                     **kwargs):
@@ -47,14 +47,13 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
     return res
 
 
-@dataclass
-class VideoInfo:
+class VideoInfo(BaseModel):
     aid: Union[str, int]
     play_idx: int
     ep_idx: int
     title: str
     sub_title: str
-    play_info: Sequence[Union[Sequence[str], Sequence]]  # may be empty
+    play_info: List[Union[List[str], List]]  # may be empty
     m3u8_url: str
 
 

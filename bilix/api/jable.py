@@ -1,6 +1,5 @@
-import asyncio
 import re
-from dataclasses import dataclass
+from pydantic import BaseModel
 import httpx
 from bs4 import BeautifulSoup
 from bilix.utils import legal_title, req_retry
@@ -12,8 +11,7 @@ dft_client_settings = {
 }
 
 
-@dataclass
-class VideoInfo:
+class VideoInfo(BaseModel):
     url: str
     avid: str
     title: str

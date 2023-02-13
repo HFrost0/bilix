@@ -1,7 +1,7 @@
 import asyncio
 import re
-from dataclasses import dataclass
-from typing import Union, Sequence
+from pydantic import BaseModel
+from typing import Union, List
 import httpx
 from bs4 import BeautifulSoup
 from bilix.log import logger
@@ -14,11 +14,10 @@ dft_client_settings = {
 }
 
 
-@dataclass
-class VideoInfo:
+class VideoInfo(BaseModel):
     title: str
     sub_title: str
-    play_info: Sequence[Union[Sequence[str], Sequence]]  # may be empty
+    play_info: List[Union[List[str], List]]  # may be empty
     m3u8_url: str
 
 

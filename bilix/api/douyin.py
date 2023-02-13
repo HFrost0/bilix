@@ -9,9 +9,9 @@ Modified by
 import asyncio
 import re
 import json
-from typing import Sequence
+from typing import List
 import httpx
-from dataclasses import dataclass
+from pydantic import BaseModel
 from bilix.utils import req_retry, legal_title
 
 dft_client_settings = {
@@ -22,12 +22,11 @@ dft_client_settings = {
 }
 
 
-@dataclass
-class VideoInfo:
+class VideoInfo(BaseModel):
     title: str
     author_name: str
-    wm_urls: Sequence[str]
-    nwm_urls: Sequence[str]
+    wm_urls: List[str]
+    nwm_urls: List[str]
     cover: str
     dynamic_cover: str
     origin_cover: str
