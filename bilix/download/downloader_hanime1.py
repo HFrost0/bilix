@@ -4,9 +4,10 @@ import httpx
 import bilix.api.hanime1 as api
 from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_part import BaseDownloaderPart
+from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 
 
-class DownloaderHanime1(BaseDownloaderPart):
+class DownloaderHanime1(BaseDownloaderPart, BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", stream_retry=5,
                  speed_limit: Union[float, int] = None, progress=None):
         client = httpx.AsyncClient(**api.dft_client_settings)
@@ -15,7 +16,9 @@ class DownloaderHanime1(BaseDownloaderPart):
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)
-        cors = [self.get_file(video_info.mp4_url, file_name=video_info.title + '.mp4')]
+        video_url = video_info.video_url
+        cors = [self.get_m3u8_video(video_url, file_name=video_info.title + '.ts') if '.m3u8' in video_url else
+                self.get_file(video_url, file_name=video_info.title + '.mp4')]
         if image:
             cors.append(self._get_static(video_info.img_url, name=video_info.title))
         await asyncio.gather(*cors)

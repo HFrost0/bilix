@@ -18,7 +18,7 @@ class VideoInfo(BaseModel):
     url: str
     avid: str
     title: str
-    mp4_url: str
+    video_url: str
     img_url: str
 
 
@@ -34,8 +34,8 @@ async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoIn
     title = soup.find('meta', property="og:title")['content']
     title = legal_title(title)
     img_url = soup.find('meta', property="og:image")['content']
-    mp4_url = soup.find('input', {'id': 'video-sd'})['value']
-    video_info = VideoInfo(url=url, avid=avid, title=title, img_url=img_url, mp4_url=mp4_url)
+    video_url = soup.find('input', {'id': 'video-sd'})['value']
+    video_info = VideoInfo(url=url, avid=avid, title=title, img_url=img_url, video_url=video_url)
     return video_info
 
 
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     async def main():
         _dft_client = httpx.AsyncClient(**dft_client_settings)
         return await asyncio.gather(
-            get_video_info(_dft_client, "39466"),
+            get_video_info(_dft_client, "https://hanime1.me/watch?v=39514"),
         )
 
 
