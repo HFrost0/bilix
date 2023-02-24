@@ -35,7 +35,7 @@ class BaseDownloaderPart(BaseDownloader):
         # get filename
         if content_disposition := res.headers.get('Content-Disposition', None):
             key, pdict = cgi.parse_header(content_disposition)
-            filename = pdict['filename']
+            filename = pdict.get('filename', '')
         else:
             filename = ''
         # change origin url to redirected position to avoid twice redirect
