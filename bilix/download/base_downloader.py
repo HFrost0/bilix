@@ -6,13 +6,14 @@ import httpx
 import os
 from bilix.utils import req_retry
 from bilix.log import logger
+from bilix.progress.abc import Progress
 from bilix.progress import CLIProgress
 
 
 class BaseDownloader:
     def __init__(self, client: httpx.AsyncClient = None, videos_dir='videos',
                  video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
-                 speed_limit: Union[float, int] = None, stream_retry=5, progress: CLIProgress = None):
+                 speed_limit: Union[float, int] = None, stream_retry=5, progress: Progress = None):
         """
 
         :param client: client used for http request

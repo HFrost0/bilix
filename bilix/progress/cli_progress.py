@@ -1,12 +1,12 @@
-import asyncio
+from bilix.progress.abc import Progress
 from typing import Optional, Any, Set
-from rich.progress import Progress, TaskID, TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, \
-    TimeRemainingColumn
+from rich.progress import Progress as RichProgress, TaskID, \
+    TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 
 
-class CLIProgress:
+class CLIProgress(Progress):
     # Only one live display may be active at once
-    _progress = Progress(
+    _progress = RichProgress(
         TextColumn("[progress.description]{task.description}"),
         TextColumn("[progress.percentage]{task.percentage:>4.1f}%"),
         BarColumn(),
