@@ -123,5 +123,5 @@ async def test_get_subtitle_info():
 async def test_get_dm_info():
     data = await api.get_video_info(client,
                                     "https://www.bilibili.com/bangumi/play/ss33343?theme=movie&spm_id_from=333.337.0.0")
-    data = await api.get_dm_info(client, data.aid, data.cid)
+    data = await api.get_dm_urls(client, data.aid, data.cid)
     assert len(data) > 0

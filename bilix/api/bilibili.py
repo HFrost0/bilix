@@ -5,8 +5,7 @@ import httpx
 from pydantic import BaseModel, Field
 from typing import Union, List, Tuple, Dict, Optional
 import json5
-
-from bilix.dm import parse_view
+from danmakuC.bilibili import parse_view
 from bilix.utils import req_retry, legal_title
 
 dft_client_settings = {
@@ -339,7 +338,7 @@ async def get_subtitle_info(client: httpx.AsyncClient, bvid, cid):
     return [[f'http:{i["subtitle_url"]}', i['lan_doc']] for i in info['data']['subtitle']['subtitles']]
 
 
-async def get_dm_info(client: httpx.AsyncClient, aid, cid):
+async def get_dm_urls(client: httpx.AsyncClient, aid, cid) -> List[str]:
     params = {'oid': cid, 'pid': aid, 'type': 1}
     res = await req_retry(client, f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
     view = parse_view(res.content)

@@ -1,4 +1,5 @@
 import asyncio
+import functools
 from typing import Union, Sequence
 import aiofiles
 import httpx
@@ -8,10 +9,11 @@ from anyio import run_process
 import bilix.api.bilibili as api
 from bilix.handle import Handler, HandleMethodError
 from bilix.download.base_downloader_part import BaseDownloaderPart
+from bilix.process import SingletonPPE
 from bilix.subtitle import json2srt
-from bilix.dm import dm2ass_factory
 from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url
 from bilix.log import logger
+from danmakuC.bilibili import proto2ass
 
 __all__ = ['DownloaderBilibili']
 
@@ -331,7 +333,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 if subtitle:
                     cors.append(self.get_subtitle(url, hierarchy=extra_hierarchy, video_info=video_info))
                 if dm:
-                    cors.append(self.get_dm(url, convert_func=dm2ass_factory(video.width, video.height),
+                    cors.append(self.get_dm(url, convert_func=self._dm2ass_factory(video.width, video.height),
                                             hierarchy=extra_hierarchy, video_info=video_info))
             await asyncio.gather(*cors)
 
@@ -349,6 +351,16 @@ class DownloaderBilibili(BaseDownloaderPart):
         if self.progress.tasks[task_id].visible:
             await self.progress.update(task_id, advance=1, visible=False)
             logger.info(f'[cyan]已完成[/cyan] {file_name}{audio.suffix if only_audio else ".mp4"}')
+
+    @staticmethod
+    def _dm2ass_factory(width, height):
+        async def dm2ass(protobuf_bytes: bytes) -> bytes:
+            loop = asyncio.get_event_loop()
+            f = functools.partial(proto2ass, protobuf_bytes, width, height)
+            content = await loop.run_in_executor(SingletonPPE(), f)
+            return content.encode('utf-8')
+
+        return dm2ass
 
     async def get_dm(self, url, update=False, convert_func=None, hierarchy: str = '', video_info=None):
         """
@@ -374,7 +386,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         if not update and os.path.exists(file_path):
             logger.info(f"[green]已存在[/green] {file_name}")
             return file_path
-        dm_urls = await api.get_dm_info(self.client, aid, cid)
+        dm_urls = await api.get_dm_urls(self.client, aid, cid)
         cors = [req_retry(self.client, dm_url) for dm_url in dm_urls]
         results = await asyncio.gather(*cors)
         content = b''.join(res.content for res in results)
