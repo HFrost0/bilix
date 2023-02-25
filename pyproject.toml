@@ -28,7 +28,6 @@ dependencies = [
     "httpx[http2]>=0.23.3",
     "json5",
     "m3u8",
-    "protobuf>=4.21.1",
     "pycryptodome",
     "pydantic",
     "pyexecjs",
