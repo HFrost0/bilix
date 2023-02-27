@@ -156,12 +156,10 @@ class DownloaderBilibili(BaseDownloaderPart):
         """
         cate_meta = await self.cate_meta
         if cate_name not in cate_meta:
-            logger.error(f'未找到分区 {cate_name}')
-            return
+            return logger.error(f'未找到分区 {cate_name}')
         if 'subChannelId' not in cate_meta[cate_name]:
             sub_names = [i['name'] for i in cate_meta[cate_name]['sub']]
-            logger.error(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
-            return
+            return logger.error(f'{cate_name} 是主分区，仅支持子分区，试试 {sub_names}')
         if hierarchy:
             hierarchy = self._make_hierarchy_dir(hierarchy, legal_title(f"【分区】{cate_name}"))
         cate_id = cate_meta[cate_name]['tid']
@@ -261,8 +259,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         try:
             video_info = await api.get_video_info(self.client, url)
         except AttributeError as e:
-            logger.warning(f'{e} {url}')
-            return
+            return logger.warning(f'{e} {url}')
         if hierarchy and len(video_info.pages) > 1:
             hierarchy = self._make_hierarchy_dir(hierarchy, video_info.title)
         else:
@@ -295,23 +292,20 @@ class DownloaderBilibili(BaseDownloaderPart):
                 try:
                     video_info = await api.get_video_info(self.client, url)
                 except AttributeError as e:
-                    logger.warning(f'{url} {e}')
-                    return
+                    return logger.warning(f'{url} {e}')
             # join p_name and title
             p_name = video_info.pages[video_info.p].p_name
             title = legal_title(video_info.h1_title, p_name)
             # to avoid file name too long bug
             file_name = p_name if len(video_info.h1_title) > 50 and hierarchy and p_name else title
             if not video_info.dash:
-                logger.warning(f'{title} 需要大会员或该地区不支持')
-                return
+                return logger.warning(f'{title} 需要大会员或该地区不支持')
             # choose video quality
             try:
                 video, audio = video_info.dash.choose_quality(quality, codec)
             except KeyError:
-                logger.warning(
+                return logger.warning(
                     f"{title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
-                return
 
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
             task_id = await self.progress.add_task(total=1, description=title, visible=False)
@@ -330,7 +324,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             elif audio and only_audio:
                 cors.append(self.get_file(audio.urls, f'{file_name}{audio.suffix}', task_id, hierarchy))
             else:
-                logger.warning(f"No audio for {file_name}")
+                return logger.warning(f"No audio for {file_name}")
             # additional task
             if image or subtitle or dm:
                 extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
@@ -421,8 +415,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         try:
             subtitles = await api.get_subtitle_info(self.client, video_info.bvid, cid)
         except AttributeError as e:
-            logger.warning(f'{url} {e}')
-            return
+            return logger.warning(f'{url} {e}')
         cors = []
 
         for sub_url, sub_name in subtitles:
