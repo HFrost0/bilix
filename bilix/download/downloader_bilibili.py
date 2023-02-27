@@ -316,15 +316,21 @@ class DownloaderBilibili(BaseDownloaderPart):
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
             task_id = await self.progress.add_task(total=1, description=title, visible=False)
             cors = []
-            # add cor according to params
-            if not only_audio:
+            # 1. only video
+            if not audio and not only_audio:
+                cors.append(self.get_file(video.urls, f'{file_name}.mp4', task_id, hierarchy))
+            # 2. video and audio
+            elif audio and not only_audio:
                 if os.path.exists(f'{file_dir}/{file_name}.mp4'):
                     logger.info(f'[green]已存在[/green] {file_name}.mp4')
                 else:
                     cors.append(self.get_file(video.urls, f'{file_name}-video', task_id, hierarchy))
                     cors.append(self.get_file(audio.urls, f'{file_name}-audio', task_id, hierarchy))
-            else:
+            # 3. only audio
+            elif audio and only_audio:
                 cors.append(self.get_file(audio.urls, f'{file_name}{audio.suffix}', task_id, hierarchy))
+            else:
+                logger.warning(f"No audio for {file_name}")
             # additional task
             if image or subtitle or dm:
                 extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
@@ -337,7 +343,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                                             hierarchy=extra_hierarchy, video_info=video_info))
             await asyncio.gather(*cors)
 
-        if not only_audio and not os.path.exists(f'{file_dir}/{file_name}.mp4'):
+        if audio and not only_audio and not os.path.exists(f'{file_dir}/{file_name}.mp4'):
             cmd = ['ffmpeg', '-i', f'{file_dir}/{file_name}-video', '-i', f'{file_dir}/{file_name}-audio',
                    '-codec', 'copy', '-loglevel', 'quiet']
             # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.

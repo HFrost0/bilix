@@ -191,14 +191,15 @@ class Dash(BaseModel):
                     return self.video_formats[k][c]
         raise KeyError(f"no match for video quality: {quality} codec: {video_codec}")
 
-    def choose_audio(self, audio_codec: str) -> Media:
-        # for audio
+    def choose_audio(self, audio_codec: str) -> Optional[Media]:
+        if len(self.audios) == 0:  # some video has no audio
+            return
         for k in self.audio_formats:
             if self.audio_formats[k] and self.audio_formats[k].codec.startswith(audio_codec):
                 return self.audio_formats[k]
         raise KeyError(f'no match for audio codec: {audio_codec}')
 
-    def choose_quality(self, quality: Union[str, int], codec: str = '') -> Tuple[Media, Media]:
+    def choose_quality(self, quality: Union[str, int], codec: str = '') -> Tuple[Media, Optional[Media]]:
         v_codec, a_codec, *_ = codec.split(':') + [""]
         video, audio = self.choose_video(quality, v_codec), self.choose_audio(a_codec)
         return video, audio
@@ -292,10 +293,13 @@ class VideoInfo(BaseModel):
                 video_formats[quality][m.codec] = m
                 videos.append(m)
 
-            d = dash['audio'][0]
-            m = Media(quality="default", suffix='.aac', codec=d['codecs'], **d)
-            audios = [m]
-            audio_formats = {m.quality: m}
+            audios = []
+            audio_formats = {}
+            if dash.get('audio', None):  # some video have NO audio
+                d = dash['audio'][0]
+                m = Media(quality="default", suffix='.aac', codec=d['codecs'], **d)
+                audios.append(m)
+                audio_formats[m.quality] = m
             if dash['dolby']['type'] != 0:
                 quality = "dolby"
                 audio_formats[quality] = None
