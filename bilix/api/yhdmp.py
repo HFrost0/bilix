@@ -17,18 +17,24 @@ dft_client_settings = {
     'headers': {'user-agent': 'PostmanRuntime/7.29.0', "Referer": BASE_URL},
     'http2': False
 }
+_js = None
 
-with open(f'{os.path.dirname(bilix.__file__)}/js/yhdmp.js', 'r') as f:
-    js = execjs.compile(f.read())
+
+def _get_js():
+    global _js
+    if _js is None:
+        with open(f'{os.path.dirname(bilix.__file__)}/js/yhdmp.js', 'r') as f:
+            _js = execjs.compile(f.read())
+    return _js
 
 
 def _get_t2_k2(t1: str, k1: str) -> dict:
-    new_cookies = js.call("get_t2_k2", t1, k1)
+    new_cookies = _get_js().call("get_t2_k2", t1, k1)
     return new_cookies
 
 
 def _decode(data: str) -> str:
-    return js.call('__getplay_rev_data', data)
+    return _get_js().call('__getplay_rev_data', data)
 
 
 async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, List[str]],
