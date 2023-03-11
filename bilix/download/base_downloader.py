@@ -1,4 +1,5 @@
 import asyncio
+import platform
 from typing import Union, Optional
 from contextlib import asynccontextmanager
 import aiofiles
@@ -54,6 +55,8 @@ class BaseDownloader:
         :return:
         """
         assert hierarchy is True or (type(hierarchy) is str and len(hierarchy) > 0) and len(add_dir) > 0
+        if platform.system() == 'Windows':
+            add_dir = add_dir.rstrip('.')
         hierarchy = add_dir if hierarchy is True else f'{hierarchy}/{add_dir}'
         if not os.path.exists(f'{self.videos_dir}/{hierarchy}'):
             os.makedirs(f'{self.videos_dir}/{hierarchy}')
