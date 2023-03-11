@@ -22,7 +22,7 @@ classifiers = [
 dependencies = [
     "aiofiles>=0.8.0",
     "anyio",
-    "danmakuC>=0.3.2",
+    "danmakuC>=0.3.3",
     "bs4",
     "click>=8.0.3",
     "httpx[http2]>=0.23.3",
