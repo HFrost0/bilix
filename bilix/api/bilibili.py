@@ -2,7 +2,7 @@ import asyncio
 import json
 import re
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from typing import Union, List, Tuple, Dict, Optional
 import json5
 from danmakuC.bilibili import parse_view
@@ -223,6 +223,10 @@ class Status(BaseModel):
     favorite: int = Field(description="收藏数")
     share: int = Field(description="分享数")
     follow: int = Field(default=None, description="追剧数/追番数")
+
+    @validator('view', pre=True)
+    def no_view(cls, v):
+        return 0 if v == '--' else v
 
 
 class Page(BaseModel):
