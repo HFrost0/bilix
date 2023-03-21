@@ -1,9 +1,8 @@
-import asyncio
-from bilix.log import logger
 from pydantic import BaseModel
 import httpx
 from bilix.utils import legal_title, req_retry
 from bs4 import BeautifulSoup
+from ._decorator import api
 
 BASE_URL = "https://hanime1.me"
 dft_client_settings = {
@@ -22,6 +21,7 @@ class VideoInfo(BaseModel):
     img_url: str
 
 
+@api
 async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoInfo:
     if url_or_avid.startswith('http'):
         url = url_or_avid
@@ -37,16 +37,3 @@ async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoIn
     video_url = soup.find('input', {'id': 'video-sd'})['value']
     video_info = VideoInfo(url=url, avid=avid, title=title, img_url=img_url, video_url=video_url)
     return video_info
-
-
-if __name__ == '__main__':
-    async def main():
-        _dft_client = httpx.AsyncClient(**dft_client_settings)
-        return await asyncio.gather(
-            get_video_info(_dft_client, "https://hanime1.me/watch?v=39514"),
-        )
-
-
-    logger.setLevel("DEBUG")
-    result = asyncio.run(main())
-    print(result)

@@ -13,6 +13,7 @@ from typing import List
 import httpx
 from pydantic import BaseModel
 from bilix.utils import req_retry, legal_title
+from ._decorator import api
 
 dft_client_settings = {
     'headers': {'user-agent': 'Mozilla/5.0 (Linux; Android 8.0; Pixel 2 Build/OPD3.170816.012)'
@@ -32,6 +33,7 @@ class VideoInfo(BaseModel):
     origin_cover: str
 
 
+@api
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     if short_url := re.findall(r'https://v.douyin.com/\w+/', url):
         res = await req_retry(client, short_url[0], follow_redirects=True)

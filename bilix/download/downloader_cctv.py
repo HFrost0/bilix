@@ -3,8 +3,9 @@ from typing import Union
 import httpx
 
 import bilix.api.cctv as api
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.exception import HandleMethodError
 
 
 class DownloaderCctv(BaseDownloaderM3u8):
@@ -48,14 +49,3 @@ def handle(kwargs):
         else:
             raise HandleMethodError(d, method)
         return d, m
-
-
-if __name__ == '__main__':
-    async def main():
-        async with DownloaderCctv() as d:
-            await d.get_series(
-                'https://tv.cctv.com/2012/05/02/VIDE1355968282695723.shtml?spm=C55853485115.P6UrzpiudtDc.0.0'
-            )
-
-
-    asyncio.run(main())

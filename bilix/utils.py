@@ -3,7 +3,8 @@ import html
 import os
 import re
 import random
-from typing import Union, Sequence, Coroutine, List, Tuple
+from urllib.parse import quote_plus
+from typing import Union, Sequence, Coroutine, List, Tuple, Optional
 import aiofiles
 import httpx
 
@@ -117,3 +118,13 @@ def parse_bytes_str(s: str) -> float:
     num = float(m.group('num'))
     mult = 1000 ** units_map[m.group('unit')]
     return num * mult
+
+
+def valid_sess_data(sess_data: Optional[str]) -> str:
+    """check and encode sess_data"""
+    # url-encoding sess_data if it's not encoded
+    # https://github.com/HFrost0/bilix/pull/114https://github.com/HFrost0/bilix/pull/114
+    if sess_data and not re.search(r'(%[0-9A-Fa-f]{2})|(\+)', sess_data):
+        sess_data = quote_plus(sess_data)
+        logger.debug(f"sess_data encoded: {sess_data}")
+    return sess_data

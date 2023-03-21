@@ -3,9 +3,10 @@ import httpx
 from typing import Sequence, Union
 
 import bilix.api.yhdmp as api
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.exception import HandleMethodError
 
 
 class DownloaderYhdmp(BaseDownloaderM3u8):

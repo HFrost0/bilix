@@ -1,4 +1,4 @@
-from bilix.utils import parse_bytes_str, legal_title
+from bilix.utils import parse_bytes_str, legal_title, valid_sess_data
 
 
 def test_legal_file_name():
@@ -9,3 +9,9 @@ def test_parse_bytes():
     assert parse_bytes_str('10KB') == 10 * 1000 ** 1
     assert parse_bytes_str('10.56MB') == 10.56 * 1000 ** 2
     assert parse_bytes_str('10.56 M') == 10.56 * 1000 ** 2
+
+
+def test_valid_sess_data():
+    s = valid_sess_data(None)
+    s = valid_sess_data("hello world!")
+    pass

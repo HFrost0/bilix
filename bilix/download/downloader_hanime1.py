@@ -2,9 +2,10 @@ import asyncio
 from typing import Union
 import httpx
 import bilix.api.hanime1 as api
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.exception import HandleMethodError
 
 
 class DownloaderHanime1(BaseDownloaderPart, BaseDownloaderM3u8):

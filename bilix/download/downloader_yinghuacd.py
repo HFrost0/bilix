@@ -3,10 +3,11 @@ import httpx
 from typing import Sequence, Union
 
 import bilix.api.yinghuacd as api
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.log import logger
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.exception import HandleMethodError, APIError
 
 
 class DownloaderYinghuacd(BaseDownloaderM3u8):
@@ -31,9 +32,8 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         if extra is None:
             try:
                 video_info = await api.get_video_info(self.api_client, url)
-            except Exception as e:
-                logger.error(f"{url} 解析失败 {e}")
-                return
+            except APIError as e:
+                return logger.error(e)
         else:
             video_info = extra
         name = legal_title(video_info.title, video_info.sub_title)

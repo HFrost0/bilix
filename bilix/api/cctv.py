@@ -7,6 +7,7 @@ import httpx
 import m3u8
 from bilix.log import logger
 from bilix.utils import legal_title, req_retry
+from ._decorator import api
 
 dft_client_settings = {
     'headers': {'user-agent': 'PostmanRuntime/7.29.0'},
@@ -14,6 +15,7 @@ dft_client_settings = {
 }
 
 
+@api
 async def get_id(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str]:
     res_web = await req_retry(client, url)
     pid = re.findall(r'guid ?= ?"(\w+)"', res_web.text)[0]
@@ -25,6 +27,7 @@ async def get_id(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str]:
     return pid, vide, vida
 
 
+@api
 async def get_media_info(client: httpx.AsyncClient, pid: str) -> Tuple[str, Sequence[str]]:
     """
 
@@ -46,6 +49,7 @@ async def get_media_info(client: httpx.AsyncClient, pid: str) -> Tuple[str, Sequ
     return title, m3u8_urls
 
 
+@api
 async def get_series_info(client: httpx.AsyncClient, vide: str, vida: str) -> Tuple[str, Sequence[str]]:
     """
 

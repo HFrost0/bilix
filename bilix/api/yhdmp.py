@@ -8,9 +8,9 @@ from typing import Union, List
 import httpx
 import execjs
 from bs4 import BeautifulSoup
-from bilix.log import logger
 import bilix.utils
 from bilix.utils import legal_title
+from ._decorator import api
 
 BASE_URL = "https://www.yhdmp.cc"
 dft_client_settings = {
@@ -63,6 +63,7 @@ class VideoInfo(BaseModel):
     m3u8_url: str
 
 
+@api
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     aid, play_idx, ep_idx = url.split('/')[-1].split('.')[0].split('-')
     play_idx, ep_idx = int(play_idx), int(ep_idx)
@@ -86,6 +87,7 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     return video_info
 
 
+@api
 async def get_m3u8_url(client: httpx.AsyncClient, url):
     aid, play_idx, ep_idx = url.split('/')[-1].split('.')[0].split('-')
     params = {"aid": aid, "playindex": play_idx, "epindex": ep_idx, "r": random.random()}
@@ -96,18 +98,3 @@ async def get_m3u8_url(client: httpx.AsyncClient, url):
     purl, vurl = _decode(data['purl']), _decode(data['vurl'])
     m3u8_url = purl.split("url=")[-1] + vurl
     return m3u8_url
-
-
-if __name__ == '__main__':
-    async def main():
-        _dft_client = httpx.AsyncClient(**dft_client_settings)
-
-        return await asyncio.gather(
-            get_video_info(_dft_client, "https://www.yhdmp.cc/vp/22224-1-0.html"),
-            get_m3u8_url(_dft_client, "https://www.yhdmp.cc/vp/18261-2-0.html"),
-        )
-
-
-    logger.setLevel("DEBUG")
-    result = asyncio.run(main())
-    print(result)

@@ -3,6 +3,7 @@ import functools
 import inspect
 from typing import Callable, Union, Dict
 
+from bilix.exception import HandleError
 from bilix.log import logger
 
 
@@ -90,18 +91,3 @@ class Handler:
                 return res
         # since bilix is originally designed for bilibili, finally use bilibili handler
         return cls._registered['bilibili'](cli_kwargs)
-
-
-class HandleError(Exception):
-    """the error related to bilix cli handle"""
-
-
-class HandleMethodError(HandleError):
-    """the error that handler can not recognize the method"""
-
-    def __init__(self, executor_cls, method):
-        self.executor_cls = executor_cls
-        self.method = method
-
-    def __str__(self):
-        return f"For {self.executor_cls.__name__} method '{self.method}' is not available"

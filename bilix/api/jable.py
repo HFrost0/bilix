@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import httpx
 from bs4 import BeautifulSoup
 from bilix.utils import legal_title, req_retry
+from ._decorator import api
 
 BASE_URL = "https://jable.tv"
 dft_client_settings = {
@@ -20,6 +21,7 @@ class VideoInfo(BaseModel):
     img_url: str
 
 
+@api
 async def get_model_info(client: httpx.AsyncClient, url: str):
     res = await req_retry(client, url)
     soup = BeautifulSoup(res.text, "html.parser")
@@ -28,6 +30,7 @@ async def get_model_info(client: httpx.AsyncClient, url: str):
     return {'model_name': model_name, 'urls': urls}
 
 
+@api
 async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoInfo:
     if url_or_avid.startswith('http'):
         url = url_or_avid

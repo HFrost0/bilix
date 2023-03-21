@@ -4,9 +4,10 @@ from typing import Union
 import httpx
 
 import bilix.api.douyin as api
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title
+from bilix.exception import HandleMethodError
 
 
 class DownloaderDouyin(BaseDownloaderPart):

@@ -1,11 +1,10 @@
-import asyncio
 import re
 from pydantic import BaseModel
 from typing import Union, List
 import httpx
 from bs4 import BeautifulSoup
-from bilix.log import logger
 from bilix.utils import req_retry
+from ._decorator import api
 
 BASE_URL = "http://www.yinghuacd.com"
 dft_client_settings = {
@@ -21,6 +20,7 @@ class VideoInfo(BaseModel):
     m3u8_url: str
 
 
+@api
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     # request
     res = await req_retry(client, url)
@@ -33,17 +33,3 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     play_info = [[a.text, f"{BASE_URL}{a['href']}"] for a in soup.find('div', class_="movurls").find_all('a')]
     video_info = VideoInfo(title=title, sub_title=sub_title, play_info=play_info, m3u8_url=m3u8_url)
     return video_info
-
-
-if __name__ == '__main__':
-    async def main():
-        _dft_client = httpx.AsyncClient(**dft_client_settings)
-
-        return await asyncio.gather(
-            get_video_info(_dft_client, "http://www.yinghuacd.com/v/5606-7.html"),
-        )
-
-
-    logger.setLevel("DEBUG")
-    result = asyncio.run(main())
-    print(result)

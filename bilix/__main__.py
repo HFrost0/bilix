@@ -7,9 +7,10 @@ from rich.table import Table
 
 from .__version__ import __version__
 from .log import logger
-from .handle import Handler, HandleMethodError
+from .handle import Handler
 from .progress import CLIProgress
 from .utils import parse_bytes_str
+from .exception import HandleMethodError
 
 
 def handle_help(ctx: click.Context, param: typing.Union[click.Option, click.Parameter], value: typing.Any, ) -> None:

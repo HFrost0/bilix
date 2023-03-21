@@ -3,8 +3,9 @@ import re
 from typing import Union
 import httpx
 import bilix.api.jable as api
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.exception import HandleMethodError
 
 
 class DownloaderJable(BaseDownloaderM3u8):

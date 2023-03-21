@@ -4,7 +4,6 @@ Originally From
 https://github.com/Evil0ctal/Douyin_TikTok_Download_API
 """
 
-import asyncio
 import re
 import json
 import random
@@ -12,6 +11,7 @@ from typing import List
 import httpx
 from pydantic import BaseModel
 from bilix.utils import req_retry, legal_title
+from ._decorator import api
 
 dft_client_settings = {
     'headers': {'user-agent': 'com.ss.android.ugc.trill/494+Mozilla/5.0+(Linux;+Android+12;'
@@ -31,6 +31,7 @@ class VideoInfo(BaseModel):
     origin_cover: str
 
 
+@api
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     if short_url := re.findall(r'https://www.tiktok.com/t/\w+/', url):
         res = await req_retry(client, short_url[0], follow_redirects=True)
@@ -61,13 +62,3 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     video_info = VideoInfo(title=title, author_name=author_name, wm_urls=wm_urls, nwm_urls=nwm_urls, cover=cover,
                            dynamic_cover=dynamic_cover, origin_cover=origin_cover)
     return video_info
-
-
-if __name__ == '__main__':
-    async def main():
-        _dft_client = httpx.AsyncClient(**dft_client_settings)
-        data = await get_video_info(_dft_client, 'https://www.tiktok.com/@evil0ctal/video/7156033831819037994')
-        print(data)
-
-
-    asyncio.run(main())

@@ -6,7 +6,10 @@ from pydantic import BaseModel, Field
 from typing import Union, List, Tuple, Dict, Optional
 import json5
 from danmakuC.bilibili import parse_view
+
+from ._decorator import api
 from bilix.utils import req_retry, legal_title
+from bilix.exception import APIError, APIResourceError, APIUnsupportedError
 
 dft_client_settings = {
     'headers': {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'},
@@ -15,6 +18,7 @@ dft_client_settings = {
 }
 
 
+@api
 async def get_cate_meta(client: httpx.AsyncClient) -> dict:
     """
     获取b站分区元数据
@@ -34,6 +38,7 @@ async def get_cate_meta(client: httpx.AsyncClient) -> dict:
     return cate_info
 
 
+@api
 async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     """
     获取视频列表信息
@@ -59,6 +64,7 @@ async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     return list_name, up_name, bvids
 
 
+@api
 async def get_collect_info(client: httpx.AsyncClient, url_or_sid: str):
     """
     获取合集信息
@@ -78,6 +84,7 @@ async def get_collect_info(client: httpx.AsyncClient, url_or_sid: str):
     return col_name, up_name, bvids
 
 
+@api
 async def get_favour_page_info(client: httpx.AsyncClient, url_or_fid: str, pn=1, ps=20, keyword=''):
     """
     获取收藏夹信息（分页）
@@ -102,6 +109,7 @@ async def get_favour_page_info(client: httpx.AsyncClient, url_or_fid: str, pn=1,
     return fav_name, up_name, total_size, bvids
 
 
+@api
 async def get_cate_page_info(client: httpx.AsyncClient, cate_id, time_from, time_to, pn=1, ps=30,
                              order='click', keyword=''):
     """
@@ -125,6 +133,7 @@ async def get_cate_page_info(client: httpx.AsyncClient, cate_id, time_from, time
     return bvids
 
 
+@api
 async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order='pubdate', keyword=''):
     """
     获取up主信息
@@ -238,7 +247,7 @@ class VideoInfo(BaseModel):
         init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
         init_info = json.loads(init_info)
         if len(init_info.get('error', {})) > 0:
-            raise AttributeError("视频已失效")  # 啊叻？视频不见了？在分区下载的时候可能产生
+            raise APIResourceError("视频已失效", url)  # 啊叻？视频不见了？在分区下载的时候可能产生
         # extract meta
         pages = []
         h1_title = legal_title(re.search('<h1[^>]*title="([^"]*)"', html).groups()[0])
@@ -270,7 +279,7 @@ class VideoInfo(BaseModel):
                 p_name = i['title']
                 pages.append(Page(p_name=p_name, p_url=p_url))
         else:
-            raise AttributeError("未知类型")
+            raise APIUnsupportedError("未知视频类型", url)
         # extract dash
         try:
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', html).groups()[0]
@@ -327,34 +336,27 @@ class VideoInfo(BaseModel):
         return video_info
 
 
+@api
 async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
     res = await req_retry(client, url, follow_redirects=True)
     video_info = VideoInfo.parse_html(url, res.text)
     return video_info
 
 
+@api
 async def get_subtitle_info(client: httpx.AsyncClient, bvid, cid):
     params = {'bvid': bvid, 'cid': cid}
     res = await req_retry(client, 'https://api.bilibili.com/x/player/v2', params=params)
     info = json.loads(res.text)
     if info['code'] == -400:
-        raise AttributeError(f'未找到字幕信息')
+        raise APIError(f'未找到字幕信息', params)
     return [[f'http:{i["subtitle_url"]}', i['lan_doc']] for i in info['data']['subtitle']['subtitles']]
 
 
+@api
 async def get_dm_urls(client: httpx.AsyncClient, aid, cid) -> List[str]:
     params = {'oid': cid, 'pid': aid, 'type': 1}
     res = await req_retry(client, f'https://api.bilibili.com/x/v2/dm/web/view', params=params)
     view = parse_view(res.content)
     total = int(view['dmSge']['total'])
     return [f'https://api.bilibili.com/x/v2/dm/web/seg.so?oid={cid}&type=1&segment_index={i + 1}' for i in range(total)]
-
-
-if __name__ == '__main__':
-    import rich
-
-    # result = asyncio.run(get_cate_meta())
-    # rich.print(result)
-    dft_client = httpx.AsyncClient(**dft_client_settings)
-    result = asyncio.run(get_video_info(dft_client, "https://www.bilibili.com/video/BV13L4y1K7th"))
-    rich.print(result)

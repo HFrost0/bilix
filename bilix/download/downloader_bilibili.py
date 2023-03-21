@@ -1,7 +1,5 @@
 import asyncio
 import functools
-import re
-import urllib.parse
 from typing import Union, Sequence
 import aiofiles
 import httpx
@@ -9,19 +7,18 @@ from datetime import datetime, timedelta
 import os
 from anyio import run_process
 import bilix.api.bilibili as api
-from bilix.handle import Handler, HandleMethodError
+from bilix.handle import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.process import SingletonPPE
 from bilix.subtitle import json2srt
-from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url
+from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data
 from bilix.log import logger
+from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
 from danmakuC.bilibili import proto2ass
-
-__all__ = ['DownloaderBilibili']
 
 
 class DownloaderBilibili(BaseDownloaderPart):
-    def __init__(self, videos_dir='videos', sess_data='',
+    def __init__(self, videos_dir='videos', sess_data: str = None,
                  video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
                  stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
         """
@@ -35,12 +32,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param progress: 进度对象，不提供则使用rich命令行进度
         """
         client = httpx.AsyncClient(**api.dft_client_settings)
-
-        # url-encoding sess_data if it's not encoded
-        if re.search(r';|/|\?|:|@|&|=|\+|$|,', sess_data):
-            sess_data = urllib.parse.quote_plus(sess_data)
-
-        client.cookies.set('SESSDATA', sess_data)
+        client.cookies.set('SESSDATA', valid_sess_data(sess_data))
         super(DownloaderBilibili, self).__init__(
             client=client,
             videos_dir=videos_dir,
@@ -265,8 +257,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         """
         try:
             video_info = await api.get_video_info(self.client, url)
-        except AttributeError as e:
-            return logger.warning(f'{e} {url}')
+        except (APIResourceError, APIUnsupportedError) as e:
+            return logger.warning(e)
         if hierarchy and len(video_info.pages) > 1:
             hierarchy = self._make_hierarchy_dir(hierarchy, video_info.title)
         else:
@@ -298,8 +290,8 @@ class DownloaderBilibili(BaseDownloaderPart):
             if not video_info:
                 try:
                     video_info = await api.get_video_info(self.client, url)
-                except AttributeError as e:
-                    return logger.warning(f'{url} {e}')
+                except (APIResourceError, APIUnsupportedError) as e:
+                    return logger.warning(e)
             # join p_name and title
             p_name = video_info.pages[video_info.p].p_name
             title = legal_title(video_info.h1_title, p_name)
@@ -421,8 +413,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         p_name = video_info.pages[p].p_name
         try:
             subtitles = await api.get_subtitle_info(self.client, video_info.bvid, cid)
-        except AttributeError as e:
-            return logger.warning(f'{url} {e}')
+        except APIError as e:
+            return logger.warning(e)
         cors = []
 
         for sub_url, sub_name in subtitles:
