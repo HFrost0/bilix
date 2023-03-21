@@ -1,5 +1,7 @@
 import asyncio
 import functools
+import re
+import urllib.parse
 from typing import Union, Sequence
 import aiofiles
 import httpx
@@ -33,6 +35,11 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param progress: 进度对象，不提供则使用rich命令行进度
         """
         client = httpx.AsyncClient(**api.dft_client_settings)
+
+        # url-encoding sess_data if it's not encoded
+        if re.search(r';|/|\?|:|@|&|=|\+|$|,', sess_data):
+            sess_data = urllib.parse.quote_plus(sess_data)
+
         client.cookies.set('SESSDATA', sess_data)
         super(DownloaderBilibili, self).__init__(
             client=client,
