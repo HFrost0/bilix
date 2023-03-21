@@ -1,12 +1,15 @@
 import asyncio
+import re
+import urllib.parse
+
 import httpx
 from rich.tree import Tree
 
 import bilix.api.bilibili as api
-from bilix.log import logger
-from bilix.utils import req_retry, convert_size, parse_bilibili_url
 from bilix.handle import Handler
 from bilix.info.base_informer import BaseInformer
+from bilix.log import logger
+from bilix.utils import req_retry, convert_size, parse_bilibili_url
 
 __all__ = ['InformerBilibili']
 
@@ -14,6 +17,11 @@ __all__ = ['InformerBilibili']
 class InformerBilibili(BaseInformer):
     def __init__(self, sess_data: str = ''):
         client = httpx.AsyncClient(**api.dft_client_settings)
+
+        # url-encoding sess_data if it's not encoded
+        if re.search(r';|/|\?|:|@|&|=|\+|$|,', sess_data):
+            sess_data = urllib.parse.quote_plus(sess_data)
+
         client.cookies.set('SESSDATA', sess_data)
         super().__init__(client)
         self.type_map = {
