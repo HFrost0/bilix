@@ -20,21 +20,23 @@ from danmakuC.bilibili import proto2ass
 class DownloaderBilibili(BaseDownloaderPart):
     def __init__(self, videos_dir='videos', sess_data: str = None,
                  video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
-                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None, browser=None):
         """
 
         :param videos_dir: 下载到哪个目录，默认当前目录下的为videos中，如果路径不存在将自动创建
-        :param sess_data: 有条件的用户填写大会员凭证，填写后可下载大会员资源
+        :param sess_data: 有条件的用户填写大会员凭证，填3写后可下载大会员资源
         :param video_concurrency: 限制最大同时下载的视频数量
         :param part_concurrency: 每个媒体的分段并发数
         :param stream_retry: 下载媒体时发生网络错误的最大重试数
         :param speed_limit: 下载速度限制，单位B/s
         :param progress: 进度对象，不提供则使用rich命令行进度
+        :param browser: 从哪个浏览器中读取cookies，例如chrome，safari
         """
         client = httpx.AsyncClient(**api.dft_client_settings)
         client.cookies.set('SESSDATA', valid_sess_data(sess_data))
         super(DownloaderBilibili, self).__init__(
             client=client,
+            browser=browser,
             videos_dir=videos_dir,
             part_concurrency=part_concurrency,
             video_concurrency=video_concurrency,

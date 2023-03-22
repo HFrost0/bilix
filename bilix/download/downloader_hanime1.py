@@ -10,10 +10,10 @@ from bilix.exception import HandleMethodError
 
 class DownloaderHanime1(BaseDownloaderPart, BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", stream_retry=5,
-                 speed_limit: Union[float, int] = None, progress=None):
+                 speed_limit: Union[float, int] = None, progress=None, browser: str = None):
         client = httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderHanime1, self).__init__(client, videos_dir, speed_limit=speed_limit,
-                                                stream_retry=stream_retry, progress=progress)
+                                                stream_retry=stream_retry, progress=progress, browser=browser)
 
     async def get_video(self, url: str, image=False):
         video_info = await api.get_video_info(self.client, url)

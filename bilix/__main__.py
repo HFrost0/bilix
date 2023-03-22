@@ -150,11 +150,15 @@ def print_help():
     )
     table.add_row(
         "-sl --speed-limit", '[dark_cyan]str',
-        '最大下载速度，默认无限制。例如：-sl 1.5MB (experimental)',
+        '最大下载速度，默认无限制。例如：-sl 1.5MB',
     )
     table.add_row(
         "-sr --stream-retry", '[dark_cyan]int',
         '下载过程中发生网络错误后最大重试数，默认5',
+    )
+    table.add_row(
+        "-fb --from-browser", '[dark_cyan]str',
+        '从哪个浏览器中导入cookies，例如safari，chrome，edge...默认无',
     )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
@@ -300,6 +304,12 @@ class BasedSpeedLimit(click.ParamType):
     'stream_retry',
     type=int,
     default=5
+)
+@click.option(
+    '--from-browser',
+    '-fb',
+    'browser',
+    type=str,
 )
 @click.option(
     '-h',

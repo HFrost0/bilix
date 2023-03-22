@@ -17,7 +17,7 @@ from bilix.utils import req_retry, merge_files
 class BaseDownloaderM3u8(BaseDownloader):
     def __init__(self, client: httpx.AsyncClient = None, videos_dir="videos",
                  video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
-                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None, browser: str = None):
         """
         Base async m3u8 Downloader
 
@@ -29,6 +29,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         :param progress:
         """
         super(BaseDownloaderM3u8, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
+                                                 browser=browser,
                                                  stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
         self.decrypt_cache = {}
 

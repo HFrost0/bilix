@@ -10,9 +10,9 @@ from bilix.exception import HandleMethodError
 
 class DownloaderJable(BaseDownloaderM3u8):
     def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
-                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None):
+                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None, browser: str = None):
         client = httpx.AsyncClient(**api.dft_client_settings)
-        super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency,
+        super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency, browser=browser,
                                               stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
 
     async def get_model(self, url: str, image=True, hierarchy=True):

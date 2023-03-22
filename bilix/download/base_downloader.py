@@ -3,6 +3,7 @@ import platform
 from typing import Union, Optional
 from contextlib import asynccontextmanager
 import aiofiles
+import browser_cookie3
 import httpx
 import os
 from bilix.utils import req_retry
@@ -14,15 +15,23 @@ from bilix.progress import CLIProgress
 class BaseDownloader:
     def __init__(self, client: httpx.AsyncClient = None, videos_dir='videos',
                  video_concurrency: Union[int, asyncio.Semaphore] = 3, part_concurrency: int = 10,
-                 speed_limit: Union[float, int] = None, stream_retry=5, progress: Progress = None):
+                 speed_limit: Union[float, int] = None, stream_retry=5, progress: Progress = None, browser: str = None):
         """
 
         :param client: client used for http request
+        :param browser: load cookies from which browser
         :param videos_dir: download to which directory, default to ./videos, if not exists will be auto created
         :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit)
         :param progress: progress obj
         """
         self.client = client if client else httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'})
+        if browser:  # load cookies from browser, may need auth
+            try:
+                f = getattr(browser_cookie3, browser.lower())
+                logger.debug(f"trying to load cookies from {browser}, may need auth")
+                self.client.cookies.update(f())
+            except AttributeError:
+                raise AttributeError(f"Invalid Browser {browser}")
         self.videos_dir = videos_dir
         assert speed_limit is None or speed_limit > 0
         self.speed_limit = speed_limit

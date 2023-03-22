@@ -1,7 +1,4 @@
 import asyncio
-import re
-import urllib.parse
-
 import httpx
 from rich.tree import Tree
 
@@ -15,10 +12,10 @@ __all__ = ['InformerBilibili']
 
 
 class InformerBilibili(BaseInformer):
-    def __init__(self, sess_data: str = ''):
+    def __init__(self, sess_data: str = '', browser: str = None):
         client = httpx.AsyncClient(**api.dft_client_settings)
         client.cookies.set('SESSDATA', valid_sess_data(sess_data))
-        super().__init__(client)
+        super().__init__(client, browser=browser)
         self.type_map = {
             'up': self.info_up,
             'fav': self.info_fav,
@@ -92,7 +89,8 @@ def handle(kwargs):
     keys = kwargs['keys']
     method = kwargs['method']
     if 'bilibili' in keys[0] and 'info' == method:
-        informer = InformerBilibili(sess_data=kwargs['cookie'])
+        informer = InformerBilibili(sess_data=kwargs['cookie'],
+                                    **Handler.kwargs_filter(InformerBilibili, cli_kwargs=kwargs))
 
         # in order to maintain order
         async def temp():
