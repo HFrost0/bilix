@@ -32,6 +32,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param progress: 进度对象，不提供则使用rich命令行进度
         :param browser: 从哪个浏览器中读取cookies，例如chrome，safari
         """
+        self.domain = "bilibili.com"
         client = httpx.AsyncClient(**api.dft_client_settings)
         client.cookies.set('SESSDATA', valid_sess_data(sess_data))
         super(DownloaderBilibili, self).__init__(

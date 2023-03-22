@@ -6,7 +6,9 @@ import random
 from urllib.parse import quote_plus
 from typing import Union, Sequence, Coroutine, List, Tuple, Optional
 import aiofiles
+import browser_cookie3
 import httpx
+import time
 
 from bilix.log import logger
 
@@ -128,3 +130,14 @@ def valid_sess_data(sess_data: Optional[str]) -> str:
         sess_data = quote_plus(sess_data)
         logger.debug(f"sess_data encoded: {sess_data}")
     return sess_data
+
+
+def update_cookies_from_browser(client: httpx.AsyncClient, browser: str, domain: str = ""):
+    try:
+        f = getattr(browser_cookie3, browser.lower())
+        a = time.time()
+        logger.debug(f"trying to load cookies from {browser}: {domain}, may need auth")
+        client.cookies.update(f(domain_name=domain))
+        logger.debug(f"load complete, consumed time: {time.time() - a} s")
+    except AttributeError:
+        raise AttributeError(f"Invalid Browser {browser}")

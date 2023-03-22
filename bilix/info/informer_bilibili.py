@@ -13,6 +13,7 @@ __all__ = ['InformerBilibili']
 
 class InformerBilibili(BaseInformer):
     def __init__(self, sess_data: str = '', browser: str = None):
+        self.domain = "bilibili.com"
         client = httpx.AsyncClient(**api.dft_client_settings)
         client.cookies.set('SESSDATA', valid_sess_data(sess_data))
         super().__init__(client, browser=browser)

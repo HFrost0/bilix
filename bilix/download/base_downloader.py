@@ -3,10 +3,9 @@ import platform
 from typing import Union, Optional
 from contextlib import asynccontextmanager
 import aiofiles
-import browser_cookie3
 import httpx
 import os
-from bilix.utils import req_retry
+from bilix.utils import req_retry, update_cookies_from_browser
 from bilix.log import logger
 from bilix.progress.abc import Progress
 from bilix.progress import CLIProgress
@@ -26,12 +25,7 @@ class BaseDownloader:
         """
         self.client = client if client else httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'})
         if browser:  # load cookies from browser, may need auth
-            try:
-                f = getattr(browser_cookie3, browser.lower())
-                logger.debug(f"trying to load cookies from {browser}, may need auth")
-                self.client.cookies.update(f())
-            except AttributeError:
-                raise AttributeError(f"Invalid Browser {browser}")
+            update_cookies_from_browser(self.client, browser, self.domain if hasattr(self, "domain") else "")
         self.videos_dir = videos_dir
         assert speed_limit is None or speed_limit > 0
         self.speed_limit = speed_limit
