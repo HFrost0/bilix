@@ -168,9 +168,20 @@ bilix v 'url'
 
 ### 你是大会员？🥸
 
-请在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频，也就是说，你先得是大会员才能下哦～
+两种方式登录
 
-如果你总是需要附加--cookie参数，可以使用`alias`命令，例如`alias bilix=/.../python -m bilix --cookie xxxxxxxx`
+* 直接填写cookie
+
+在`--cookie`参数中填写浏览器缓存的`SESSDATA`cookie，填写后可以下载需要大会员的视频
+
+* 从浏览器载入cookie
+
+在浏览器中登录之后，使用`-fb --from-browser`参数从浏览器中读取cookie，例如`-fb chrome`，使用这种方法可能需要授权，bilix读取浏览器cookie的
+方式为开源项目[browser_cookie3](https://github.com/borisbabic/browser_cookie3)。
+
+💡如果你总是需要保持登录
+
+在linux和mac系统中你可以使用`alias bilix=bilix --cookie xxxxxx`或`alias bilix=bilix -fb chrome`来为`bilix`命令创建别名
 
 ### 画质，音质和编码选择
 
