@@ -32,7 +32,8 @@ dependencies = [
     "pydantic",
     "pyexecjs",
     "rich",
-    "browser_cookie3>=0.17.1"
+    "browser_cookie3>=0.17.1",
+    "pymp4>=1.2.0",
 ]
 
 [project.optional-dependencies]

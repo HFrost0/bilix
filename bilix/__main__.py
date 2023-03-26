@@ -97,6 +97,10 @@ def print_help():
         '有条件的用户可以提供大会员的SESSDATA来下载会员视频'
     )
     table.add_row(
+        "-fb --from-browser", '[dark_cyan]str',
+        '从哪个浏览器中导入cookies，例如safari，chrome，edge...默认无',
+    )
+    table.add_row(
         '--days',
         '[dark_cyan]int',
         '过去days天中的结果，默认为7，仅get_up, get_cate时生效'
@@ -157,8 +161,8 @@ def print_help():
         '下载过程中发生网络错误后最大重试数，默认5',
     )
     table.add_row(
-        "-fb --from-browser", '[dark_cyan]str',
-        '从哪个浏览器中导入cookies，例如safari，chrome，edge...默认无',
+        "-tr --time-range", '[dark_cyan]str',
+        '下载视频的时间范围，格式如 hh:mm:ss-hh:mm-ss，默认无，仅get_video时生效',
     )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
@@ -186,6 +190,23 @@ class BasedSpeedLimit(click.ParamType):
     def convert(self, value, param, ctx):
         if value is not None:
             return parse_bytes_str(value)
+
+
+class BasedTimeRange(click.ParamType):
+    name = "time_range"
+
+    @staticmethod
+    def _s2t(s: str) -> int:
+        """
+        :param s: xx:xx:xx hour:minute:second
+        :return:
+        """
+        h, m, s = map(int, s.split(':'))
+        return h * 60 * 60 + m * 60 + s
+
+    def convert(self, value, param, ctx):
+        start_time, end_time = map(self._s2t, value.split('-'))
+        return start_time, end_time
 
 
 @click.command(add_help_option=False)
@@ -310,6 +331,13 @@ class BasedSpeedLimit(click.ParamType):
     '-fb',
     'browser',
     type=str,
+)
+@click.option(
+    '--time-range',
+    '-tr',
+    'time_range',
+    type=BasedTimeRange(),
+    default=None,
 )
 @click.option(
     '-h',

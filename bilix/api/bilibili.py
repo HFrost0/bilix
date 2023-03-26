@@ -168,6 +168,7 @@ class Media(BaseModel):
     suffix: str = None
     quality: str
     codec: str
+    segment_base: dict
 
     @property
     def urls(self):

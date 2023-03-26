@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from typing import Union, Sequence
+from typing import Union, Sequence, Tuple
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
@@ -274,7 +274,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: Union[str, int] = 0, image=False, subtitle=False,
-                        dm=False, only_audio=False, codec: str = '', hierarchy: str = '', video_info=None):
+                        dm=False, only_audio=False, codec: str = '', hierarchy: str = '', video_info=None,
+                        time_range: Tuple[int, int] = None):
         """
         下载单个视频
 
@@ -287,6 +288,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param codec: 视频编码（可通过codec获取）
         :param hierarchy:
         :param video_info: 额外数据，提供时不用再次请求页面
+        :param time_range: 切片的时间范围
         :return:
         """
         async with self.v_sema:
@@ -314,19 +316,31 @@ class DownloaderBilibili(BaseDownloaderPart):
             cors = []
             # 1. only video
             if not audio and not only_audio:
-                cors.append(self.get_file(video.urls, f'{file_name}.mp4', task_id, hierarchy))
+                cors.append((video, f'{file_name}.mp4'))
             # 2. video and audio
             elif audio and not only_audio:
                 if os.path.exists(f'{file_dir}/{file_name}.mp4'):
                     logger.info(f'[green]已存在[/green] {file_name}.mp4')
                 else:
-                    cors.append(self.get_file(video.urls, f'{file_name}-video', task_id, hierarchy))
-                    cors.append(self.get_file(audio.urls, f'{file_name}-audio', task_id, hierarchy))
+                    cors.append((video, f'{file_name}-v'))
+                    cors.append((audio, f'{file_name}-a'))
             # 3. only audio
             elif audio and only_audio:
-                cors.append(self.get_file(audio.urls, f'{file_name}{audio.suffix}', task_id, hierarchy))
+                cors.append((audio, f'{file_name}{audio.suffix}'))
             else:
                 return logger.warning(f"No audio for {file_name}")
+            # convert to coroutines
+            for idx, c in enumerate(cors):
+                if not time_range:
+                    cors[idx] = self.get_file(c[0].urls, c[1], task_id=task_id, hierarchy=hierarchy)
+                else:
+                    cors[idx] = self.get_media_segment(
+                        c[0].urls, c[1],
+                        time_range=time_range,
+                        init_range=c[0].segment_base['initialization'],
+                        seg_range=c[0].segment_base['index_range'],
+                        task_id=task_id, hierarchy=hierarchy)
+
             # additional task
             if image or subtitle or dm:
                 extra_hierarchy = self._make_hierarchy_dir(hierarchy if hierarchy else True, 'extra')
@@ -340,15 +354,15 @@ class DownloaderBilibili(BaseDownloaderPart):
             await asyncio.gather(*cors)
 
         if audio and not only_audio and not os.path.exists(f'{file_dir}/{file_name}.mp4'):
-            cmd = ['ffmpeg', '-i', f'{file_dir}/{file_name}-video', '-i', f'{file_dir}/{file_name}-audio',
+            cmd = ['ffmpeg', '-i', f'{file_dir}/{file_name}-v', '-i', f'{file_dir}/{file_name}-a',
                    '-codec', 'copy', '-loglevel', 'quiet']
             # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
             if audio.codec == 'fLaC':
                 cmd.extend(['-strict', '-2'])
             cmd.append(f'{file_dir}/{file_name}.mp4')
             await run_process(cmd)
-            os.remove(f'{file_dir}/{file_name}-video')
-            os.remove(f'{file_dir}/{file_name}-audio')
+            os.remove(f'{file_dir}/{file_name}-v')
+            os.remove(f'{file_dir}/{file_name}-a')
         # make progress invisible
         if self.progress.tasks[task_id].visible:
             await self.progress.update(task_id, advance=1, visible=False)
