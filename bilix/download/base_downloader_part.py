@@ -87,7 +87,6 @@ class BaseDownloaderPart(BaseDownloader):
         part_names = [f"{file_name}-{init_start}-{init_end}"]
         total = init_end - init_start + 1
         s = 0
-        print(len(container.references))
         for idx, ref in enumerate(container.references):
             if ref.reference_type != "MEDIA":
                 logger.debug("not a media", ref)

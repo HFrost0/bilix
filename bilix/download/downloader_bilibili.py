@@ -11,7 +11,7 @@ from bilix.handle import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.process import SingletonPPE
 from bilix.subtitle import json2srt
-from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data
+from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data, t2s
 from bilix.log import logger
 from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
 
@@ -298,6 +298,8 @@ class DownloaderBilibili(BaseDownloaderPart):
                     return logger.warning(e)
             # join p_name and title
             p_name = video_info.pages[video_info.p].p_name
+            if time_range:
+                p_name = legal_title(p_name, *map(t2s, time_range))
             title = legal_title(video_info.h1_title, p_name)
             # to avoid file name too long bug
             file_name = p_name if len(video_info.h1_title) > 50 and hierarchy and p_name else title

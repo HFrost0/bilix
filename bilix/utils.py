@@ -141,3 +141,18 @@ def update_cookies_from_browser(client: httpx.AsyncClient, browser: str, domain:
         logger.debug(f"load complete, consumed time: {time.time() - a} s")
     except AttributeError:
         raise AttributeError(f"Invalid Browser {browser}")
+
+
+def t2s(t: int) -> str:
+    return str(t)
+
+
+def s2t(s: str) -> int:
+    """
+    :param s: hour:minute:second or xx(s) format input
+    :return:
+    """
+    if ':' not in s:
+        return int(s)
+    h, m, s = map(int, s.split(':'))
+    return h * 60 * 60 + m * 60 + s

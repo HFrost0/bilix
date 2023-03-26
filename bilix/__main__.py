@@ -9,7 +9,7 @@ from .__version__ import __version__
 from .log import logger
 from .handle import Handler
 from .progress import CLIProgress
-from .utils import parse_bytes_str
+from .utils import parse_bytes_str, s2t
 from .exception import HandleMethodError
 
 
@@ -162,7 +162,7 @@ def print_help():
     )
     table.add_row(
         "-tr --time-range", '[dark_cyan]str',
-        '下载视频的时间范围，格式如 hh:mm:ss-hh:mm-ss，默认无，仅get_video时生效',
+        '下载视频的时间范围，格式如 h:m:s-h:m-s 或 s-s，默认无，仅get_video时生效',
     )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
@@ -195,17 +195,8 @@ class BasedSpeedLimit(click.ParamType):
 class BasedTimeRange(click.ParamType):
     name = "time_range"
 
-    @staticmethod
-    def _s2t(s: str) -> int:
-        """
-        :param s: xx:xx:xx hour:minute:second
-        :return:
-        """
-        h, m, s = map(int, s.split(':'))
-        return h * 60 * 60 + m * 60 + s
-
     def convert(self, value, param, ctx):
-        start_time, end_time = map(self._s2t, value.split('-'))
+        start_time, end_time = map(s2t, value.split('-'))
         return start_time, end_time
 
 
