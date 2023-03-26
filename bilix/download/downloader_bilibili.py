@@ -14,7 +14,6 @@ from bilix.subtitle import json2srt
 from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data
 from bilix.log import logger
 from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
-from danmakuC.bilibili import proto2ass
 
 
 class DownloaderBilibili(BaseDownloaderPart):
@@ -370,6 +369,12 @@ class DownloaderBilibili(BaseDownloaderPart):
 
     @staticmethod
     def _dm2ass_factory(width, height):
+        try:
+            from danmakuC.bilibili import proto2ass
+        except ImportError:
+            logger.warning("danmakuC is unavailable, danmaku conversion will not proceed.")
+            return
+
         async def dm2ass(protobuf_bytes: bytes) -> bytes:
             loop = asyncio.get_event_loop()
             f = functools.partial(proto2ass, protobuf_bytes, width, height)
@@ -392,7 +397,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             video_info = await api.get_video_info(self.client, url)
         aid, cid = video_info.aid, video_info.cid
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-        file_type = '.' + ('bin' if not convert_func else convert_func.__name__.split('2')[-1])
+        file_type = '.' + ('pb' if not convert_func else convert_func.__name__.split('2')[-1])
         p_name = video_info.pages[video_info.p].p_name
         if len(video_info.h1_title) > 50 and hierarchy and p_name:  # to avoid file name too long bug
             file_name = legal_title(p_name, "弹幕") + file_type
