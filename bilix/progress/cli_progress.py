@@ -1,20 +1,53 @@
 from bilix.progress.abc import Progress
 from typing import Optional, Any, Set
+from rich.theme import Theme
+from rich.style import Style
+from rich.spinner import Spinner
 from rich.progress import Progress as RichProgress, TaskID, \
-    TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
+    TextColumn, BarColumn, DownloadColumn, TransferSpeedColumn, TimeRemainingColumn, ProgressColumn
+
+
+class SpinnerColumn(ProgressColumn):
+    def __init__(self, style="progress.spinner", speed: float = 1.0):
+        self.waiting = Spinner("dqpb", style=style)
+        self.downloading = Spinner("dots", style=style, speed=speed)
+        self.merging = Spinner("line", style=style, speed=speed)
+        super().__init__()
+
+    def render(self, task):
+        t = task.get_time()
+        if task.total is None:
+            return self.waiting.render(t)
+        elif task.finished:
+            return self.merging.render(t)
+        else:
+            return self.downloading.render(t)
+
+
+_bs = "rgb(95,138,239)"
+_gs = "rgb(65,165,189)"
 
 
 class CLIProgress(Progress):
     # Only one live display may be active at once
     _progress = RichProgress(
+        SpinnerColumn(speed=2.),
         TextColumn("[progress.description]{task.description}"),
         TextColumn("[progress.percentage]{task.percentage:>4.1f}%"),
-        BarColumn(),
+        BarColumn(pulse_style=_bs, complete_style=_bs, finished_style=_gs),
         DownloadColumn(),
         TransferSpeedColumn(),
-        'ETA',
-        TimeRemainingColumn(), transient=True
+        TextColumn('ETA'),
+        TimeRemainingColumn(),
+        transient=True,
     )
+    _progress.console.push_theme(Theme({
+        "progress.data.speed": Style(color=_bs),
+        "progress.download": Style(color=_gs),
+        "progress.percentage": Style(color=_gs, bold=True),
+        "progress.spinner": Style(color=_bs),
+        "progress.remaining": Style(color=_gs),
+    }))
 
     def __init__(self):
         self._active_ids: Set[TaskID] = set()

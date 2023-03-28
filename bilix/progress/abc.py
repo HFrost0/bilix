@@ -31,6 +31,7 @@ class Progress(ABC):
             total: Optional[float] = 100.0,
             completed: int = 0,
             visible: bool = True,
+            **fields,
     ):
         """async add a task to progress"""
 

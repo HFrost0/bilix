@@ -68,7 +68,7 @@ async def test_get_up_info():
 
 # GitHub actions problem...
 # @pytest.mark.asyncio
-# async def test_get_special_audio():
+# async.md def test_get_special_audio():
 #     # Dolby
 #     data = await api.get_video_info(client, 'https://www.bilibili.com/video/BV13L4y1K7th')
 #     assert data.dash['dolby']['type'] != 0

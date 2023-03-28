@@ -313,7 +313,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                     f"{title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
 
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-            task_id = await self.progress.add_task(total=1, description=title, visible=False)
+            task_id = await self.progress.add_task(total=None, description=title)
             cors = []
             # 1. only video
             if not audio and not only_audio:
@@ -325,6 +325,8 @@ class DownloaderBilibili(BaseDownloaderPart):
                 else:
                     cors.append((video, f'{file_name}-v'))
                     cors.append((audio, f'{file_name}-a'))
+                    # task need to be merged
+                    await self.progress.update(task_id=task_id, upper=True)
             # 3. only audio
             elif audio and only_audio:
                 cors.append((audio, f'{file_name}{audio.suffix}'))
@@ -335,7 +337,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 if not time_range:
                     cors[idx] = self.get_file(c[0].urls, c[1], task_id=task_id, hierarchy=hierarchy)
                 else:
-                    cors[idx] = self.get_media_segment(
+                    cors[idx] = self.get_media_clip(
                         c[0].urls, c[1],
                         time_range=time_range,
                         init_range=c[0].segment_base['initialization'],
@@ -364,10 +366,9 @@ class DownloaderBilibili(BaseDownloaderPart):
             await run_process(cmd)
             os.remove(f'{file_dir}/{file_name}-v')
             os.remove(f'{file_dir}/{file_name}-a')
-        # make progress invisible
-        if self.progress.tasks[task_id].visible:
-            await self.progress.update(task_id, advance=1, visible=False)
             logger.info(f'[cyan]已完成[/cyan] {file_name}{audio.suffix if only_audio else ".mp4"}')
+        # make progress invisible
+        await self.progress.update(task_id, visible=False)
 
     @staticmethod
     def _dm2ass_factory(width, height):

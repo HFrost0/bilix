@@ -47,7 +47,7 @@ class BaseDownloaderPart(BaseDownloader):
             urls[0] = res.url
         return total, filename
 
-    async def get_media_segment(
+    async def get_media_clip(
             self,
             url_or_urls: Union[str, Iterable[str]],
             file_name: str,
@@ -71,8 +71,11 @@ class BaseDownloaderPart(BaseDownloader):
         urls = [url_or_urls] if isinstance(url_or_urls, str) else [url for url in url_or_urls]
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
         file_path = f"{file_dir}/{file_name}"
+        upper = task_id is not None and self.progress.tasks[task_id].fields.get('upper', None)
+
         if os.path.exists(file_path):
-            logger.info(f'[green]已存在[/green] {file_name}')
+            if not upper:
+                logger.info(f'[green]已存在[/green] {file_name}')
             return file_path
 
         init_start, init_end = map(int, init_range.split('-'))
@@ -105,9 +108,11 @@ class BaseDownloaderPart(BaseDownloader):
             pre_byte += ref.referenced_size
 
         if task_id is not None:
-            await self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
+            await self.progress.update(
+                task_id,
+                total=self.progress.tasks[task_id].total + total if self.progress.tasks[task_id].total else total)
         else:
-            task_id = await self.progress.add_task(description=file_name, total=total, visible=True)
+            task_id = await self.progress.add_task(description=file_name, total=total)
         p_sema = asyncio.Semaphore(self.part_concurrency)
 
         async def get_seg(part_name):
@@ -122,7 +127,7 @@ class BaseDownloaderPart(BaseDownloader):
         await run_process(cmd)
         os.remove(file_path)
         os.rename(file_path + ".mp4", file_path)  # use original filename
-        if self.progress.tasks[task_id].finished:  # no upstream task
+        if not upper:  # no upstream task
             await self.progress.update(task_id, visible=False)
             logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
@@ -139,9 +144,11 @@ class BaseDownloaderPart(BaseDownloader):
         """
         urls = [url_or_urls] if isinstance(url_or_urls, str) else [url for url in url_or_urls]
         file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
+        upper = task_id is not None and self.progress.tasks[task_id].fields.get('upper', None)
 
         if file_name and os.path.exists(f'{file_dir}/{file_name}'):
-            logger.info(f'[green]已存在[/green] {file_name}')
+            if not upper:
+                logger.info(f'[green]已存在[/green] {file_name}')
             return f'{file_dir}/{file_name}'
 
         total, req_filename = await self._pre_req(urls)
@@ -150,13 +157,16 @@ class BaseDownloaderPart(BaseDownloader):
             file_name = req_filename if req_filename else str(urls[0]).split('/')[-1].split('?')[0]
         file_path = f'{file_dir}/{file_name}'
         if os.path.exists(file_path):
-            logger.info(f'[green]已存在[/green] {file_name}')
+            if not upper:
+                logger.info(f'[green]已存在[/green] {file_name}')
             return file_path
 
         if task_id is not None:
-            await self.progress.update(task_id, total=self.progress.tasks[task_id].total + total, visible=True)
+            await self.progress.update(
+                task_id,
+                total=self.progress.tasks[task_id].total + total if self.progress.tasks[task_id].total else total)
         else:
-            task_id = await self.progress.add_task(description=file_name, total=total, visible=True)
+            task_id = await self.progress.add_task(description=file_name, total=total)
         part_length = total // self.part_concurrency
         cors = []
         part_names = []
@@ -168,7 +178,7 @@ class BaseDownloaderPart(BaseDownloader):
             cors.append(self._get_file_part(urls, part_name, task_id, hierarchy=hierarchy))
         file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_path=file_path)
-        if self.progress.tasks[task_id].finished:
+        if not upper:
             await self.progress.update(task_id, visible=False)
             logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
