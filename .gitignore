@@ -9,3 +9,6 @@ __pycache__/
 venv*/
 build/
 dist/
+docs/.vitepress/dist
+docs/.vitepress/cache
+docs/node_modules
