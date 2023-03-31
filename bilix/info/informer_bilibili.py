@@ -45,8 +45,7 @@ class InformerBilibili(BaseInformer):
     async def info_video(self, url: str):
         video_info = await api.get_video_info(self.client, url)
         if video_info.dash is None:
-            logger.warning(f'{video_info.h1_title} 需要大会员或该地区不支持')
-            return
+            return logger.warning(f'{video_info.h1_title} 需要大会员或该地区不支持')
 
         async def ensure_size(m: api.Media):
             if m.size is None:

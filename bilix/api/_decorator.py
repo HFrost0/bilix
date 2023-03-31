@@ -11,6 +11,6 @@ def api(func):
         except (APIError, HTTPError):
             raise
         except Exception as e:
-            raise APIParseError(e) from e
+            raise APIParseError(e, func) from e
 
     return wrapped

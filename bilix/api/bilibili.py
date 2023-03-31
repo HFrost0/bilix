@@ -166,9 +166,9 @@ class Media(BaseModel):
     width: int = None
     height: int = None
     suffix: str = None
-    quality: str
-    codec: str
-    segment_base: dict
+    quality: str = None
+    codec: str = None
+    segment_base: dict = None
 
     @property
     def urls(self):
@@ -182,6 +182,48 @@ class Dash(BaseModel):
     audios: List[Media]
     video_formats: Dict[str, Dict[str, Media]]
     audio_formats: Dict[str, Optional[Media]]
+
+    @classmethod
+    def from_dict(cls, play_info: dict):
+        dash = play_info['data']['dash']  # may raise KeyError
+        video_formats = {}
+        quality_map = {}
+        for d in play_info['data']['support_formats']:
+            quality_map[d['quality']] = d['new_description']
+            video_formats[d['new_description']] = {}
+        videos = []
+        for d in dash['video']:
+            if d['id'] not in quality_map:
+                continue  # https://github.com/HFrost0/bilix/issues/93
+            quality = quality_map[d['id']]
+            m = Media(quality=quality, codec=d['codecs'], **d)
+            video_formats[quality][m.codec] = m
+            videos.append(m)
+
+        audios = []
+        audio_formats = {}
+        if dash.get('audio', None):  # some video have NO audio
+            d = dash['audio'][0]
+            m = Media(quality="default", suffix='.aac', codec=d['codecs'], **d)
+            audios.append(m)
+            audio_formats[m.quality] = m
+        if dash['dolby']['type'] != 0:
+            quality = "dolby"
+            audio_formats[quality] = None
+            if dash['dolby'].get('audio', None):
+                d = dash['dolby']['audio'][0]
+                m = Media(quality=quality, suffix='.eac3', codec=d['codecs'], **d)
+                audios.append(m)
+                audio_formats[m.quality] = m
+        if dash.get('flac', None):
+            quality = "flac"
+            audio_formats[quality] = None
+            if d := dash['flac']['audio']:
+                m = Media(quality=quality, suffix='.flac', codec=d['codecs'], **d)
+                audios.append(m)
+                audio_formats[m.quality] = m
+        return cls(duration=dash['duration'], videos=videos, audios=audios,
+                   video_formats=video_formats, audio_formats=audio_formats)
 
     def choose_video(self, quality: Union[int, str], video_codec: str) -> Media:
         # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
@@ -246,6 +288,7 @@ class VideoInfo(BaseModel):
     status: Status
     bvid: str = None
     dash: Dash = None
+    other: List[Media] = None  # flv, mp4
 
     @staticmethod
     def parse_html(url, html: str):
@@ -285,59 +328,31 @@ class VideoInfo(BaseModel):
                 pages.append(Page(p_name=p_name, p_url=p_url))
         else:
             raise APIUnsupportedError("未知视频类型", url)
-        # extract dash
+        # extract dash and flv_url
+        dash, other = None, []
         try:
             play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', html).groups()[0]
             play_info = json.loads(play_info)
-            dash = play_info['data']['dash']
-        except (KeyError, AttributeError):  # no available dash KeyError-电影，AttributeError-动画 or old
-            dash = None
+        except AttributeError:  # AttributeError-动画
+            pass
         else:
-            video_formats = {}
-            quality_map = {}
-            for d in play_info['data']['support_formats']:
-                quality_map[d['quality']] = d['new_description']
-                video_formats[d['new_description']] = {}
-            videos = []
-            for d in dash['video']:
-                if d['id'] not in quality_map:
-                    continue  # https://github.com/HFrost0/bilix/issues/93
-                quality = quality_map[d['id']]
-                m = Media(quality=quality, codec=d['codecs'], **d)
-                video_formats[quality][m.codec] = m
-                videos.append(m)
-
-            audios = []
-            audio_formats = {}
-            if dash.get('audio', None):  # some video have NO audio
-                d = dash['audio'][0]
-                m = Media(quality="default", suffix='.aac', codec=d['codecs'], **d)
-                audios.append(m)
-                audio_formats[m.quality] = m
-            if dash['dolby']['type'] != 0:
-                quality = "dolby"
-                audio_formats[quality] = None
-                if dash['dolby'].get('audio', None):
-                    d = dash['dolby']['audio'][0]
-                    m = Media(quality=quality, suffix='.eac3', codec=d['codecs'], **d)
-                    audios.append(m)
-                    audio_formats[m.quality] = m
-            if dash.get('flac', None):
-                quality = "flac"
-                audio_formats[quality] = None
-                if d := dash['flac']['audio']:
-                    m = Media(quality=quality, suffix='.flac', codec=d['codecs'], **d)
-                    audios.append(m)
-                    audio_formats[m.quality] = m
-            dash = Dash(duration=dash['duration'], videos=videos, audios=audios,
-                        video_formats=video_formats, audio_formats=audio_formats)
+            try:
+                dash = Dash.from_dict(play_info)
+            except KeyError:
+                pass
+            try:
+                for i in play_info['data']['durl']:
+                    suffix = re.search(r'\.([a-zA-Z0-9]+)\?', i['url']).group(1)
+                    other.append(Media(base_url=i['url'], backup_url=i['backup_url'], suffix=suffix))
+            except KeyError:
+                pass
         # extract img url
         img_url = re.search('property="og:image" content="([^"]*)"', html).groups()[0]
         if not img_url.startswith('http'):  # https://github.com/HFrost0/bilix/issues/52 just for some video
             img_url = 'http:' + img_url.split('@')[0]
         # construct data
         video_info = VideoInfo(title=title, h1_title=h1_title, aid=aid, cid=cid, status=status,
-                               p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash)
+                               p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash, other=other)
         return video_info
 
 

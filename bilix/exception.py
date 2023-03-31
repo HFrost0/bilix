@@ -12,11 +12,12 @@ class APIError(Exception):
 class APIParseError(APIError):
     """API Parse Error, maybe cased by website interface change, raise by decorator"""
 
-    def __init__(self, e):
+    def __init__(self, e, func):
         self.e = e
+        self.func = func
 
     def __str__(self):
-        return f"Caused by {self.e.__class__.__name__}"
+        return f"APIParseError Caused by {self.e.__class__.__name__} in {self.func.__name__}"
 
 
 class APIResourceError(APIError):

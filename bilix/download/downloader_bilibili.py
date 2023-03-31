@@ -1,6 +1,6 @@
 import asyncio
 import functools
-from typing import Union, Sequence, Tuple
+from typing import Union, Sequence, Tuple, List
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
@@ -14,6 +14,7 @@ from bilix.subtitle import json2srt
 from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data, t2s
 from bilix.log import logger
 from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
+from danmakuC.bilibili import proto2ass
 
 
 class DownloaderBilibili(BaseDownloaderPart):
@@ -273,8 +274,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, quality: Union[str, int] = 0, image=False, subtitle=False,
-                        dm=False, only_audio=False, codec: str = '', hierarchy: str = '', video_info=None,
-                        time_range: Tuple[int, int] = None):
+                        dm=False, only_audio=False, codec: str = '', hierarchy: str = '',
+                        video_info: api.VideoInfo = None, time_range: Tuple[int, int] = None):
         """
         下载单个视频
 
@@ -303,46 +304,60 @@ class DownloaderBilibili(BaseDownloaderPart):
             title = legal_title(video_info.h1_title, p_name)
             # to avoid file name too long bug
             file_name = p_name if len(video_info.h1_title) > 50 and hierarchy and p_name else title
-            if not video_info.dash:
-                return logger.warning(f'{title} 需要大会员或该地区不支持')
-            # choose video quality
-            try:
-                video, audio = video_info.dash.choose_quality(quality, codec)
-            except KeyError:
-                return logger.warning(
-                    f"{title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
-
             file_dir = f'{self.videos_dir}/{hierarchy}' if hierarchy else self.videos_dir
-            task_id = await self.progress.add_task(total=None, description=title)
+
             cors = []
-            # 1. only video
-            if not audio and not only_audio:
-                cors.append((video, f'{file_name}.mp4'))
-            # 2. video and audio
-            elif audio and not only_audio:
-                if os.path.exists(f'{file_dir}/{file_name}.mp4'):
-                    logger.info(f'[green]已存在[/green] {file_name}.mp4')
+            task_id = await self.progress.add_task(total=None, description=title)
+            if video_info.dash:
+                try:  # choose video quality
+                    video, audio = video_info.dash.choose_quality(quality, codec)
+                except KeyError:
+                    return logger.warning(
+                        f"{title} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
+
+                tmp: List[Tuple[api.Media, str]] = []
+                # 1. only video
+                if not audio and not only_audio:
+                    tmp.append((video, f'{file_name}.mp4'))
+                # 2. video and audio
+                elif audio and not only_audio:
+                    if os.path.exists(f'{file_dir}/{file_name}.mp4'):
+                        logger.info(f'[green]已存在[/green] {file_name}.mp4')
+                    else:
+                        tmp.append((video, f'{file_name}-v'))
+                        tmp.append((audio, f'{file_name}-a'))
+                        # task need to be merged
+                        await self.progress.update(task_id=task_id, upper=True)
+                # 3. only audio
+                elif audio and only_audio:
+                    tmp.append((audio, f'{file_name}{audio.suffix}'))
                 else:
-                    cors.append((video, f'{file_name}-v'))
-                    cors.append((audio, f'{file_name}-a'))
-                    # task need to be merged
-                    await self.progress.update(task_id=task_id, upper=True)
-            # 3. only audio
-            elif audio and only_audio:
-                cors.append((audio, f'{file_name}{audio.suffix}'))
+                    return logger.warning(f"No audio for {file_name}")
+                # convert to coroutines
+                for t in tmp:
+                    if not time_range:
+                        cors.append(self.get_file(t[0].urls, t[1], task_id=task_id, hierarchy=hierarchy))
+                    else:
+                        cors.append(self.get_media_clip(
+                            t[0].urls, t[1],
+                            time_range=time_range,
+                            init_range=t[0].segment_base['initialization'],
+                            seg_range=t[0].segment_base['index_range'],
+                            task_id=task_id, hierarchy=hierarchy))
+            elif video_info.other:
+                logger.warning(
+                    f"{title} 未解析到dash资源，转入durl mp4/flv下载（不需要会员的电影/番剧预览，不支持dash的视频）")
+                if len(video_info.other) == 1:
+                    m = video_info.other[0]
+                    cors.append(self.get_file(m.urls, f'{file_name}.{m.suffix}', task_id, hierarchy=hierarchy))
+                else:
+                    # todo 暂时还没遇到这种情况
+                    sub_task = []
+                    for i, m in enumerate(video_info.other):
+                        sub_task.append(
+                            self.get_file(m.urls, f'{file_name}-{i}.{m.suffix}', task_id, hierarchy=hierarchy))
             else:
-                return logger.warning(f"No audio for {file_name}")
-            # convert to coroutines
-            for idx, c in enumerate(cors):
-                if not time_range:
-                    cors[idx] = self.get_file(c[0].urls, c[1], task_id=task_id, hierarchy=hierarchy)
-                else:
-                    cors[idx] = self.get_media_clip(
-                        c[0].urls, c[1],
-                        time_range=time_range,
-                        init_range=c[0].segment_base['initialization'],
-                        seg_range=c[0].segment_base['index_range'],
-                        task_id=task_id, hierarchy=hierarchy)
+                return logger.warning(f'{title} 需要大会员或该地区不支持')
 
             # additional task
             if image or subtitle or dm:
@@ -352,11 +367,12 @@ class DownloaderBilibili(BaseDownloaderPart):
                 if subtitle:
                     cors.append(self.get_subtitle(url, hierarchy=extra_hierarchy, video_info=video_info))
                 if dm:
-                    cors.append(self.get_dm(url, convert_func=self._dm2ass_factory(video.width, video.height),
+                    width, height = (video.width, video.height) if video_info.dash else (1920, 1080)
+                    cors.append(self.get_dm(url, convert_func=self._dm2ass_factory(width, height),
                                             hierarchy=extra_hierarchy, video_info=video_info))
             await asyncio.gather(*cors)
 
-        if audio and not only_audio and not os.path.exists(f'{file_dir}/{file_name}.mp4'):
+        if self.progress.tasks[task_id].fields.get('upper', None):
             cmd = ['ffmpeg', '-i', f'{file_dir}/{file_name}-v', '-i', f'{file_dir}/{file_name}-a',
                    '-codec', 'copy', '-loglevel', 'quiet']
             # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
@@ -371,16 +387,10 @@ class DownloaderBilibili(BaseDownloaderPart):
         await self.progress.update(task_id, visible=False)
 
     @staticmethod
-    def _dm2ass_factory(width, height):
-        try:
-            from danmakuC.bilibili import proto2ass
-        except ImportError:
-            logger.warning("danmakuC is unavailable, danmaku conversion will not proceed.")
-            return
-
+    def _dm2ass_factory(width: int, height: int):
         async def dm2ass(protobuf_bytes: bytes) -> bytes:
             loop = asyncio.get_event_loop()
-            f = functools.partial(proto2ass, protobuf_bytes, width, height)
+            f = functools.partial(proto2ass, protobuf_bytes, width, height, font_size=width / 40, )
             content = await loop.run_in_executor(SingletonPPE(), f)
             return content.encode('utf-8')
 
