@@ -8,11 +8,13 @@ on:
     paths:
       - 'bilix/**'
       - 'tests/**'
+      - 'pyproject.toml'
     branches: [ "master" ]
   pull_request:
     paths:
       - 'bilix/**'
       - 'tests/**'
+      - 'pyproject.toml'
     branches: [ "master" ]
 
 permissions:
