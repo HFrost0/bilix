@@ -7,7 +7,3 @@ __all__ = [
     'yhdmp',
     'yinghuacd',
 ]
-
-
-def hello():
-    print()

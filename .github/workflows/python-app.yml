@@ -5,8 +5,14 @@ name: Python application
 
 on:
   push:
+    paths:
+      - 'bilix/**'
+      - 'tests/**'
     branches: [ "master" ]
   pull_request:
+    paths:
+      - 'bilix/**'
+      - 'tests/**'
     branches: [ "master" ]
 
 permissions:
