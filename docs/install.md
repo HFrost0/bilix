@@ -7,7 +7,7 @@
    pip install bilix
    ```
 
-2. [FFmpeg](https://ffmpeg.org/contact.html#MailingLists) ：一个命令行视频工具，用于合成下载的音频和视频
+2. [FFmpeg](https://ffmpeg.org) ：一个命令行视频工具，用于合成下载的音频和视频
 
     * macOS 下可以通过`brew install ffmpeg`进行安装。
     * Windows 下载请至官网 https://ffmpeg.org/download.html#build-windows ，安装好后需要配置环境变量。

@@ -102,3 +102,14 @@ bilix v 'https://www.bilibili.com/video/BV1kG411t72J' --cookie 'xxxxx' --codec h
 
 ## 更多站点支持
 bilix除了b站以外也支持了一些别的站点，但作者精力有限，所以失效也不奇怪。具体可见[discussion](https://github.com/HFrost0/bilix/discussions/39)
+
+## 基本下载方法
+对于一些基本的下载场景
+* 你可以直接通过文件链接下载
+  ```shell
+  bilix f 'https://xxxx.com/xxxx.mp4'
+  ```
+* 你可以通过m3u8 url直接下载m3u8视频
+  ```shell
+  bilix m3u8 'https:/xxxx.com/xxxx.m3u8'
+  ```
