@@ -64,6 +64,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             logger.info(f"[green]已存在[/green] {file_name}")
             return file_path
         async with self.v_sema:
+            task_id = await self.progress.add_task(total=None, description=file_name)
             res = await req_retry(self.client, m3u8_url, follow_redirects=True)
             m3u8_info = m3u8.loads(res.text)
             if not m3u8_info.base_uri:
@@ -71,8 +72,6 @@ class BaseDownloaderM3u8(BaseDownloader):
                 m3u8_info.base_uri = base_uri
             cors = []
             p_sema = asyncio.Semaphore(self.part_concurrency)
-            # invisible at first and create task id for _get_seg
-            task_id = await self.progress.add_task(total=1, description=file_name, visible=False)
             total_time = 0
             for idx, seg in enumerate(m3u8_info.segments):
                 total_time += seg.duration
@@ -84,19 +83,18 @@ class BaseDownloaderM3u8(BaseDownloader):
             file_list = await asyncio.gather(*cors)
         await merge_files(file_list, new_path=file_path)
         logger.info(f"[cyan]已完成[/cyan] {file_name}")
-        await self.progress.update(task_id, advance=1, visible=False)
+        await self.progress.update(task_id, visible=False)
         return file_path
 
     async def _update_task_total(self, task_id, time_part: float, update_size: int):
         task = self.progress.tasks[task_id]
-        if not self.progress.tasks[task_id].visible:
+        if task.total is None:
             confirmed_t = time_part
             confirmed_b = update_size
-            await self.progress.update(task_id, visible=True)
         else:
             confirmed_t = time_part + task.fields['confirmed_t']
             confirmed_b = update_size + task.fields['confirmed_b']
-        predicted_total = task.fields['total_time'] * confirmed_b / confirmed_t + 1
+        predicted_total = task.fields['total_time'] * confirmed_b / confirmed_t
         await self.progress.update(task_id, total=predicted_total, confirmed_t=confirmed_t, confirmed_b=confirmed_b)
 
     async def _get_seg(self, seg: Segment, file_name, task_id, p_sema: asyncio.Semaphore, hierarchy: str = '') -> str:
