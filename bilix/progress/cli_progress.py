@@ -24,30 +24,19 @@ class SpinnerColumn(ProgressColumn):
             return self.downloading.render(t)
 
 
-_bs = "rgb(95,138,239)"
-_gs = "rgb(65,165,189)"
-
-
 class CLIProgress(Progress):
     # Only one live display may be active at once
     _progress = RichProgress(
         SpinnerColumn(speed=2.),
         TextColumn("[progress.description]{task.description}"),
         TextColumn("[progress.percentage]{task.percentage:>4.1f}%"),
-        BarColumn(pulse_style=_bs, complete_style=_bs, finished_style=_gs),
+        BarColumn(),
         DownloadColumn(),
         TransferSpeedColumn(),
         TextColumn('ETA'),
         TimeRemainingColumn(),
         transient=True,
     )
-    _progress.console.push_theme(Theme({
-        "progress.data.speed": Style(color=_bs),
-        "progress.download": Style(color=_gs),
-        "progress.percentage": Style(color=_gs, bold=True),
-        "progress.spinner": Style(color=_bs),
-        "progress.remaining": Style(color=_gs),
-    }))
 
     def __init__(self):
         self._active_ids: Set[TaskID] = set()
@@ -106,3 +95,17 @@ class CLIProgress(Progress):
                               description=description, visible=visible, refresh=refresh, **fields)
         if self._progress.tasks[task_id].finished and task_id in self._active_ids:
             self._active_ids.remove(task_id)
+
+    @classmethod
+    def switch_theme(cls, bs="rgb(95,138,239)", gs="rgb(65,165,189)"):
+        cls._progress.console.push_theme(Theme({
+            "progress.data.speed": Style(color=bs),
+            "progress.download": Style(color=gs),
+            "progress.percentage": Style(color=gs, bold=True),
+            "progress.spinner": Style(color=bs),
+            "progress.remaining": Style(color=gs),
+            # "bar.back": Style(color="grey23"),
+            "bar.complete": Style(color=gs),
+            "bar.finished": Style(color=bs),
+            "bar.pulse": Style(color=bs),
+        }))
