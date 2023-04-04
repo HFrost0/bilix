@@ -364,7 +364,7 @@ def main(**kwargs):
     asyncio.set_event_loop(loop)
     logger.debug(f'CLI KEY METHOD and OPTIONS: {kwargs}')
     try:
-        CLIProgress.switch_theme(gs="cyan", bs="dark_cyan")
+        # CLIProgress.switch_theme(gs="cyan", bs="dark_cyan")
         CLIProgress.start()  # start progress
         executor, cor = Handler.assign(kwargs)
         loop.run_until_complete(cor)

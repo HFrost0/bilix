@@ -46,6 +46,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             progress=progress
         )
         self._cate_meta = None
+        self.api_sema = asyncio.Semaphore(video_concurrency)
 
     async def get_collect_or_list(self, url, quality=0, image=False, subtitle=False, dm=False, only_audio=False,
                                   codec: str = '', hierarchy: Union[bool, str] = True):
@@ -259,7 +260,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         try:
-            video_info = await api.get_video_info(self.client, url)
+            async with self.api_sema:
+                video_info = await api.get_video_info(self.client, url)
         except (APIResourceError, APIUnsupportedError) as e:
             return logger.warning(e)
         if hierarchy and len(video_info.pages) > 1:
