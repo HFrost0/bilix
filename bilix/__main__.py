@@ -72,7 +72,7 @@ def print_help():
     table.add_column("type", no_wrap=True, justify="left", style="bold")
     table.add_column("Description", )
     table.add_row(
-        "--dir",
+        "-d --dir",
         '[dark_cyan]str',
         "文件的下载目录，默认当前路径下的videos文件夹下，不存在会自动创建"
     )
@@ -82,12 +82,12 @@ def print_help():
         "视频画面质量，默认0为最高画质，越大画质越低，超出范围时自动选最低画质，或者直接使用字符串指定'1080p'等名称"
     )
     table.add_row(
-        "--max-con",
+        "-mc --max-con",
         '[dark_cyan]int',
         "控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高，默认3",
     )
     table.add_row(
-        "--part-con",
+        "-pc --part-con",
         '[dark_cyan]int',
         "控制每个媒体的分段并发数，默认10",
     )
@@ -121,11 +121,11 @@ def print_help():
         '搜索关键词， 仅get_up, get_cate，get_favor时生效',
     )
     table.add_row(
-        "--no-series", '',
+        "-ns --no-series", '',
         '只下载搜索结果每个视频的第一p，仅get_up，get_cate，get_favour时生效',
     )
     table.add_row(
-        "--no-hierarchy", '',
+        "-nh --no-hierarchy", '',
         '不使用层次目录，所有视频统一保存在下载目录下'
     )
     table.add_row(
@@ -141,7 +141,7 @@ def print_help():
         '下载弹幕',
     )
     table.add_row(
-        "--only-audio", '',
+        "-oa --only-audio", '',
         '仅下载音频，下载的音质固定为最高音质',
     )
     table.add_row(
@@ -162,7 +162,7 @@ def print_help():
     )
     table.add_row(
         "-tr --time-range", '[dark_cyan]str',
-        '下载视频的时间范围，格式如 h:m:s-h:m-s 或 s-s，默认无，仅get_video时生效',
+        r'下载视频的时间范围，格式如 h:m:s-h:m:s 或 s-s，默认无，仅get_video时生效',
     )
     table.add_row("-h --help", '', "帮助信息")
     table.add_row("-v --version", '', "版本信息")
@@ -204,6 +204,7 @@ class BasedTimeRange(click.ParamType):
 @click.argument("method", type=str)
 @click.argument("keys", type=str, nargs=-1, required=True)
 @click.option(
+    "-d",
     "--dir",
     "videos_dir",
     type=str,
@@ -217,12 +218,14 @@ class BasedTimeRange(click.ParamType):
     default=0,  # default relatively choice
 )
 @click.option(
+    '-mc',
     '--max-con',
     'video_concurrency',
     type=int,
     default=3,
 )
 @click.option(
+    '-pc',
     "--part-con",
     "part_concurrency",
     type=int,
@@ -257,12 +260,14 @@ class BasedTimeRange(click.ParamType):
     type=str
 )
 @click.option(
+    '-ns',
     '--no-series',
     'series',
     is_flag=True,
     default=True,
 )
 @click.option(
+    '-nh',
     '--no-hierarchy',
     'hierarchy',
     is_flag=True,
@@ -287,6 +292,7 @@ class BasedTimeRange(click.ParamType):
     default=False,
 )
 @click.option(
+    '-oa',
     '--only-audio',
     'only_audio',
     is_flag=True,
@@ -358,7 +364,7 @@ def main(**kwargs):
     asyncio.set_event_loop(loop)
     logger.debug(f'CLI KEY METHOD and OPTIONS: {kwargs}')
     try:
-        # CLIProgress.switch_theme()
+        CLIProgress.switch_theme(gs="cyan", bs="dark_cyan")
         CLIProgress.start()  # start progress
         executor, cor = Handler.assign(kwargs)
         loop.run_until_complete(cor)

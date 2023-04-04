@@ -99,13 +99,13 @@ class CLIProgress(Progress):
     @classmethod
     def switch_theme(cls, bs="rgb(95,138,239)", gs="rgb(65,165,189)"):
         cls._progress.console.push_theme(Theme({
-            "progress.data.speed": Style(color=bs),
+            # "progress.data.speed": Style(color=bs),
             "progress.download": Style(color=gs),
-            "progress.percentage": Style(color=gs, bold=True),
+            "progress.percentage": Style(color=gs),
             "progress.spinner": Style(color=bs),
             "progress.remaining": Style(color=gs),
             # "bar.back": Style(color="grey23"),
-            "bar.complete": Style(color=gs),
-            "bar.finished": Style(color=bs),
+            "bar.complete": Style(color=bs),
+            "bar.finished": Style(color=gs),
             "bar.pulse": Style(color=bs),
         }))

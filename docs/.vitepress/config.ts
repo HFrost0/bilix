@@ -11,6 +11,11 @@ export default defineConfig({
     editLink: {
       pattern: 'https://github.com/HFrost0/bilix/edit/master/docs/:path'
     },
+    algolia: {
+      appId: 'F4ZDY9KUXU',
+      apiKey: '30aaace8ddea0d6f25ac39ea70ce8bd8',
+      indexName: 'bilix'
+    },
     footer: {
       message: 'Released under the Apache 2.0 License.',
       copyright: 'Copyright © 2022-present HFrost0'
