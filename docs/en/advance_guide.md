@@ -1,18 +1,18 @@
 # Advance Guide
-Please use `bilix -h` for more help，including method shorthand，video quality selection，concurrency control，
+Please use `bilix -h` for more help，including method short alias，video quality selection，concurrency control，
 download speed control，download directory...
 
-## Method shorthand
+## Method short alias
 
-Method names like get_series and get_video are too cumbersome to write? Agreed! You can use their
-shorthand for faster access:
+Method names like `get_series` and `get_video` are too cumbersome to write? Agreed! You can use their
+short alias for faster access:
 
 ```shell
 bilix s 'url'
 bilix v 'url'
 ...
 ```
-please check `bilix -h` for all shorthands
+please check `bilix -h` for all short alias
 
 ## Login
 
@@ -105,6 +105,15 @@ otherwise some temporary files may remain:
 * Changing the `--part-con` after interruption
 * Changing the `--time-range` after interruption
 
+## Provide multiple urls at once
+All methods of bilix support providing multiple `url`
+```shell
+bilix v 'url1' 'url2' 'url3'
+bilix up 'up_url1' 'up_url2'
+```
+Concurrency, speed control also works fine when you provide multiple `url` of course
+
+
 ## Support for More Sites
 
 bilix also supports some other websites, but their availability may vary as the author is currently busy. 
@@ -120,3 +129,6 @@ For some basic download scenarios
   ```shell
   bilix m3u8 'https:/xxxx.com/xxxx.m3u8'
   ```
+  
+## Proxy
+bilix will use system proxy by default

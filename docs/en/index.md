@@ -8,7 +8,7 @@ hero:
   actions:
     - theme: brand
       text: Quickstart
-      link: /en/install
+      link: /en/quickstart
     - theme: alt
       text: Python API
       link: /en/async
@@ -22,7 +22,7 @@ features:
     details: Lightweight user-friendly CLI with progress notification, focusing on core functionality.
   - icon: 📝
     title: Fully-featured
-    details: Uploads，danmaku，favourite，category，anime，TV Series，video clip，cover，audio...
+    details: Submissions，danmaku，favourite，anime，TV Series，video clip，cover，audio...
   - icon: 🔨
     title: Extensible
     details: Extensible Python module suitable for more download scenarios.

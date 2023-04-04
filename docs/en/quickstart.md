@@ -30,7 +30,7 @@ User😨：I don't want to download that many, just a single video. No problem, 
 bilix get_video 'url'
 ```
 :::info
-Do you know that? methods like `get_series` `get_video` all has a [shorthand](/en/advance_guide)
+Do you know that? methods like `get_series` `get_video` all has a [short alias](/en/advance_guide)
 :::
 
 

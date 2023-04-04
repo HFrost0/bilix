@@ -27,6 +27,7 @@ export default defineConfig({
       themeConfig: {
         nav: [
           {text: 'Home', link: '/'},
+          {text: '安装', link: '/install'},
           {text: '快速上手', link: '/quickstart'}
         ],
         sidebar: [
@@ -52,6 +53,7 @@ export default defineConfig({
       themeConfig: {
         nav: [
           {text: 'Home', link: '/en/'},
+          {text: 'Install', link: '/en/install'},
           {text: 'Quickstart', link: '/en/quickstart'}
         ],
         sidebar: [

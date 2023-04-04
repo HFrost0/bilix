@@ -4,11 +4,11 @@ layout: home
 
 hero:
   name: "bilix"
-  tagline: 快如闪电的bilibili高速异步下载工具
+  tagline: 快如闪电的异步下载工具，支持bilibili及更多
   actions:
     - theme: brand
       text: 快速上手
-      link: /install
+      link: /quickstart
     - theme: alt
       text: Python调用
       link: /async

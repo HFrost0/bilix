@@ -1,6 +1,5 @@
 # Installation
-
-two steps:
+bilix is a powerful Python asynchronous video download tool that requires two steps to install:
 
 1. pip install（require python >= 3.8）
    ```shell
