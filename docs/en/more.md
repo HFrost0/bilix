@@ -1,15 +1,17 @@
 # More
 
-## Welcome to Ask Questions
+## Community
 
-Due to the impact of changes in APIs or website front-end, if you encounter any bugs or other issues,
-feel free to raise an issue. The author will do their best to ensure the latest version runs smoothly.
+If you find any bugs or other issues, feel free to raise an [Issue](https://github.com/HFrost0/bilix/issues).
 
-If you find this project helpful, you can give the author a little [Star](https://github.com/HFrost0/bilix)🌟
+If you have new ideas or new feature requests，welcome to participate in
+the [Discussion](https://github.com/HFrost0/bilix/discussions)
+
+If you find this project helpful, you can give the author a [Star](https://github.com/HFrost0/bilix)🌟
 
 ## Contribute
 
-Welcome~ Details can be found in [contributing](https://github.com/HFrost0/bilix/blob/master/CONTRIBUTING.md)
+❤️ Welcome~ Details can be found in [Contributing](https://github.com/HFrost0/bilix/blob/master/CONTRIBUTING.md)
 
 ## Known Bugs 🤡
 
