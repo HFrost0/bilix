@@ -300,7 +300,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 except (APIResourceError, APIUnsupportedError) as e:
                     return logger.warning(e)
             # join p_name and title
-            p_name = video_info.pages[video_info.p].p_name
+            p_name = legal_title(video_info.pages[video_info.p].p_name)
             if time_range:
                 p_name = legal_title(p_name, *map(t2s, time_range))
             title = legal_title(video_info.h1_title, p_name)
