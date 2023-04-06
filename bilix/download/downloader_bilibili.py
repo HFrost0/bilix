@@ -329,7 +329,10 @@ class DownloaderBilibili(BaseDownloaderPart):
                         tmp.append((video, f'{file_name}-v'))
                         tmp.append((audio, f'{file_name}-a'))
                         # task need to be merged
-                        await self.progress.update(task_id=task_id, upper=True)
+                        await self.progress.update(
+                            task_id=task_id,
+                            upper=(None, [f'{file_name}-v', f'{file_name}-a'])
+                        )
                 # 3. only audio
                 elif audio and only_audio:
                     tmp.append((audio, f'{file_name}{audio.suffix}'))
@@ -353,11 +356,15 @@ class DownloaderBilibili(BaseDownloaderPart):
                     m = video_info.other[0]
                     cors.append(self.get_file(m.urls, f'{file_name}.{m.suffix}', task_id, hierarchy=hierarchy))
                 else:
-                    # todo 暂时还没遇到这种情况
-                    sub_task = []
-                    for i, m in enumerate(video_info.other):
-                        sub_task.append(
-                            self.get_file(m.urls, f'{file_name}-{i}.{m.suffix}', task_id, hierarchy=hierarchy))
+                    if os.path.exists(f'{file_dir}/{file_name}.mp4'):
+                        logger.info(f'[green]已存在[/green] {file_name}.mp4')
+                    else:
+                        merge_lst = []
+                        for i, m in enumerate(video_info.other):
+                            f = f'{file_name}-{i}.{m.suffix}'
+                            cors.append(self.get_file(m.urls, f, task_id, hierarchy=hierarchy))
+                            merge_lst.append(f)
+                        await self.progress.update(task_id=task_id, upper=('concat', merge_lst))
             else:
                 return logger.warning(f'{title} 需要大会员或该地区不支持')
 
@@ -374,17 +381,32 @@ class DownloaderBilibili(BaseDownloaderPart):
                                             hierarchy=extra_hierarchy, video_info=video_info))
             await asyncio.gather(*cors)
 
-        if self.progress.tasks[task_id].fields.get('upper', None):
-            cmd = ['ffmpeg', '-i', f'{file_dir}/{file_name}-v', '-i', f'{file_dir}/{file_name}-a',
-                   '-codec', 'copy', '-loglevel', 'quiet']
+        upper = self.progress.tasks[task_id].fields.get('upper', None)
+        if upper:
+            cmd = ['ffmpeg']
+            m, fs = upper
+            rm_lst = []
+            if m == 'concat':
+                tmp_file = f'{file_dir}/{file_name}.txt'
+                with open(tmp_file, 'w') as f:
+                    for file in fs:
+                        f.write(f"file {file}\n")
+                        rm_lst.append(f'{file_dir}/{file}')
+                cmd.extend(('-f', 'concat', '-safe', '0', '-i', tmp_file))
+                rm_lst.append(tmp_file)
+            else:
+                for f in fs:
+                    cmd.extend(['-i', f"{file_dir}/{f}"])
+                    rm_lst.append(f"{file_dir}/{f}")
+            cmd.extend(['-codec', 'copy', '-loglevel', 'quiet'])
             # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
-            if audio.codec == 'fLaC':
+            if m is None and audio.codec == 'fLaC':
                 cmd.extend(['-strict', '-2'])
             cmd.append(f'{file_dir}/{file_name}.mp4')
             await run_process(cmd)
-            os.remove(f'{file_dir}/{file_name}-v')
-            os.remove(f'{file_dir}/{file_name}-a')
-            logger.info(f'[cyan]已完成[/cyan] {file_name}{audio.suffix if only_audio else ".mp4"}')
+            for f in rm_lst:
+                os.remove(f)
+            logger.info(f'[cyan]已完成[/cyan] {file_name}.mp4')
         # make progress invisible
         await self.progress.update(task_id, visible=False)
 
