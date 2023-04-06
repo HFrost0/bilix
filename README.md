@@ -5,7 +5,7 @@
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/HFrost0/bilix)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/bilix?label=pypi%20downloads&style=flat-square)
 
-⚡️Lightning-fast asynchronous download tool for bilibili and more. 快如闪电的异步下载工具，支持bilibili及更多。
+⚡️Lightning-fast asynchronous download tool for bilibili and more | 快如闪电的异步下载工具，支持bilibili及更多
 
 
 <div align="center"> <img src='https://s2.loli.net/2022/08/31/P5X8YAQ7WyNEbrq.gif' style="border-radius: 8px"> </div>
@@ -42,7 +42,7 @@ If you find any bugs or other issues, feel free to raise an [Issue](https://gith
 If you have new ideas or new feature requests👍，welcome to participate in
 the [Discussion](https://github.com/HFrost0/bilix/discussions)
 
-If you find this project helpful, you can give the author a [Star](https://github.com/HFrost0/bilix)🌟
+If you find this project helpful, you can support the author by [Star](https://github.com/HFrost0/bilix/stargazers)🌟
 
 ## Contribute
 

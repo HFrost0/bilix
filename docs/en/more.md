@@ -7,7 +7,7 @@ If you find any bugs or other issues, feel free to raise an [Issue](https://gith
 If you have new ideas or new feature requests，welcome to participate in
 the [Discussion](https://github.com/HFrost0/bilix/discussions)
 
-If you find this project helpful, you can give the author a [Star](https://github.com/HFrost0/bilix)🌟
+If you find this project helpful, you can support the author by [Star](https://github.com/HFrost0/bilix/stargazers)🌟
 
 ## Contribute
 
