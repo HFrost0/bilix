@@ -367,6 +367,7 @@ def main(**kwargs):
     try:
         # CLIProgress.switch_theme(gs="cyan", bs="dark_cyan")
         CLIProgress.start()  # start progress
+        kwargs['path'].mkdir(parents=True, exist_ok=True)
         executor, cor = Handler.assign(kwargs)
         loop.run_until_complete(cor)
     except HandleMethodError as e:  # method no match
