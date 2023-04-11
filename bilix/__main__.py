@@ -83,7 +83,7 @@ def print_help():
         "视频画面质量，默认0为最高画质，越大画质越低，超出范围时自动选最低画质，或者直接使用字符串指定'1080p'等名称"
     )
     table.add_row(
-        "-mc --max-con",
+        "-vc --video-con",
         '[dark_cyan]int',
         "控制最大同时下载的视频数量，理论上网络带宽越高可以设的越高，默认3",
     )
@@ -219,8 +219,8 @@ class BasedTimeRange(click.ParamType):
     default=0,  # default relatively choice
 )
 @click.option(
-    '-mc',
-    '--max-con',
+    '-vc',
+    '--video-con',
     'video_concurrency',
     type=int,
     default=3,
