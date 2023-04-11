@@ -4,6 +4,7 @@ from typing import Union, Optional
 from contextlib import asynccontextmanager
 import aiofiles
 import httpx
+from bilix.log import logger as dft_logger
 from bilix.utils import req_retry, update_cookies_from_browser
 from bilix.progress.abc import Progress
 from bilix.progress import CLIProgress
@@ -35,7 +36,7 @@ class BaseDownloader:
         self.speed_limit = speed_limit
         # use cli progress by default
         self.progress = progress or CLIProgress()
-        self.logger = logger or logging.getLogger("bilix")
+        self.logger = logger or dft_logger
         self.stream_retry = stream_retry
         # active stream number
         self._stream_num = 0

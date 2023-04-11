@@ -8,7 +8,7 @@ from rich.table import Table
 
 from .__version__ import __version__
 from .log import logger
-from .handle import Handler
+from ._handle import Handler
 from .progress import CLIProgress
 from .utils import parse_bytes_str, s2t
 from .exception import HandleMethodError

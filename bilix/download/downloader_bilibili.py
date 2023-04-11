@@ -8,11 +8,10 @@ from datetime import datetime, timedelta
 import os
 from anyio import run_process
 import bilix.api.bilibili as api
-from bilix.handle import Handler
+from bilix._handle import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
-from bilix.process import SingletonPPE
-from bilix.subtitle import json2srt
-from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data, t2s
+from bilix._process import SingletonPPE
+from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data, t2s, json2srt
 from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
 from danmakuC.bilibili import proto2ass
 
@@ -25,9 +24,9 @@ class DownloaderBilibili(BaseDownloaderPart):
             stream_retry: int = 5,
             progress=None,
             logger=None,
+            part_concurrency: int = 10,
             # unique params
             sess_data: str = None,
-            part_concurrency: int = 10,
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
             hierarchy: bool = True,
     ):
@@ -39,8 +38,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param progress:
         :param logger:
         :param sess_data: bilibili SESSDATA cookie
-        :param part_concurrency:
-        :param video_concurrency:
+        :param part_concurrency: 媒体分段并发数
+        :param video_concurrency: 视频并发数
         :param hierarchy: 是否使用层级目录
         """
         self.cookie_domain = "bilibili.com"  # for load cookies quickly

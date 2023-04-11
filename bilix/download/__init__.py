@@ -11,9 +11,4 @@ from .downloader_cctv import DownloaderCctv
 from .downloader_hanime1 import DownloaderHanime1
 
 # js runtime require
-try:
-    from .downloader_yhdmp import DownloaderYhdmp
-except Exception as _e:
-    from bilix.log import logger as _logger
-
-    _logger.debug(f"Due to {_e} Yhdmp is not available")
+from .downloader_yhdmp import DownloaderYhdmp

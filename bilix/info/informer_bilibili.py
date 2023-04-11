@@ -3,7 +3,7 @@ import httpx
 from rich.tree import Tree
 
 import bilix.api.bilibili as api
-from bilix.handle import Handler
+from bilix._handle import Handler
 from bilix.info.base_informer import BaseInformer
 from bilix.log import logger
 from bilix.utils import req_retry, convert_size, parse_bilibili_url, valid_sess_data

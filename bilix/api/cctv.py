@@ -5,7 +5,6 @@ from typing import Sequence, Tuple
 
 import httpx
 import m3u8
-from bilix.log import logger
 from bilix.utils import legal_title, req_retry
 from ._decorator import api
 
@@ -69,19 +68,3 @@ async def get_series_info(client: httpx.AsyncClient, vide: str, vida: str) -> Tu
     title = legal_title(meta_data['data']['title'])
     pids = [i['guid'] for i in list_data['data']['list']]
     return title, pids
-
-
-if __name__ == '__main__':
-    async def main():
-        client = httpx.AsyncClient(**dft_client_settings)
-
-        return await asyncio.gather(
-            get_id(
-                client,
-                "https://tv.cctv.com/2012/05/02/VIDE1355968282695723.shtml?spm=C55853485115.P6UrzpiudtDc.0.0"
-            ))
-
-
-    logger.setLevel("DEBUG")
-    result = asyncio.run(main())
-    print(result)

@@ -1,27 +1,54 @@
 import asyncio
+from pathlib import Path
 from typing import Union
 import httpx
 import bilix.api.hanime1 as api
-from bilix.handle import Handler
+from bilix._handle import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 from bilix.exception import HandleMethodError
 
 
-class DownloaderHanime1(BaseDownloaderPart, BaseDownloaderM3u8):
-    def __init__(self, videos_dir: str = "videos", stream_retry=5,
-                 speed_limit: Union[float, int] = None, progress=None, browser: str = None):
-        client = httpx.AsyncClient(**api.dft_client_settings)
-        super(DownloaderHanime1, self).__init__(client, videos_dir, speed_limit=speed_limit,
-                                                stream_retry=stream_retry, progress=progress, browser=browser)
+class DownloaderHanime1:
+    def __init__(
+            self,
+            browser: str = None,
+            speed_limit: Union[float, int] = None,
+            stream_retry: int = 5,
+            progress=None,
+            logger=None,
+            part_concurrency: int = 10,
+            video_concurrency: Union[int, asyncio.Semaphore] = 3,
+    ):
+        self.client = httpx.AsyncClient(**api.dft_client_settings)
+        self.m3u8_dl = BaseDownloaderM3u8(
+            client=self.client,
+            browser=browser,
+            speed_limit=speed_limit,
+            stream_retry=stream_retry,
+            progress=progress,
+            logger=logger,
+            part_concurrency=part_concurrency,
+            video_concurrency=video_concurrency,
+        )
+        self.file_dl = BaseDownloaderPart(
+            client=self.client,
+            browser=browser,
+            speed_limit=speed_limit,
+            stream_retry=stream_retry,
+            progress=progress,
+            logger=logger,
+            part_concurrency=part_concurrency,
+        )
 
-    async def get_video(self, url: str, image=False):
+    async def get_video(self, url: str, path: Path = Path('.'), image=False):
         video_info = await api.get_video_info(self.client, url)
         video_url = video_info.video_url
-        cors = [self.get_m3u8_video(video_url, file_name=video_info.title + '.ts') if '.m3u8' in video_url else
-                self.get_file(video_url, file_name=video_info.title + '.mp4')]
+        cors = [
+            self.m3u8_dl.get_m3u8_video(video_url, path=path / f'{video_info.title}.ts') if '.m3u8' in video_url else
+            self.file_dl.get_file(video_url, path=path / f'{video_info.title}.mp4', url_name=False)]
         if image:
-            cors.append(self._get_static(video_info.img_url, name=video_info.title))
+            cors.append(self.file_dl.get_static(video_info.img_url, path=path / video_info.title))
         await asyncio.gather(*cors)
 
 

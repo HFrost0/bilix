@@ -8,7 +8,7 @@ import os
 import cgi
 from anyio import run_process
 from pymp4.parser import Box
-from bilix.handle import Handler
+from bilix._handle import Handler
 from bilix.download.base_downloader import BaseDownloader
 from bilix.utils import req_retry, merge_files
 
@@ -25,18 +25,7 @@ class BaseDownloaderPart(BaseDownloader):
             # unique params
             part_concurrency: int = 10,
     ):
-        """
-        Base Async http Content-Range Downloader
-
-        :param client:
-        :param browser:
-        :param speed_limit:
-        :param stream_retry:
-        :param progress:
-        :param logger:
-        :param part_concurrency:
-
-        """
+        """Base Async http Content-Range Downloader"""
         super(BaseDownloaderPart, self).__init__(
             client=client,
             browser=browser,
@@ -222,6 +211,4 @@ class BaseDownloaderPart(BaseDownloader):
 def handle(kwargs):
     method = kwargs['method']
     if method == 'f' or method == 'get_file':
-        d = BaseDownloaderPart
-        m = d.get_file
-        return d, m
+        return BaseDownloaderPart, BaseDownloaderPart.get_file

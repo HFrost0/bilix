@@ -1,38 +1,59 @@
 import asyncio
+from pathlib import Path
 from typing import Union
 import httpx
 
 import bilix.api.cctv as api
-from bilix.handle import Handler
+from bilix._handle import Handler
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 from bilix.exception import HandleMethodError
 
 
 class DownloaderCctv(BaseDownloaderM3u8):
-    def __init__(self, videos_dir='videos', video_concurrency=3, part_concurrency=10, stream_retry=5,
-                 speed_limit: Union[float, int] = None, progress=None, browser: str = None):
+    def __init__(
+            self,
+            browser: str = None,
+            speed_limit: Union[float, int] = None,
+            stream_retry: int = 5,
+            progress=None,
+            logger=None,
+            part_concurrency: int = 10,
+            video_concurrency: Union[int, asyncio.Semaphore] = 3,
+            # unique params
+            hierarchy: bool = True,
+    ):
         client = httpx.AsyncClient(**api.dft_client_settings)
-        super(DownloaderCctv, self).__init__(client, videos_dir, video_concurrency, part_concurrency, browser=browser,
-                                             stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
+        super(DownloaderCctv, self).__init__(
+            client=client,
+            browser=browser,
+            speed_limit=speed_limit,
+            stream_retry=stream_retry,
+            progress=progress,
+            logger=logger,
+            part_concurrency=part_concurrency,
+            video_concurrency=video_concurrency,
+        )
+        self.hierarchy = hierarchy
 
-    async def get_series(self, url: str, quality=0, hierarchy=True):
+    async def get_series(self, url: str, path: Path = Path('.'), quality=0):
         pid, vide, vida = await api.get_id(self.client, url)
         if vida is None:  # 单个视频
             await self.get_video(pid, quality=quality)
         else:  # 剧集
             title, pids = await api.get_series_info(self.client, vide, vida)
-            if hierarchy:
-                hierarchy = self._make_hierarchy_dir(hierarchy, title)
-            await asyncio.gather(*[self.get_video(pid, quality, hierarchy if hierarchy else '') for pid in pids])
+            if self.hierarchy:
+                path /= title
+                path.mkdir(parents=True, exist_ok=True)
+            await asyncio.gather(*[self.get_video(pid, path, quality) for pid in pids])
 
-    async def get_video(self, url_or_pid: str, quality=0, hierarchy: str = ''):
+    async def get_video(self, url_or_pid: str, path: Path = Path('.'), quality=0):
         if url_or_pid.startswith('http'):
             pid, _, _ = await api.get_id(self.client, url_or_pid)
         else:
             pid = url_or_pid
         title, m3u8_urls = await api.get_media_info(self.client, pid)
         m3u8_url = m3u8_urls[min(quality, len(m3u8_urls) - 1)]
-        file_path = await self.get_m3u8_video(m3u8_url, title + ".ts", hierarchy)
+        file_path = await self.get_m3u8_video(m3u8_url,  path / f"{title}.ts")
         return file_path
 
 

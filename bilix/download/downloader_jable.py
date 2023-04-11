@@ -1,35 +1,62 @@
 import asyncio
 import re
+from pathlib import Path
 from typing import Union
 import httpx
 import bilix.api.jable as api
-from bilix.handle import Handler
+from bilix._handle import Handler
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 from bilix.exception import HandleMethodError
 
 
 class DownloaderJable(BaseDownloaderM3u8):
-    def __init__(self, videos_dir: str = "videos", video_concurrency: int = 3, part_concurrency: int = 10,
-                 stream_retry=5, speed_limit: Union[float, int] = None, progress=None, browser: str = None):
+    def __init__(
+            self,
+            browser: str = None,
+            speed_limit: Union[float, int] = None,
+            stream_retry: int = 5,
+            progress=None,
+            logger=None,
+            part_concurrency: int = 10,
+            video_concurrency: Union[int, asyncio.Semaphore] = 3,
+            # unique params
+            hierarchy: bool = True,
+    ):
         client = httpx.AsyncClient(**api.dft_client_settings)
-        super(DownloaderJable, self).__init__(client, videos_dir, video_concurrency, part_concurrency, browser=browser,
-                                              stream_retry=stream_retry, speed_limit=speed_limit, progress=progress)
+        super(DownloaderJable, self).__init__(
+            client=client,
+            browser=browser,
+            speed_limit=speed_limit,
+            stream_retry=stream_retry,
+            progress=progress,
+            logger=logger,
+            part_concurrency=part_concurrency,
+            video_concurrency=video_concurrency,
+        )
+        self.hierarchy = hierarchy
 
-    async def get_model(self, url: str, image=True, hierarchy=True):
+    async def get_model(self, url: str, path: Path = Path("."), image=True):
+        """
+
+        :param url: model page url
+        :param path: save path
+        :param image: download cover
+        :return:
+        """
         data = await api.get_model_info(self.client, url)
-        if hierarchy:
-            hierarchy = self._make_hierarchy_dir(hierarchy, data['model_name'])
-        await asyncio.gather(*[self.get_video(url, image, hierarchy) for url in data['urls']])
+        if self.hierarchy:
+            path /= data['model_name']
+            path.mkdir(parents=True, exist_ok=True)
+        await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
 
-    async def get_video(self, url: str, image=True, hierarchy=True):
+    async def get_video(self, url: str, path: Path = Path("."), image=True):
         video_info = await api.get_video_info(self.client, url)
-        if hierarchy:
-            hierarchy = self._make_hierarchy_dir(hierarchy, f"{video_info.avid} {video_info.model_name}")
-        cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, file_name=video_info.title + '.ts',
-                                    hierarchy=hierarchy if hierarchy else '')]
+        if self.hierarchy:
+            path /= f"{video_info.avid} {video_info.model_name}"
+            path.mkdir(parents=True, exist_ok=True)
+        cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f"{video_info.title}.ts", )]
         if image:
-            cors.append(self._get_static(video_info.img_url, name=video_info.title,
-                                         hierarchy=hierarchy if hierarchy else ''))
+            cors.append(self.get_static(video_info.img_url, path=path / video_info.title, ))
         await asyncio.gather(*cors)
 
 
