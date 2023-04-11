@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union, List, Iterable, Tuple
 import aiofiles
 import httpx
+import uuid
 import random
 import os
 import cgi
@@ -10,7 +11,7 @@ from anyio import run_process
 from pymp4.parser import Box
 from bilix._handle import Handler
 from bilix.download.base_downloader import BaseDownloader
-from bilix.utils import req_retry, merge_files
+from bilix.utils import req_retry, merge_files, path_check
 
 
 class BaseDownloaderPart(BaseDownloader):
@@ -71,7 +72,8 @@ class BaseDownloaderPart(BaseDownloader):
         :return:
         """
         upper = task_id is not None and self.progress.tasks[task_id].fields.get('upper', None)
-        if path.exists():
+        exist, path = path_check(path)
+        if exist:
             if not upper:
                 self.logger.info(f'[green]已存在[/green] {path.name}')
             return path
@@ -104,6 +106,8 @@ class BaseDownloaderPart(BaseDownloader):
                 parts.append((pre_byte, pre_byte + ref.referenced_size - 1))
             pre_time += seg_duration
             pre_byte += ref.referenced_size
+        if len(parts) == 1:
+            raise Exception(f"time range <{start_time}-{end_time}> invalid for <{path.name}>")
 
         if task_id is not None:
             await self.progress.update(
@@ -118,13 +122,13 @@ class BaseDownloaderPart(BaseDownloader):
                 return await self._get_file_part(urls, path=path, part_range=part_range, task_id=task_id)
 
         file_list = await asyncio.gather(*[get_seg(part_range) for part_range in parts])
-        await merge_files(file_list, path)
-        # to drop blank
-        cmd = ['ffmpeg', '-ss', str(s), '-t', str(end_time - start_time), '-i', str(path),
-               '-codec', 'copy', '-loglevel', 'quiet', '-f', 'mp4', str(path.with_suffix(".mp4"))]
+        path_tmp = path.with_name(str(uuid.uuid4()))
+        await merge_files(file_list, path_tmp)
+        # fix time range
+        cmd = ['ffmpeg', '-ss', str(s), '-t', str(end_time - start_time), '-i', str(path_tmp),
+               '-codec', 'copy', '-loglevel', 'quiet', '-f', 'mp4', str(path)]
         await run_process(cmd)
-        os.remove(path)
-        os.rename(path.with_suffix(".mp4"), path)  # use original filename
+        os.remove(path_tmp)
         if not upper:  # no upstream task
             await self.progress.update(task_id, visible=False)
             self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
@@ -143,17 +147,20 @@ class BaseDownloaderPart(BaseDownloader):
         urls = [url_or_urls] if isinstance(url_or_urls, str) else [url for url in url_or_urls]
         upper = task_id is not None and self.progress.tasks[task_id].fields.get('upper', None)
 
-        if not url_name and path.exists():
-            if not upper:
-                self.logger.info(f'[green]已存在[/green] {path.name}')
-            return path
+        if not url_name:
+            exist, path = path_check(path)
+            if exist:
+                if not upper:
+                    self.logger.info(f'[green]已存在[/green] {path.name}')
+                return path
 
         total, req_filename = await self._pre_req(urls)
 
         if url_name:
             file_name = req_filename if req_filename else str(urls[0]).split('/')[-1].split('?')[0]
             path /= file_name
-            if path.exists():
+            exist, path = path_check(path)
+            if exist:
                 if not upper:
                     self.logger.info(f'[green]已存在[/green] {path.name}')
                 return path
@@ -177,33 +184,38 @@ class BaseDownloaderPart(BaseDownloader):
             self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
         return path
 
-    async def _get_file_part(self, urls: List[Union[str, httpx.URL]],
-                             path: Path, part_range: Tuple[int, int], task_id, times=0):
+    async def _get_file_part(self, urls: List[Union[str, httpx.URL]], path: Path, part_range: Tuple[int, int],
+                             task_id) -> Path:
         start, end = part_range
-        part_path = path.with_name(f'{path.name}-{part_range[0]}-{part_range[1]}')
-        if times > self.stream_retry:
-            raise Exception(f'STREAM 超过重试次数 {part_path.name}')
-        if part_path.exists():
+        part_path = path.with_name(f'{path.name}.{part_range[0]}{part_range[1]}')
+        exist, part_path = path_check(part_path)
+        if exist:
             downloaded = os.path.getsize(part_path)
             start += downloaded
-            if times == 0:
-                await self.progress.update(task_id, advance=downloaded)
+            await self.progress.update(task_id, advance=downloaded)
         if start > end:
             return part_path  # skip already finished
         url_idx = random.randint(0, len(urls) - 1)
-        try:
-            async with self.client.stream("GET", urls[url_idx], follow_redirects=True,
-                                          headers={'Range': f'bytes={start}-{end}'}) as r, self._stream_context(times):
-                r.raise_for_status()
-                if r.history:  # avoid twice redirect
-                    urls[url_idx] = r.url
-                async with aiofiles.open(part_path, 'ab') as f:
+
+        for times in range(1 + self.stream_retry):
+            try:
+                async with \
+                        self.client.stream("GET", urls[url_idx], follow_redirects=True,
+                                           headers={'Range': f'bytes={start}-{end}'}) as r, \
+                        self._stream_context(times), \
+                        aiofiles.open(part_path, 'ab') as f:
+                    r.raise_for_status()
+                    if r.history:  # avoid twice redirect
+                        urls[url_idx] = r.url
                     async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                         await f.write(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
                         await self._check_speed(len(chunk))
-        except (httpx.TransportError, httpx.HTTPStatusError):
-            await self._get_file_part(urls, path, part_range, task_id, times=times + 1)
+                break
+            except (httpx.HTTPStatusError, httpx.TransportError):
+                continue
+        else:
+            raise Exception(f"STREAM 超过重复次数 {part_path.name}")
         return part_path
 
 

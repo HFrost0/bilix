@@ -10,7 +10,7 @@ from Crypto.Cipher import AES
 from m3u8 import Segment
 from bilix._handle import Handler
 from bilix.download.base_downloader import BaseDownloader
-from bilix.utils import req_retry, merge_files
+from bilix.utils import req_retry, merge_files, path_check
 
 
 class BaseDownloaderM3u8(BaseDownloader):
@@ -63,7 +63,8 @@ class BaseDownloaderM3u8(BaseDownloader):
         :param path:
         :return: downloaded file path
         """
-        if path.exists():
+        exist, path = path_check(path)
+        if exist:
             self.logger.info(f"[green]已存在[/green] {path.name}")
             return path
         async with self.v_sema:
@@ -101,7 +102,8 @@ class BaseDownloaderM3u8(BaseDownloader):
         await self.progress.update(task_id, total=predicted_total, confirmed_t=confirmed_t, confirmed_b=confirmed_b)
 
     async def _get_seg(self, seg: Segment, path: Path, task_id, p_sema: asyncio.Semaphore) -> Path:
-        if path.exists():
+        exists, path = path_check(path)
+        if exists:
             downloaded = os.path.getsize(path)
             await self._update_task_total(task_id, time_part=seg.duration, update_size=downloaded)
             await self.progress.update(task_id, advance=downloaded)

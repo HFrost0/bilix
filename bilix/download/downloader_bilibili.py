@@ -11,7 +11,8 @@ import bilix.api.bilibili as api
 from bilix._handle import Handler
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix._process import SingletonPPE
-from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data, t2s, json2srt
+from bilix.utils import legal_title, req_retry, cors_slice, parse_bilibili_url, valid_sess_data, t2s, json2srt, \
+    path_check
 from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
 from danmakuC.bilibili import proto2ass
 
@@ -318,7 +319,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             # if title is too long, use p_name as task_name
             base_name = p_name if len(video_info.h1_title) > 50 and self.hierarchy and p_name else task_name
             media_name = task_name if not time_range else legal_title(base_name, *map(t2s, time_range))
-            cors = []
+            media_cors = []
             task_id = await self.progress.add_task(total=None, description=task_name)
             if video_info.dash:
                 try:  # choose video quality
@@ -333,16 +334,14 @@ class DownloaderBilibili(BaseDownloaderPart):
                     tmp.append((video, path / f'{media_name}.mp4'))
                 # 2. video and audio
                 elif audio and not only_audio:
-                    if (path / f'{media_name}.mp4').exists():
-                        self.logger.info(f'[green]已存在[/green] {media_name}.mp4')
+                    exists, media_path = path_check(path / f'{media_name}.mp4')
+                    if exists:
+                        self.logger.info(f'[green]已存在[/green] {media_path.name}')
                     else:
                         tmp.append((video, path / f'{media_name}-v'))
                         tmp.append((audio, path / f'{media_name}-a'))
                         # task need to be merged
-                        await self.progress.update(
-                            task_id=task_id,
-                            upper=(None, [f'{media_name}-v', f'{media_name}-a'],)
-                        )
+                        await self.progress.update(task_id=task_id, upper='va')
                 # 3. only audio
                 elif audio and only_audio:
                     tmp.append((audio, path / f'{media_name}{audio.suffix}'))
@@ -351,9 +350,9 @@ class DownloaderBilibili(BaseDownloaderPart):
                 # convert to coroutines
                 for t in tmp:
                     if not time_range:
-                        cors.append(self.get_file(t[0].urls, path=t[1], url_name=False, task_id=task_id))
+                        media_cors.append(self.get_file(t[0].urls, path=t[1], url_name=False, task_id=task_id))
                     else:
-                        cors.append(self.get_media_clip(
+                        media_cors.append(self.get_media_clip(
                             url_or_urls=t[0].urls, path=t[1],
                             time_range=time_range,
                             init_range=t[0].segment_base['initialization'],
@@ -365,61 +364,63 @@ class DownloaderBilibili(BaseDownloaderPart):
                 media_name = base_name
                 if len(video_info.other) == 1:
                     m = video_info.other[0]
-                    cors.append(
+                    media_cors.append(
                         self.get_file(m.urls, path=path / f'{media_name}.{m.suffix}', url_name=False, task_id=task_id))
                 else:
-                    if (path / f'{media_name}.mp4').exists():
-                        self.logger.info(f'[green]已存在[/green] {media_name}.mp4')
+                    exist, media_path = path_check(path / f'{media_name}.mp4')
+                    if exist:
+                        self.logger.info(f'[green]已存在[/green] {media_path.name}')
                     else:
-                        merge_lst = []
+                        p_sema = asyncio.Semaphore(self.part_concurrency)
+
+                        async def _get_file(media: api.Media, p: Path) -> Path:
+                            async with p_sema:
+                                return await self.get_file(media.urls, path=p, url_name=False, task_id=task_id)
+
                         for i, m in enumerate(video_info.other):
                             f = f'{media_name}-{i}.{m.suffix}'
-                            cors.append(self.get_file(m.urls, path=path / f, url_name=False, task_id=task_id))
-                            merge_lst.append(f)
-                        await self.progress.update(task_id=task_id, upper=('concat', merge_lst))
+                            media_cors.append(_get_file(m, path / f))
+                        await self.progress.update(task_id=task_id, upper='concat')
             else:
                 return self.logger.warning(f'{task_name} 需要大会员或该地区不支持')
 
             # additional task
+            add_cors = []
             if image or subtitle or dm:
                 extra_path = path / "extra"
                 extra_path.mkdir(exist_ok=True)
                 if image:
-                    cors.append(self.get_static(video_info.img_url, path=extra_path / base_name))
+                    add_cors.append(self.get_static(video_info.img_url, path=extra_path / base_name))
                 if subtitle:
-                    cors.append(self.get_subtitle(url, path=extra_path, video_info=video_info))
+                    add_cors.append(self.get_subtitle(url, path=extra_path, video_info=video_info))
                 if dm:
                     width, height = (video.width, video.height) if video_info.dash else (1920, 1080)
-                    cors.append(self.get_dm(
+                    add_cors.append(self.get_dm(
                         url, path=extra_path, convert_func=self._dm2ass_factory(width, height), video_info=video_info))
-            await asyncio.gather(*cors)
+            path_lst, _ = await asyncio.gather(asyncio.gather(*media_cors), asyncio.gather(*add_cors))
 
         upper = self.progress.tasks[task_id].fields.get('upper', None)
         if upper:
             cmd = ['ffmpeg']
-            m, fs = upper
-            rm_lst = []
-            if m == 'concat':
-                tmp_file = path / f'{media_name}.txt'
+            if upper == 'concat':
+                tmp_file = media_path.with_suffix('.txt')
                 with open(tmp_file, 'w') as f:
-                    for file in fs:
-                        f.write(f"file {file}\n")
-                        rm_lst.append(path / file)
+                    for sub in path_lst:
+                        f.write(f"file {sub.name}\n")
                 cmd.extend(('-f', 'concat', '-safe', '0', '-i', str(tmp_file)))
-                rm_lst.append(tmp_file)
+                path_lst.append(tmp_file)
             else:
-                for file in fs:
-                    cmd.extend(['-i', str(path / file)])
-                    rm_lst.append(path / file)
+                for sub in path_lst:
+                    cmd.extend(['-i', str(sub)])
             cmd.extend(['-codec', 'copy', '-loglevel', 'quiet'])
             # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
-            if m is None and audio.codec == 'fLaC':
+            if upper == 'va' and audio.codec == 'fLaC':
                 cmd.extend(['-strict', '-2'])
-            cmd.append(str(path / f'{media_name}.mp4'))
+            cmd.append(str(media_path))
             await run_process(cmd)
-            for f in rm_lst:
+            for f in path_lst:
                 os.remove(f)
-            self.logger.info(f'[cyan]已完成[/cyan] {media_name}.mp4')
+            self.logger.info(f'[cyan]已完成[/cyan] {media_path.name}')
         await self.progress.update(task_id, visible=False)
 
     @staticmethod
@@ -452,7 +453,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         else:
             file_name = legal_title(video_info.h1_title, p_name, "弹幕") + file_type
         file_path = path / file_name
-        if not update and file_path.exists():
+        exist, file_path = path_check(file_path)
+        if not update and exist:
             self.logger.info(f"[green]已存在[/green] {file_name}")
             return file_path
         dm_urls = await api.get_dm_urls(self.client, aid, cid)

@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import aiofiles
 import httpx
 from bilix.log import logger as dft_logger
-from bilix.utils import req_retry, update_cookies_from_browser
+from bilix.utils import req_retry, update_cookies_from_browser, path_check
 from bilix.progress.abc import Progress
 from bilix.progress import CLIProgress
 from pathlib import Path
@@ -68,7 +68,8 @@ class BaseDownloader:
             suffix = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
             suffix = suffix.split('?')[0]
         path = path.with_suffix(suffix)
-        if path.exists():
+        exist, path = path_check(path)
+        if exist:
             self.logger.info(f'[green]已存在[/green] {path.name}')
             return path
         res = await req_retry(self.client, url)

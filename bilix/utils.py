@@ -4,6 +4,8 @@ import json
 import os
 import re
 import random
+import errno
+from pathlib import Path
 from urllib.parse import quote_plus
 from typing import Union, Sequence, Coroutine, List, Tuple, Optional
 import aiofiles
@@ -49,7 +51,7 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
     raise pre_exc
 
 
-async def merge_files(file_list, new_path):
+async def merge_files(file_list: List[Path], new_path: Path):
     first_file = file_list[0]
     async with aiofiles.open(first_file, 'ab') as f:
         for idx in range(1, len(file_list)):
@@ -182,3 +184,35 @@ def json2srt(data: Union[bytes, str, dict]):
         content = i['content']
         res += f"{idx + 1}\n{from_time} --> {to_time}\n{content}\n\n"
     return res.encode('utf-8') if b else res
+
+
+def eclipse_str(s: str, max_len: int = 100):
+    if len(s) <= max_len:
+        return s
+    else:
+        half_len = (max_len - 1) // 2
+        return f"{s[:half_len]}…{s[-half_len:]}"
+
+
+def path_check(path: Path, retry: int = 100) -> Tuple[bool, Path]:
+    """
+    check whether path exist, if filename too long, truncate and return valid path
+
+    :param path: path to check
+    :param retry: max retry times
+    :return: exist, path
+    """
+    for times in range(retry):
+        try:
+            exist = path.exists()
+            return exist, path
+        except OSError as e:
+            if e.errno == errno.ENAMETOOLONG:  # filename too long for os
+                if times == 0:
+                    logger.warning(f"filename too long for os, truncate will be applied. filename: {path.name}")
+                else:
+                    logger.debug(f"filename too long for os {path.name}")
+                path = path.with_stem(eclipse_str(path.stem, int(len(path.stem) * .8)))
+            else:
+                raise e
+    raise OSError(f"filename too long for os {path.name}")
