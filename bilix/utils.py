@@ -48,7 +48,7 @@ async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[
     raise pre_exc
 
 
-async def merge_files(file_list: Sequence[str], new_path: str):
+async def merge_files(file_list, new_path):
     first_file = file_list[0]
     async with aiofiles.open(first_file, 'ab') as f:
         for idx in range(1, len(file_list)):

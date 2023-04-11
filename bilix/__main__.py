@@ -1,5 +1,6 @@
 import asyncio
 import typing
+from pathlib import Path
 import click
 import rich
 from rich.panel import Panel
@@ -206,8 +207,8 @@ class BasedTimeRange(click.ParamType):
 @click.option(
     "-d",
     "--dir",
-    "videos_dir",
-    type=str,
+    "path",
+    type=Path,
     default='videos',
 )
 @click.option(
