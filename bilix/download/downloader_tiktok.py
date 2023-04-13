@@ -13,6 +13,7 @@ from bilix.exception import HandleMethodError
 class DownloaderTikTok(BaseDownloaderPart):
     def __init__(
             self,
+            client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int, None] = None,
             stream_retry: int = 5,
@@ -20,7 +21,7 @@ class DownloaderTikTok(BaseDownloaderPart):
             logger=None,
             part_concurrency: int = 10,
     ):
-        client = httpx.AsyncClient(**api.dft_client_settings)
+        client = client or httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderTikTok, self).__init__(
             client=client,
             browser=browser,

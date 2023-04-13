@@ -13,6 +13,8 @@ from bilix.exception import HandleMethodError, APIError
 class DownloaderYinghuacd(BaseDownloaderM3u8):
     def __init__(
             self,
+            stream_client: httpx.AsyncClient = None,
+            api_client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int] = None,
             stream_retry: int = 5,
@@ -22,7 +24,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
             hierarchy: bool = True,
     ):
-        stream_client = httpx.AsyncClient()
+        stream_client = stream_client or httpx.AsyncClient()
         super(DownloaderYinghuacd, self).__init__(
             client=stream_client,
             browser=browser,
@@ -33,7 +35,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             part_concurrency=part_concurrency,
             video_concurrency=video_concurrency,
         )
-        self.api_client = httpx.AsyncClient(**api.dft_client_settings)
+        self.api_client = api_client or httpx.AsyncClient(**api.dft_client_settings)
         self.hierarchy = hierarchy
 
     async def get_series(self, url: str, path: Path = Path("."), p_range: Sequence[int] = None):

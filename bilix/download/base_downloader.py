@@ -12,6 +12,8 @@ from pathlib import Path
 
 
 class BaseDownloader:
+    COOKIE_DOMAIN: str = ""
+
     def __init__(
             self,
             client: httpx.AsyncClient = None,
@@ -30,8 +32,7 @@ class BaseDownloader:
         """
         self.client = client if client else httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'})
         if browser:  # load cookies from browser, may need auth
-            update_cookies_from_browser(
-                self.client, browser, self.cookie_domain if hasattr(self, "cookie_domain") else "")
+            update_cookies_from_browser(self.client, browser, self.COOKIE_DOMAIN)
         assert speed_limit is None or speed_limit > 0
         self.speed_limit = speed_limit
         # use cli progress by default

@@ -12,6 +12,7 @@ from bilix.exception import HandleMethodError
 class DownloaderHanime1:
     def __init__(
             self,
+            client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int] = None,
             stream_retry: int = 5,
@@ -20,7 +21,7 @@ class DownloaderHanime1:
             part_concurrency: int = 10,
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
     ):
-        self.client = httpx.AsyncClient(**api.dft_client_settings)
+        self.client = client or httpx.AsyncClient(**api.dft_client_settings)
         self.m3u8_dl = BaseDownloaderM3u8(
             client=self.client,
             browser=browser,

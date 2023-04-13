@@ -12,6 +12,7 @@ from bilix.exception import HandleMethodError
 class DownloaderJable(BaseDownloaderM3u8):
     def __init__(
             self,
+            client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int] = None,
             stream_retry: int = 5,
@@ -22,7 +23,7 @@ class DownloaderJable(BaseDownloaderM3u8):
             # unique params
             hierarchy: bool = True,
     ):
-        client = httpx.AsyncClient(**api.dft_client_settings)
+        client = client or httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderJable, self).__init__(
             client=client,
             browser=browser,

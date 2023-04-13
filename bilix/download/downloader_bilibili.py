@@ -18,8 +18,11 @@ from danmakuC.bilibili import proto2ass
 
 
 class DownloaderBilibili(BaseDownloaderPart):
+    COOKIE_DOMAIN = "bilibili.com"  # for load cookies quickly
+
     def __init__(
             self,
+            client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int, None] = None,
             stream_retry: int = 5,
@@ -33,6 +36,7 @@ class DownloaderBilibili(BaseDownloaderPart):
     ):
         """
 
+        :param client:
         :param browser:
         :param speed_limit:
         :param stream_retry:
@@ -43,9 +47,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param video_concurrency: 视频并发数
         :param hierarchy: 是否使用层级目录
         """
-        self.cookie_domain = "bilibili.com"  # for load cookies quickly
-        client = httpx.AsyncClient(**api.dft_client_settings)
-        client.cookies.set('SESSDATA', valid_sess_data(sess_data))
+        client = client or httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderBilibili, self).__init__(
             client=client,
             browser=browser,
@@ -55,10 +57,12 @@ class DownloaderBilibili(BaseDownloaderPart):
             logger=logger,
             part_concurrency=part_concurrency,
         )
+        client.cookies.set('SESSDATA', valid_sess_data(sess_data))
         self._cate_meta = None
         self.v_sema = asyncio.Semaphore(video_concurrency)
         self.api_sema = asyncio.Semaphore(video_concurrency)
         self.hierarchy = hierarchy
+        self.title_overflow = 50
 
     async def get_collect_or_list(self, url, path: Path = Path('.'),
                                   quality=0, image=False, subtitle=False, dm=False, only_audio=False, codec: str = ''):
@@ -317,8 +321,9 @@ class DownloaderBilibili(BaseDownloaderPart):
             p_name = legal_title(video_info.pages[video_info.p].p_name)
             task_name = legal_title(video_info.h1_title, p_name)
             # if title is too long, use p_name as task_name
-            base_name = p_name if len(video_info.h1_title) > 50 and self.hierarchy and p_name else task_name
-            media_name = task_name if not time_range else legal_title(base_name, *map(t2s, time_range))
+            base_name = p_name if len(video_info.h1_title) > self.title_overflow and self.hierarchy and p_name else \
+                task_name
+            media_name = base_name if not time_range else legal_title(base_name, *map(t2s, time_range))
             media_cors = []
             task_id = await self.progress.add_task(total=None, description=task_name)
             if video_info.dash:
@@ -448,7 +453,8 @@ class DownloaderBilibili(BaseDownloaderPart):
         aid, cid = video_info.aid, video_info.cid
         file_type = '.' + ('pb' if not convert_func else convert_func.__name__.split('2')[-1])
         p_name = video_info.pages[video_info.p].p_name
-        if len(video_info.h1_title) > 50 and self.hierarchy and p_name:  # to avoid file name too long bug
+        # to avoid file name too long bug
+        if len(video_info.h1_title) > self.title_overflow and self.hierarchy and p_name:
             file_name = legal_title(p_name, "弹幕") + file_type
         else:
             file_name = legal_title(video_info.h1_title, p_name, "弹幕") + file_type
@@ -490,7 +496,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         cors = []
 
         for sub_url, sub_name in subtitles:
-            if len(video_info.h1_title) > 50 and self.hierarchy and p_name:  # to avoid file name too long bug
+            if len(video_info.h1_title) > self.title_overflow and self.hierarchy and p_name:
                 file_name = legal_title(p_name, sub_name)
             else:
                 file_name = legal_title(video_info.h1_title, p_name, sub_name)
