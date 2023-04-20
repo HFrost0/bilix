@@ -77,7 +77,7 @@ def replace_illegal(s: str):
     """strip, unescape html and replace os illegal character in s"""
     s = s.strip()
     s = html.unescape(s)  # handel & "...
-    s = re.sub(r"[/\\:*?\"<>|\n]", '', s)  # replace illegal filename character
+    s = re.sub(r"[/\\:*?\"<>|\n\t]", '', s)  # replace illegal filename character
     return s
 
 
