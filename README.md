@@ -46,4 +46,4 @@ If you find this project helpful, you can support the author by [Star](https://g
 
 ## Contribute
 
-❤️ Welcome! Details can be found in [Contributing](https://github.com/HFrost0/bilix/blob/master/CONTRIBUTING.md)
+❤️ Welcome! Details can be found in [Contributing](https://github.com/HFrost0/bilix/blob/master/CONTRIBUTING_EN.md)

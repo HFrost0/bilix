@@ -1,10 +1,9 @@
 # bilix 开发指南
 
-感谢你对贡献bilix有所兴趣，在你开始之前可以阅读下面的一些提示。
+感谢你对贡献bilix有所兴趣，在你开始之前可以阅读下面的一些提示。请注意，bilix正快速迭代，
+如果你在阅读本文档时发现有些内容已经过时，请以master分支的代码为准。
 
-注意：该文档为早期版本（<=0.11），更新版本请等待文档更新
-
-## 开始之前
+# 开始之前
 
 在一切开始之前，你需要先 **fork** 本仓库，然后clone你fork的仓库到你的本地：
 
@@ -12,89 +11,109 @@
 git clone https://github.com/your_user_name/bilix
 ```
 
-拉取至本地后，我**建议**你在独立的python环境中进行测试和开发，你可以使用python自带的`venv`或者其他方法，
-最重要的是别把你的其他环境弄乱了！确认后进行本地源码安装：
+拉取至本地后，我**建议**你在独立的python环境中进行测试和开发，确认后进行本地源码可编辑安装：
 
 ```shell
 pip install -e .
 ```
 
-💡另外`ffmpeg`对于bilibili的视频合成是需要的，如果你需要对bilibili有关的代码进行改动并测试，请确保`ffmpeg`也已经安装。
+试试bilix命令能否正常执行。通过测试了？至此，你可以在本地开发bilix了🍻
 
-安装完成后，你可以先尝试运行一些测试脚本，在运行测试脚本之前，需要安装python中的测试框架`pytest`以及其拓展
-
-```shell
-pip install pytest pytest-asyncio
-```
-
-安装完成之后，可以试着运行针对`bilix.api`模块的测试（先不建议运行tests/download，因为这里面的测试会下载视频，比较花费时间）
-
-```shell
-pytest tests/api
-```
-
-通过测试了？至此，你可以在本地开发bilix了🍻
-
-## bilix 结构
+# bilix 结构
 
 在动手改动代码之前你需要对bilix的结构有一定的了解，下面是bilix的大致目录和各模块相应功能：
 
 ```text
-├── bilix
+bilix
+├── __init__.py
+├── __main__.py
+├── _process.py  # 多进程相关
+├── cli
+│   ├── assign.py  # 分配任务，动态导入相关
+│   └── main.py    # 命令行入口
+├── download
+│   ├── base_downloader.py
+│   ├── base_downloader_m3u8.py  # 基础m3u8下载器
+│   ├── base_downloader_part.py  # 基础分段文件下载器
+│   └── utils.py                 # 下载相关的一些工具函数
+├── exception.py
+├── log.py
+├── progress
+│   ├── abc.py            # 进度条抽象类
+│   ├── cli_progress.py   # 命令行进度条
+│   └── ws_progress.py
+├── serve
 │   ├── __init__.py
-│   ├── __main__.py         # 命令行相关，bilix命令的入口
-│   ├── __version__.py      # 版本，作者等信息
-│   ├── api                 # api模块，主要负责对各个站点的网页或接口返回的信息进行提取，获取视频链接，标题等信息
-│   │   ├── __init__.py
-│   │   ├── bilibili.py
-│   │   ├── cctv.py
-│   │   ├── ...
-│   ├── assign.py           # 下载器的注册，根据命令行参数分配下载器
-│   ├── dm                  # b站弹幕解析与转换
-│   │   ├── __init__.py
-│   │   ├── reply.proto
-│   │   ├── reply_pb2.py
-│   │   ├── view.proto
-│   │   └── view_pb2.py
-│   ├── download            # 下载模块，包含基础下载器和各站点下载器
-│   │   ├── __init__.py
-│   │   ├── base_downloader.py          # 所有下载器继承的父类，包含进度条等基本功能
-│   │   ├── base_downloader_m3u8.py     # m3u8基础下载器（HLS方式下载）
-│   │   ├── base_downloader_part.py     # part基础下载器（content-range方式下载）
-│   │   ├── downloader_bilibili.py      # 各站点下载器，通过api模块获取站点信息，并基于基础下载器获取文件
-│   │   ├── downloader_cctv.py
-│   │   ├── ...
-│   ├── js                  # 需要js逆向的站点依赖的js文件
-│   │   └── yhdmp.js
-│   ├── log.py              # 日志打印
-│   ├── process.py          # 多进程相关
-│   ├── subtitle.py         # 字幕相关
-│   └── utils.py            # 一些杂七杂八的function就放在这了
-├── examples        # 提供了一些python中使用bilix的样例
-└── tests           # 测试
-    ├── __init__.py
-    ├── api         # api模块测试
-    ├── dm          # 弹幕模块测试
-    └── download    # download模块测试
-
-
+│   ├── app.py
+│   ├── auth.py
+│   ├── serve.py
+│   └── user.py
+├── sites     # 站点扩展目录，稍后介绍
+└── utils.py  # 通用工具函数
 ```
+
+## 基础下载器
+
+bilix在`bilix.download`中提供了两种基础下载器，m3u8下载器和分段文件下载器。
+它们基于`httpx`乃至更底层的`asyncio`及IO多路复用，并且集成了速度控制，并发控制，断点续传，时间段切片，进度条显示等许多实用功能。
+bilix的站点扩展下载功能都将基于这些基础下载器完成，基础下载器本身也提供cli服务
+
+## 下载器是如何提供cli服务的
+
+在bilix中，一个类只要实现了`handle`方法，就可以被注册到命令行（cli）中，`handle`方法的函数签名为
+
+```python
+@classmethod
+def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
+    ...
+```
+
+handle函数的实现应该满足下面三个原则：
+
+1. 如果类根据`method` `keys` `options`认为自己不应该承担下载任务，`handle`函数应该返回`None`
+2. 如果类可以承担任务，但发现`method`不在自己的可接受范围内，应该抛出`HandleMethodError`异常
+3. 如果类可以承担任务，且`method`在自己的可接受范围内，应该返回两个值，第一个值为下载器实例，第二个值为下载coroutine
+
+例如，m3u8下载器是这样实现的：
+
+```python
+@classmethod
+def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
+    if method == 'm3u8':
+        d = cls(**kwargs_filter(cls, options))
+        cors = []
+        for i, key in enumerate(keys):
+            cors.append(d.get_m3u8_video(key, options['path'] / f"{i}.ts"))
+        return d, asyncio.gather(*cors)
+```
+
+Q：🙋为什么我看到有的下载器返回的是类本身，以及下载函数对象？
+
+```python
+@classmethod
+def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
+    if method == 'f' or method == 'get_file':
+        return cls, cls.get_file
+```
+
+A：为了偷懒，如果返回值是类以及下载函数对象，将根据命令行参数及type hint自动组装为实例和coroutine，
+适用于当命令行options的名字和方法，类参数名字、类型一致的情况
+
+其实`handle`函数给你了较大的自由，你可以根据自己的需求，自由的组合出适合你的下载器的cli服务
 
 ## 如何快速添加一个站点的支持
 
-1. 在api模块中新建一个站点的文件，例如`site.py`，仿照其他站点的格式实现从输入网页url到输出视频url，视频title的
-   各种api。注意应当保证向外提供的所有接口的第一个参数为`httpx.AsyncClient`，并且本身为async def的function。
-2. 在download模块中新建一个站点的文件，例如`downloader_site.py`，定义`DownloaderSite`类，根据该站点使用的传输方法
-   选择相应的BaseDownloader进行继承，导入相应站点的api，然后在类中定义好下载视频的方法。
-3. 在`downloader_site.py`中定义一个handle方法，该方法的参数`**kwargs`即命令行提供的所有参数，包括method, key, quality等
-   handle方法首先应当根据key来决定是否承担这个下载任务，如果不承担应当返回`None`。如果选择承担应当返回相应的下载器和下载协程，
-   如果method不在可接受范围内时应当抛出`ValueError`。
-4. 在handle方法上添加一个装饰器`@Handler`，并给这个站点起一个名字作为唯一标识。并且在download模块中的`__init__.py`文件中
-   导入该站点的下载器。此时该站点已经注册到bilix的可下载站点中了。
-5. 使用bilix命令测试一下吧
-6. 对于api模块中的接口写好相应的测试
+在`bilix/sites`下，已经有一些站点的支持，如果你想要添加一个新的站点支持，可以按照下面的步骤进行：
 
-ps:暂不接受需要js逆向的站点
+1. 在`sites`文件夹下新建一个站点文件夹，例如`example`
+2. 在`example`文件夹下添加站点的api模块`api.py`，仿照其他站点的格式实现从输入网页url到输出视频url，视频title的各种api
+3. 在`example`文件夹下添加站点api模块的测试`api_test.py`，让大家随时测试站点是否可用
+4. 在`example`文件夹下添加站点的下载器`donwloader.py`，定义`DownloaderExample`
+   类，根据该站点使用的传输方法选择相应的`BaseDownloader`进行继承，然后在类中定义好下载视频的方法，并实现`handle`
+   方法。另外你还可以添加`downloader_test.py`来验证你的下载器是否可用
+5. 在`example`文件夹下添加`__init__.py`，将`DownloaderExample`类导入，并且在`__all__`中添加`DownloaderExample`以方便bilix找到你的下载器
+
+搞定，使用bilix命令测试一下吧
 
 当前已经有其他开发者为bilix对其他站点的适配做出了贡献🎉，
 或许被接受的[New site PR](https://github.com/HFrost0/bilix/pulls?q=is%3Apr+is%3Aclosed+label%3A%22New+site%22)也能为你提供帮助

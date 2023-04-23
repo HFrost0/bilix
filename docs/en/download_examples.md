@@ -7,7 +7,7 @@ with user-friendly interfaces and enhanced functionality for greater flexibility
 
 ```python
 import asyncio
-from bilix import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 
 async def main():
@@ -28,7 +28,7 @@ The concurrency is strictly restricted by the downloader object, ensuring no une
 
 ```python
 import asyncio
-from bilix import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 
 async def main():
@@ -54,7 +54,7 @@ You can download just a clip of the video
 
 ```python
 import asyncio
-from bilix.download import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 
 async def main():
@@ -75,7 +75,8 @@ You can initialize downloaders for different websites, and use the coroutine obj
 methods for concurrent downloads. The concurrency control between different downloaders is independent, allowing you to maximize the use of your network resources.
 ```python
 import asyncio
-from bilix import DownloaderBilibili, DownloaderCctv
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.cctv import DownloaderCctv
 
 
 async def main():
@@ -98,7 +99,8 @@ The following example limits the total download speed below 1MB/s
 
 ```python
 import asyncio
-from bilix import DownloaderBilibili, DownloaderCctv
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.cctv import DownloaderCctv
 
 
 async def main():

@@ -7,7 +7,7 @@
 ```python
 import asyncio
 # 导入下载器，里面有很多方法，例如get_series, get_video, get_favour，get_dm等等
-from bilix import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 
 async def main():
@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 ```python
 import asyncio
-from bilix import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 
 async def main():
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
 ```python
 import asyncio
-from bilix.download import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 
 async def main():
@@ -75,7 +75,8 @@ if __name__ == '__main__':
 
 ```python
 import asyncio
-from bilix import DownloaderBilibili, DownloaderCctv
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.cctv import DownloaderCctv
 
 
 async def main():
@@ -97,7 +98,8 @@ if __name__ == '__main__':
 
 ```python
 import asyncio
-from bilix import DownloaderBilibili, DownloaderCctv
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.cctv import DownloaderCctv
 
 
 async def main():

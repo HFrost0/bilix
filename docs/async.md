@@ -29,7 +29,7 @@ import asyncio
 bilix的所有下载方法都是异步的，所以你也可以这样执行他们
 ```python
 import asyncio
-from bilix.download import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 d = DownloaderBilibili()
 asyncio.run(d.get_video('url'))

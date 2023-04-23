@@ -28,7 +28,7 @@ import asyncio
 All download methods of bilix are asynchronous, so you can execute them like this
 ```python
 import asyncio
-from bilix.download import DownloaderBilibili
+from bilix.sites.bilibili import DownloaderBilibili
 
 d = DownloaderBilibili()
 asyncio.run(d.get_video('url'))
