@@ -45,13 +45,13 @@ serve = [
 ]
 
 [project.scripts]
-bilix = "bilix.__main__:main"
+bilix = "bilix.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/HFrost0/bilix"
 
 [tool.hatch.version]
-path = "bilix/__version__.py"
+path = "bilix/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [

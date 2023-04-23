@@ -17,7 +17,7 @@ class APIParseError(APIError):
         self.func = func
 
     def __str__(self):
-        return f"APIParseError Caused by {self.e.__class__.__name__} in {self.func.__name__}"
+        return f"APIParseError Caused by {self.e.__class__.__name__} in <{self.func.__module__}:{self.func.__name__}>"
 
 
 class APIResourceError(APIError):

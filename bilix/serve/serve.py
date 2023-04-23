@@ -3,7 +3,8 @@ import logging
 from pydantic import BaseModel
 from starlette.websockets import WebSocketDisconnect
 
-from bilix.download import DownloaderBilibili, DownloaderJable
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.jable import DownloaderJable
 from bilix.download.base_downloader import BaseDownloader
 from bilix.progress.ws_progress import WebSocketProgress
 from .app import app

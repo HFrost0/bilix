@@ -9,14 +9,17 @@ import os
 import cgi
 from anyio import run_process
 from pymp4.parser import Box
-from bilix._handle import Handler
 from bilix.download.base_downloader import BaseDownloader
-from bilix.utils import req_retry, merge_files, path_check
+from bilix.download.utils import path_check, merge_files
+from .utils import req_retry
+
+__all__ = ['BaseDownloaderPart']
 
 
 class BaseDownloaderPart(BaseDownloader):
     def __init__(
             self,
+            *,
             client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int, None] = None,
@@ -25,6 +28,7 @@ class BaseDownloaderPart(BaseDownloader):
             logger=None,
             # unique params
             part_concurrency: int = 10,
+            **kwargs
     ):
         """Base Async http Content-Range Downloader"""
         super(BaseDownloaderPart, self).__init__(
@@ -218,9 +222,7 @@ class BaseDownloaderPart(BaseDownloader):
             raise Exception(f"STREAM 超过重复次数 {part_path.name}")
         return part_path
 
-
-@Handler.register(name="Part")
-def handle(kwargs):
-    method = kwargs['method']
-    if method == 'f' or method == 'get_file':
-        return BaseDownloaderPart, BaseDownloaderPart.get_file
+    @classmethod
+    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
+        if method == 'f' or method == 'get_file':
+            return cls, cls.get_file

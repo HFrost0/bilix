@@ -3,7 +3,8 @@
 limit download rate is simple
 """
 import asyncio
-from bilix import DownloaderBilibili, DownloaderCctv
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.cctv import DownloaderCctv
 
 
 async def main():

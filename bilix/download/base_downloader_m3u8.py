@@ -1,21 +1,24 @@
 import asyncio
 import re
 from pathlib import Path
-from typing import Union
+from typing import Union, Tuple
 import aiofiles
 import httpx
 import os
 import m3u8
 from Crypto.Cipher import AES
 from m3u8 import Segment
-from bilix._handle import Handler
 from bilix.download.base_downloader import BaseDownloader
-from bilix.utils import req_retry, merge_files, path_check
+from bilix.download.utils import path_check, merge_files
+from .utils import req_retry
+
+__all__ = ['BaseDownloaderM3u8']
 
 
 class BaseDownloaderM3u8(BaseDownloader):
     def __init__(
             self,
+            *,
             client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int] = None,
@@ -25,6 +28,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             # unique params
             part_concurrency: int = 10,
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
+            **kwargs
     ):
         """Base async m3u8 Downloader"""
         super(BaseDownloaderM3u8, self).__init__(
@@ -60,7 +64,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         download
 
         :param m3u8_url:
-        :param path:
+        :param path: file path
         :return: downloaded file path
         """
         exist, path = path_check(path)
@@ -85,6 +89,7 @@ class BaseDownloaderM3u8(BaseDownloader):
                 cors.append(self._get_seg(seg, path.with_name(f"{path.stem}-{idx}.ts"), task_id, p_sema))
             await self.progress.update(task_id, total_time=total_time)
             file_list = await asyncio.gather(*cors)
+        # todo ffmpeg merge
         await merge_files(file_list, new_path=path)
         self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
         await self.progress.update(task_id, visible=False)
@@ -138,13 +143,11 @@ class BaseDownloaderM3u8(BaseDownloader):
             await f.write(content)
         return path
 
-
-@Handler.register(name="m3u8")
-def handle(kwargs):
-    method = kwargs['method']
-    if method == 'm3u8' or method == 'get_m3u8':
-        d = BaseDownloaderM3u8(**Handler.kwargs_filter(BaseDownloader, kwargs))
-        cors = []
-        for i, key in enumerate(kwargs['keys']):
-            cors.append(d.get_m3u8_video(key, kwargs['path'] / f"{i}.ts"))
-        return d, asyncio.gather(*cors)
+    @classmethod
+    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
+        if method == 'm3u8':
+            d = cls(**options)
+            cors = []
+            for i, key in enumerate(keys):
+                cors.append(d.get_m3u8_video(key, options['path'] / f"{i}.ts"))
+            return d, asyncio.gather(*cors)

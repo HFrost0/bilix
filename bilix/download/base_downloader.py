@@ -1,14 +1,18 @@
 import asyncio
 import logging
-from typing import Union, Optional
+import time
+from typing import Union, Optional, Tuple
 from contextlib import asynccontextmanager
 import aiofiles
 import httpx
 from bilix.log import logger as dft_logger
-from bilix.utils import req_retry, update_cookies_from_browser, path_check
+from bilix.download.utils import req_retry, path_check
 from bilix.progress.abc import Progress
-from bilix.progress import CLIProgress
+from bilix.progress.cli_progress import CLIProgress
 from pathlib import Path
+import browser_cookie3
+
+__all__ = ['BaseDownloader']
 
 
 class BaseDownloader:
@@ -16,12 +20,14 @@ class BaseDownloader:
 
     def __init__(
             self,
+            *,
             client: httpx.AsyncClient = None,
             browser: str = None,
             speed_limit: Union[float, int] = None,
             stream_retry: int = 5,
             progress: Progress = None,
-            logger: logging.Logger = None
+            logger: logging.Logger = None,
+            **kwargs
     ):
         """
 
@@ -30,14 +36,14 @@ class BaseDownloader:
         :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit)
         :param progress: progress obj
         """
-        self.client = client if client else httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'})
-        if browser:  # load cookies from browser, may need auth
-            update_cookies_from_browser(self.client, browser, self.COOKIE_DOMAIN)
-        assert speed_limit is None or speed_limit > 0
-        self.speed_limit = speed_limit
         # use cli progress by default
         self.progress = progress or CLIProgress()
         self.logger = logger or dft_logger
+        self.client = client if client else httpx.AsyncClient(headers={'user-agent': 'PostmanRuntime/7.29.0'})
+        if browser:  # load cookies from browser, may need auth
+            self.update_cookies_from_browser(browser)
+        assert speed_limit is None or speed_limit > 0
+        self.speed_limit = speed_limit
         self.stream_retry = stream_retry
         # active stream number
         self._stream_num = 0
@@ -132,3 +138,17 @@ class BaseDownloader:
             t_real = content_size / cur_speed
             t = t_tgt - t_real
             await asyncio.sleep(t)
+
+    def update_cookies_from_browser(self, browser: str):
+        try:
+            a = time.time()
+            f = getattr(browser_cookie3, browser.lower())
+            self.logger.debug(f"trying to load cookies from {browser}: {self.COOKIE_DOMAIN}, may need auth")
+            self.client.cookies.update(f(domain_name=self.COOKIE_DOMAIN))
+            self.logger.debug(f"load complete, consumed time: {time.time() - a} s")
+        except AttributeError:
+            raise AttributeError(f"Invalid Browser {browser}")
+
+    @classmethod
+    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
+        return NotImplemented

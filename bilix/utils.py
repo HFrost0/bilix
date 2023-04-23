@@ -1,18 +1,13 @@
-import asyncio
+"""
+some useful functions
+"""
 import html
 import json
-import os
 import re
-import random
-import errno
-from pathlib import Path
+import time
+from functools import wraps
 from urllib.parse import quote_plus
 from typing import Union, Sequence, Coroutine, List, Tuple, Optional
-import aiofiles
-import browser_cookie3
-import httpx
-import time
-
 from bilix.log import logger
 
 
@@ -22,43 +17,6 @@ def cors_slice(cors: Sequence[Coroutine], p_range: Sequence[int]):
     [cor.close() for idx, cor in enumerate(cors) if idx < h or idx >= t]  # avoid runtime warning
     cors = cors[h:t]
     return cors
-
-
-async def req_retry(client: httpx.AsyncClient, url_or_urls: Union[str, Sequence[str]], method='GET',
-                    follow_redirects=False, retry=5, **kwargs) -> httpx.Response:
-    """Client request with multiple backup urls and retry"""
-    pre_exc = None  # predefine to avoid warning
-    for times in range(1 + retry):
-        url = url_or_urls if type(url_or_urls) is str else random.choice(url_or_urls)
-        try:
-            res = await client.request(method, url, follow_redirects=follow_redirects, **kwargs)
-            res.raise_for_status()
-        except httpx.TransportError as e:
-            msg = f'{method} {e.__class__.__name__} url: {url}'
-            logger.warning(msg) if times > 0 else logger.debug(msg)
-            pre_exc = e
-            await asyncio.sleep(.1 * (times + 1))
-        except httpx.HTTPStatusError as e:
-            logger.warning(f'{method} {e.response.status_code} {url}')
-            pre_exc = e
-            await asyncio.sleep(1. * (times + 1))
-        except Exception as e:
-            logger.warning(f'{method} {e.__class__.__name__} 未知异常 url: {url}')
-            raise e
-        else:
-            return res
-    logger.error(f"{method} 超过重复次数 {url_or_urls}")
-    raise pre_exc
-
-
-async def merge_files(file_list: List[Path], new_path: Path):
-    first_file = file_list[0]
-    async with aiofiles.open(first_file, 'ab') as f:
-        for idx in range(1, len(file_list)):
-            async with aiofiles.open(file_list[idx], 'rb') as fa:
-                await f.write(await fa.read())
-            os.remove(file_list[idx])
-    os.rename(first_file, new_path)
 
 
 def legal_title(*parts: str, join_str: str = '-'):
@@ -79,20 +37,6 @@ def replace_illegal(s: str):
     s = html.unescape(s)  # handel & "...
     s = re.sub(r"[/\\:*?\"<>|\n\t]", '', s)  # replace illegal filename character
     return s
-
-
-def parse_bilibili_url(url: str):
-    if re.match(r'https://space\.bilibili\.com/\d+/favlist\?fid=\d+', url):
-        return 'fav'
-    elif re.match(r'https://space\.bilibili\.com/\d+/channel/seriesdetail\?sid=\d+', url):
-        return 'list'
-    elif re.match(r'https://space\.bilibili\.com/\d+/channel/collectiondetail\?sid=\d+', url):
-        return 'col'
-    elif re.match(r'https://space\.bilibili\.com/\d+', url):  # up space url
-        return 'up'
-    elif re.search(r'www\.bilibili\.com', url):
-        return 'video'
-    raise ValueError(f'{url} no match for bilibili')
 
 
 def convert_size(total_bytes: int) -> str:
@@ -135,17 +79,6 @@ def valid_sess_data(sess_data: Optional[str]) -> str:
     return sess_data
 
 
-def update_cookies_from_browser(client: httpx.AsyncClient, browser: str, domain: str = ""):
-    try:
-        f = getattr(browser_cookie3, browser.lower())
-        a = time.time()
-        logger.debug(f"trying to load cookies from {browser}: {domain}, may need auth")
-        client.cookies.update(f(domain_name=domain))
-        logger.debug(f"load complete, consumed time: {time.time() - a} s")
-    except AttributeError:
-        raise AttributeError(f"Invalid Browser {browser}")
-
-
 def t2s(t: int) -> str:
     return str(t)
 
@@ -186,33 +119,13 @@ def json2srt(data: Union[bytes, str, dict]):
     return res.encode('utf-8') if b else res
 
 
-def eclipse_str(s: str, max_len: int = 100):
-    if len(s) <= max_len:
-        return s
-    else:
-        half_len = (max_len - 1) // 2
-        return f"{s[:half_len]}…{s[-half_len:]}"
+def timer(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.monotonic_ns()
+        res = func(*args, **kwargs)
+        logger.debug(
+            f"{func.__name__} cost {time.monotonic_ns() - start} ns with args: {args}, kwargs: {kwargs} result: {res}")
+        return res
 
-
-def path_check(path: Path, retry: int = 100) -> Tuple[bool, Path]:
-    """
-    check whether path exist, if filename too long, truncate and return valid path
-
-    :param path: path to check
-    :param retry: max retry times
-    :return: exist, path
-    """
-    for times in range(retry):
-        try:
-            exist = path.exists()
-            return exist, path
-        except OSError as e:
-            if e.errno == errno.ENAMETOOLONG:  # filename too long for os
-                if times == 0:
-                    logger.warning(f"filename too long for os, truncate will be applied. filename: {path.name}")
-                else:
-                    logger.debug(f"filename too long for os {path.name}")
-                path = path.with_stem(eclipse_str(path.stem, int(len(path.stem) * .8)))
-            else:
-                raise e
-    raise OSError(f"filename too long for os {path.name}")
+    return wrapper

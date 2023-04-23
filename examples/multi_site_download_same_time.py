@@ -7,7 +7,9 @@ their methods to download concurrently. The concurrency control between each dow
 maximize the use of your network resources.
 """
 import asyncio
-from bilix import DownloaderBilibili, DownloaderDouyin, DownloaderCctv
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.douyin import DownloaderDouyin
+from bilix.sites.cctv import DownloaderCctv
 
 
 async def main():
