@@ -10,6 +10,7 @@ from Crypto.Cipher import AES
 from m3u8 import Segment
 from bilix.download.base_downloader import BaseDownloader
 from bilix.download.utils import path_check, merge_files
+from bilix.cli.assign import kwargs_filter
 from .utils import req_retry
 
 __all__ = ['BaseDownloaderM3u8']
@@ -28,7 +29,6 @@ class BaseDownloaderM3u8(BaseDownloader):
             # unique params
             part_concurrency: int = 10,
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
-            **kwargs
     ):
         """Base async m3u8 Downloader"""
         super(BaseDownloaderM3u8, self).__init__(
@@ -146,7 +146,7 @@ class BaseDownloaderM3u8(BaseDownloader):
     @classmethod
     def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
         if method == 'm3u8':
-            d = cls(**options)
+            d = cls(**kwargs_filter(cls, options))
             cors = []
             for i, key in enumerate(keys):
                 cors.append(d.get_m3u8_video(key, options['path'] / f"{i}.ts"))

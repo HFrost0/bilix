@@ -1,4 +1,5 @@
 import asyncio
+import re
 from pathlib import Path
 from typing import Union, Tuple
 import httpx
@@ -9,6 +10,8 @@ from bilix.exception import HandleMethodError
 
 
 class DownloaderDouyin(BaseDownloaderPart):
+    pattern = re.compile(r"^https?://([A-Za-z0-9-]+\.)*(douyin\.com)")
+
     def __init__(
             self,
             *,
@@ -41,7 +44,7 @@ class DownloaderDouyin(BaseDownloaderPart):
 
     @classmethod
     def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if 'douyin' in keys[0]:
+        if cls.pattern.match(keys[0]):
             if method == 'v' or method == 'get_video':
                 m = cls.get_video
             else:

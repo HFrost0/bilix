@@ -28,7 +28,6 @@ class BaseDownloaderPart(BaseDownloader):
             logger=None,
             # unique params
             part_concurrency: int = 10,
-            **kwargs
     ):
         """Base Async http Content-Range Downloader"""
         super(BaseDownloaderPart, self).__init__(
@@ -191,7 +190,7 @@ class BaseDownloaderPart(BaseDownloader):
     async def _get_file_part(self, urls: List[Union[str, httpx.URL]], path: Path, part_range: Tuple[int, int],
                              task_id) -> Path:
         start, end = part_range
-        part_path = path.with_name(f'{path.name}.{part_range[0]}{part_range[1]}')
+        part_path = path.with_name(f'{path.name}.{part_range[0]}-{part_range[1]}')
         exist, part_path = path_check(part_path)
         if exist:
             downloaded = os.path.getsize(part_path)

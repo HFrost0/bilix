@@ -347,39 +347,39 @@ class DownloaderBilibili(BaseDownloaderPart):
                 try:  # choose video quality
                     video, audio = video_info.dash.choose_quality(quality, codec)
                 except KeyError:
-                    return self.logger.warning(
+                    self.logger.warning(
                         f"{task_name} 清晰度<{quality}> 编码<{codec}>不可用，请检查输入是否正确或是否需要大会员")
-
-                tmp: List[Tuple[api.Media, Path]] = []
-                # 1. only video
-                if not audio and not only_audio:
-                    tmp.append((video, path / f'{media_name}.mp4'))
-                # 2. video and audio
-                elif audio and not only_audio:
-                    exists, media_path = path_check(path / f'{media_name}.mp4')
-                    if exists:
-                        self.logger.info(f'[green]已存在[/green] {media_path.name}')
-                    else:
-                        tmp.append((video, path / f'{media_name}-v'))
-                        tmp.append((audio, path / f'{media_name}-a'))
-                        # task need to be merged
-                        await self.progress.update(task_id=task_id, upper='va')
-                # 3. only audio
-                elif audio and only_audio:
-                    tmp.append((audio, path / f'{media_name}{audio.suffix}'))
                 else:
-                    return self.logger.warning(f"No audio for {task_name}")
-                # convert to coroutines
-                for t in tmp:
-                    if not time_range:
-                        media_cors.append(self.get_file(t[0].urls, path=t[1], url_name=False, task_id=task_id))
+                    tmp: List[Tuple[api.Media, Path]] = []
+                    # 1. only video
+                    if not audio and not only_audio:
+                        tmp.append((video, path / f'{media_name}.mp4'))
+                    # 2. video and audio
+                    elif audio and not only_audio:
+                        exists, media_path = path_check(path / f'{media_name}.mp4')
+                        if exists:
+                            self.logger.info(f'[green]已存在[/green] {media_path.name}')
+                        else:
+                            tmp.append((video, path / f'{media_name}-v'))
+                            tmp.append((audio, path / f'{media_name}-a'))
+                            # task need to be merged
+                            await self.progress.update(task_id=task_id, upper='va')
+                    # 3. only audio
+                    elif audio and only_audio:
+                        tmp.append((audio, path / f'{media_name}{audio.suffix}'))
                     else:
-                        media_cors.append(self.get_media_clip(
-                            url_or_urls=t[0].urls, path=t[1],
-                            time_range=time_range,
-                            init_range=t[0].segment_base['initialization'],
-                            seg_range=t[0].segment_base['index_range'],
-                            task_id=task_id))
+                        self.logger.warning(f"No audio for {task_name}")
+                    # convert to coroutines
+                    for t in tmp:
+                        if not time_range:
+                            media_cors.append(self.get_file(t[0].urls, path=t[1], url_name=False, task_id=task_id))
+                        else:
+                            media_cors.append(self.get_media_clip(
+                                url_or_urls=t[0].urls, path=t[1],
+                                time_range=time_range,
+                                init_range=t[0].segment_base['initialization'],
+                                seg_range=t[0].segment_base['index_range'],
+                                task_id=task_id))
             elif video_info.other:
                 self.logger.warning(
                     f"{task_name} 未解析到dash资源，转入durl mp4/flv下载（不需要会员的电影/番剧预览，不支持dash的视频）")
@@ -404,8 +404,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                             media_cors.append(_get_file(m, path / f))
                         await self.progress.update(task_id=task_id, upper='concat')
             else:
-                return self.logger.warning(f'{task_name} 需要大会员或该地区不支持')
-
+                self.logger.warning(f'{task_name} 需要大会员或该地区不支持')
             # additional task
             add_cors = []
             if image or subtitle or dm:

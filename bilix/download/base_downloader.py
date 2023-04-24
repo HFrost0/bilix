@@ -10,7 +10,6 @@ from bilix.download.utils import req_retry, path_check
 from bilix.progress.abc import Progress
 from bilix.progress.cli_progress import CLIProgress
 from pathlib import Path
-import browser_cookie3
 
 __all__ = ['BaseDownloader']
 
@@ -27,7 +26,6 @@ class BaseDownloader:
             stream_retry: int = 5,
             progress: Progress = None,
             logger: logging.Logger = None,
-            **kwargs
     ):
         """
 
@@ -142,6 +140,7 @@ class BaseDownloader:
     def update_cookies_from_browser(self, browser: str):
         try:
             a = time.time()
+            import browser_cookie3
             f = getattr(browser_cookie3, browser.lower())
             self.logger.debug(f"trying to load cookies from {browser}: {self.COOKIE_DOMAIN}, may need auth")
             self.client.cookies.update(f(domain_name=self.COOKIE_DOMAIN))
