@@ -70,9 +70,8 @@ class BaseDownloader:
             suffix = '.' + convert_func.__name__.split('2')[-1]
         # try to find suffix from url
         else:
-            suffix = f".{url.split('.')[-1]}" if len(url.split('/')[-1].split('.')) > 1 else ''
-            suffix = suffix.split('?')[0]
-        path = path.with_suffix(suffix)
+            suffix = Path(url).suffix
+        path = path.with_name(path.name + suffix)
         exist, path = path_check(path)
         if exist:
             self.logger.info(f'[green]已存在[/green] {path.name}')
