@@ -414,7 +414,10 @@ class DownloaderBilibili(BaseDownloaderPart):
                 if subtitle:
                     add_cors.append(self.get_subtitle(url, path=extra_path, video_info=video_info))
                 if dm:
-                    width, height = (video.width, video.height) if video_info.dash else (1920, 1080)
+                    try:
+                        width, height = video.width, video.height
+                    except UnboundLocalError:
+                        width, height = 1920, 1080
                     add_cors.append(self.get_dm(
                         url, path=extra_path, convert_func=self._dm2ass_factory(width, height), video_info=video_info))
             path_lst, _ = await asyncio.gather(asyncio.gather(*media_cors), asyncio.gather(*add_cors))
