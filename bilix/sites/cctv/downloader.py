@@ -47,14 +47,14 @@ class DownloaderCctv(BaseDownloaderM3u8):
                 path.mkdir(parents=True, exist_ok=True)
             await asyncio.gather(*[self.get_video(pid, path, quality) for pid in pids])
 
-    async def get_video(self, url_or_pid: str, path: Path = Path('.'), quality=0):
+    async def get_video(self, url_or_pid: str, path: Path = Path('.'), quality=0, time_range: Tuple[int, int] = None):
         if url_or_pid.startswith('http'):
             pid, _, _ = await api.get_id(self.client, url_or_pid)
         else:
             pid = url_or_pid
         title, m3u8_urls = await api.get_media_info(self.client, pid)
         m3u8_url = m3u8_urls[min(quality, len(m3u8_urls) - 1)]
-        file_path = await self.get_m3u8_video(m3u8_url, path / f"{title}.ts")
+        file_path = await self.get_m3u8_video(m3u8_url, path / f"{title}.mp4", time_range=time_range)
         return file_path
 
     @classmethod

@@ -6,8 +6,6 @@ from typing import Union, Sequence, Tuple, List
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
-import os
-from anyio import run_process
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix._process import SingletonPPE
@@ -15,6 +13,7 @@ from bilix.utils import legal_title, cors_slice, valid_sess_data, t2s, json2srt
 from bilix.download.utils import req_retry, path_check
 from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
 from bilix.cli.assign import kwargs_filter
+from bilix import ffmpeg
 
 from danmakuC.bilibili import proto2ass
 
@@ -337,7 +336,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                     return self.logger.warning(e)
             p_name = legal_title(video_info.pages[video_info.p].p_name)
             task_name = legal_title(video_info.h1_title, p_name)
-            # if title is too long, use p_name as task_name
+            # if title is too long, use p_name as base_name
             base_name = p_name if len(video_info.h1_title) > self.title_overflow and self.hierarchy and p_name else \
                 task_name
             media_name = base_name if not time_range else legal_title(base_name, *map(t2s, time_range))
@@ -363,7 +362,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                             tmp.append((video, path / f'{media_name}-v'))
                             tmp.append((audio, path / f'{media_name}-a'))
                             # task need to be merged
-                            await self.progress.update(task_id=task_id, upper='va')
+                            await self.progress.update(task_id=task_id, upper=ffmpeg.combine)
                     # 3. only audio
                     elif audio and only_audio:
                         tmp.append((audio, path / f'{media_name}{audio.suffix}'))
@@ -372,7 +371,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                     # convert to coroutines
                     for t in tmp:
                         if not time_range:
-                            media_cors.append(self.get_file(t[0].urls, path=t[1], url_name=False, task_id=task_id))
+                            media_cors.append(self.get_file(t[0].urls, path=t[1], task_id=task_id))
                         else:
                             media_cors.append(self.get_media_clip(
                                 url_or_urls=t[0].urls, path=t[1],
@@ -387,7 +386,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 if len(video_info.other) == 1:
                     m = video_info.other[0]
                     media_cors.append(
-                        self.get_file(m.urls, path=path / f'{media_name}.{m.suffix}', url_name=False, task_id=task_id))
+                        self.get_file(m.urls, path=path / f'{media_name}.{m.suffix}', task_id=task_id))
                 else:
                     exist, media_path = path_check(path / f'{media_name}.mp4')
                     if exist:
@@ -397,12 +396,12 @@ class DownloaderBilibili(BaseDownloaderPart):
 
                         async def _get_file(media: api.Media, p: Path) -> Path:
                             async with p_sema:
-                                return await self.get_file(media.urls, path=p, url_name=False, task_id=task_id)
+                                return await self.get_file(media.urls, path=p, task_id=task_id)
 
                         for i, m in enumerate(video_info.other):
                             f = f'{media_name}-{i}.{m.suffix}'
                             media_cors.append(_get_file(m, path / f))
-                        await self.progress.update(task_id=task_id, upper='concat')
+                        await self.progress.update(task_id=task_id, upper=ffmpeg.concat)
             else:
                 self.logger.warning(f'{task_name} 需要大会员或该地区不支持')
             # additional task
@@ -420,27 +419,8 @@ class DownloaderBilibili(BaseDownloaderPart):
                         url, path=extra_path, convert_func=self._dm2ass_factory(width, height), video_info=video_info))
             path_lst, _ = await asyncio.gather(asyncio.gather(*media_cors), asyncio.gather(*add_cors))
 
-        upper = self.progress.tasks[task_id].fields.get('upper', None)
-        if upper:
-            cmd = ['ffmpeg']
-            if upper == 'concat':
-                tmp_file = media_path.with_suffix('.txt')
-                with open(tmp_file, 'w') as f:
-                    for sub in path_lst:
-                        f.write(f"file {sub.name}\n")
-                cmd.extend(('-f', 'concat', '-safe', '0', '-i', str(tmp_file)))
-                path_lst.append(tmp_file)
-            else:
-                for sub in path_lst:
-                    cmd.extend(['-i', str(sub)])
-            cmd.extend(['-codec', 'copy', '-loglevel', 'quiet'])
-            # ffmpeg: flac in MP4 support is experimental, add '-strict -2' if you want to use it.
-            if upper == 'va' and audio.codec == 'fLaC':
-                cmd.extend(['-strict', '-2'])
-            cmd.append(str(media_path))
-            await run_process(cmd)
-            for f in path_lst:
-                os.remove(f)
+        if upper := self.progress.tasks[task_id].fields.get('upper', None):
+            await upper(path_lst, media_path)
             self.logger.info(f'[cyan]已完成[/cyan] {media_path.name}')
         await self.progress.update(task_id, visible=False)
 

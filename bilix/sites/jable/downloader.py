@@ -53,12 +53,13 @@ class DownloaderJable(BaseDownloaderM3u8):
             path.mkdir(parents=True, exist_ok=True)
         await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
 
-    async def get_video(self, url: str, path: Path = Path("."), image=True):
+    async def get_video(self, url: str, path: Path = Path("."), image=True, time_range: Tuple[int, int] = None):
         video_info = await api.get_video_info(self.client, url)
         if self.hierarchy:
             path /= f"{video_info.avid} {video_info.model_name}"
             path.mkdir(parents=True, exist_ok=True)
-        cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f"{video_info.title}.ts", )]
+        cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f"{video_info.title}.mp4",
+                                    time_range=time_range)]
         if image:
             cors.append(self.get_static(video_info.img_url, path=path / video_info.title, ))
         await asyncio.gather(*cors)

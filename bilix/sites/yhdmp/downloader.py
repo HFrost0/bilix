@@ -55,17 +55,17 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         for idx, (sub_title, url) in enumerate(video_info.play_info[play_idx]):
             if ep_idx == idx:
                 cors.append(self.get_m3u8_video(m3u8_url=video_info.m3u8_url,
-                                                path=path / f'{legal_title(title, sub_title)}.ts'))
+                                                path=path / f'{legal_title(title, sub_title)}.mp4'))
             else:
                 cors.append(get_video(url, legal_title(title, sub_title)))
         if p_range:
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path: Path = Path('.')):
+    async def get_video(self, url: str, path: Path = Path('.'), time_range=None):
         video_info = await api.get_video_info(self.api_client, url)
         name = legal_title(video_info.title, video_info.sub_title)
-        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.ts')
+        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.mp4', time_range=time_range)
 
     @classmethod
     def handle(cls, method: str, keys: Tuple[str, ...], options: dict):

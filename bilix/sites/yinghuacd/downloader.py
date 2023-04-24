@@ -1,6 +1,8 @@
 import asyncio
 from pathlib import Path
 import httpx
+import re
+from m3u8 import Segment
 from typing import Sequence, Union, Tuple
 from . import api
 from bilix.utils import legal_title, cors_slice
@@ -37,6 +39,12 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         self.api_client = api_client or httpx.AsyncClient(**api.dft_client_settings)
         self.hierarchy = hierarchy
 
+    def _after_seg(self, seg: Segment, content: bytearray) -> bytearray:
+        # in case .png
+        if re.fullmatch(r'.*\.png', seg.absolute_uri):
+            _, _, content = content.partition(b'\x47\x40')
+        return content
+
     async def get_series(self, url: str, path: Path = Path("."), p_range: Sequence[int] = None):
         video_info = await api.get_video_info(self.api_client, url)
         if self.hierarchy:
@@ -48,7 +56,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path: Path = Path('.'), video_info=None):
+    async def get_video(self, url: str, path: Path = Path('.'), time_range=None, video_info=None):
         if video_info is None:
             try:
                 video_info = await api.get_video_info(self.api_client, url)
@@ -57,7 +65,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         else:
             video_info = video_info
         name = legal_title(video_info.title, video_info.sub_title)
-        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.ts')
+        await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.mp4', time_range=time_range)
 
     @classmethod
     def handle(cls, method: str, keys: Tuple[str, ...], options: dict):

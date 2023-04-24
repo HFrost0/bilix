@@ -7,10 +7,10 @@ import uuid
 import random
 import os
 import cgi
-from anyio import run_process
 from pymp4.parser import Box
 from bilix.download.base_downloader import BaseDownloader
 from bilix.download.utils import path_check, merge_files
+from bilix import ffmpeg
 from .utils import req_retry
 
 __all__ = ['BaseDownloaderPart']
@@ -127,30 +127,24 @@ class BaseDownloaderPart(BaseDownloader):
         file_list = await asyncio.gather(*[get_seg(part_range) for part_range in parts])
         path_tmp = path.with_name(str(uuid.uuid4()))
         await merge_files(file_list, path_tmp)
-        # fix time range
-        cmd = ['ffmpeg', '-ss', str(s), '-t', str(end_time - start_time), '-i', str(path_tmp),
-               '-codec', 'copy', '-loglevel', 'quiet', '-f', 'mp4', str(path)]
-        await run_process(cmd)
-        os.remove(path_tmp)
+        await ffmpeg.time_range_clip(path_tmp, start=s, t=end_time - start_time, output_path=path)
         if not upper:  # no upstream task
             await self.progress.update(task_id, visible=False)
             self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
         return path
 
-    async def get_file(self, url_or_urls: Union[str, Iterable[str]], path: Path,
-                       url_name: bool = True, task_id=None) -> Path:
+    async def get_file(self, url_or_urls: Union[str, Iterable[str]], path: Path, task_id=None) -> Path:
         """
 
         :param url_or_urls: file url or urls with backups
-        :param path: file path
-        :param url_name: if True, use filename from url, in this case, path should be a directory
+        :param path: file path or dir path, if dir path, filename will be extracted from url
         :param task_id: if not provided, a new progress task will be created
         :return: downloaded file path
         """
         urls = [url_or_urls] if isinstance(url_or_urls, str) else [url for url in url_or_urls]
         upper = task_id is not None and self.progress.tasks[task_id].fields.get('upper', None)
 
-        if not url_name:
+        if not path.is_dir():
             exist, path = path_check(path)
             if exist:
                 if not upper:
@@ -159,8 +153,8 @@ class BaseDownloaderPart(BaseDownloader):
 
         total, req_filename = await self._pre_req(urls)
 
-        if url_name:
-            file_name = req_filename if req_filename else str(urls[0]).split('/')[-1].split('?')[0]
+        if path.is_dir():
+            file_name = req_filename if req_filename else Path(urls[0]).name
             path /= file_name
             exist, path = path_check(path)
             if exist:
