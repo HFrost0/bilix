@@ -132,7 +132,11 @@ def assign(cli_kwargs):
 
     for module, _ in sorted(modules, key=key, reverse=True):
         a = time.time()
-        module = import_module(f"bilix.{module}")
+        try:
+            module = import_module(f"bilix.{module}")
+        except ImportError as e:
+            logger.debug(f"duo to ImportError <{e}>, skip <module 'bilix.{module}'>")
+            continue
         logger.debug(f"import cost {time.time() - a:.6f} s <module '{module.__name__}'>")
         exc = None
         for handle_func in module_handle_funcs(module):
