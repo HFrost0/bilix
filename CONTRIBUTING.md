@@ -74,19 +74,6 @@ handle函数的实现应该满足下面三个原则：
 2. 如果类可以承担任务，但发现`method`不在自己的可接受范围内，应该抛出`HandleMethodError`异常
 3. 如果类可以承担任务，且`method`在自己的可接受范围内，应该返回两个值，第一个值为下载器实例，第二个值为下载coroutine
 
-例如，m3u8下载器是这样实现的：
-
-```python
-@classmethod
-def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-    if method == 'm3u8':
-        d = cls(**kwargs_filter(cls, options))
-        cors = []
-        for i, key in enumerate(keys):
-            cors.append(d.get_m3u8_video(key, options['path'] / f"{i}.ts"))
-        return d, asyncio.gather(*cors)
-```
-
 Q：🙋为什么我看到有的下载器返回的是类本身，以及下载函数对象？
 
 ```python

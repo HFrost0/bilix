@@ -81,19 +81,6 @@ The implementation of the `handle` function should meet the following three prin
 2. If the class can be assigned the task, but finds that the `method` is not within its acceptable range, it should raise a `HandleMethodError` exception
 3. If the class can handle the task, and `method` is within its acceptable range, it should return two values, the first value is the downloader instance, and the second value is the download coroutine
 
-For example, the `BaseDownloaderM3u8` is implemented as follows:
-
-```python
-@classmethod
-def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-    if method == 'm3u8':
-        d = cls(**kwargs_filter(cls, options))
-        cors = []
-        for i, key in enumerate(keys):
-            cors.append(d.get_m3u8_video(key, options['path'] / f"{i}.ts"))
-        return d, asyncio.gather(*cors)
-```
-
 Q: 🙋Why do I see that some downloaders return the class itself and the download function object?
 
 ```python
