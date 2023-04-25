@@ -4,7 +4,6 @@ import logging
 import time
 from functools import wraps
 from typing import Union, Optional, Tuple
-from types import FunctionType
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import aiofiles
@@ -22,8 +21,7 @@ class BaseDownloaderMeta(type):
     def __new__(cls, name, bases, dct):
         for attr_name, attr_value in dct.items():
             # check if attr is a non-private coroutine function
-            if not attr_name.startswith('__') \
-                    and isinstance(attr_value, FunctionType) and asyncio.iscoroutinefunction(attr_value):
+            if not attr_name.startswith('__') and asyncio.iscoroutinefunction(attr_value):
                 # function has path argument
                 if 'path' in (sig := inspect.signature(attr_value)).parameters:
                     dct[attr_name] = cls.ensure_path(attr_value, sig)
