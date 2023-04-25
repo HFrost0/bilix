@@ -39,7 +39,7 @@ class DownloaderJable(BaseDownloaderM3u8):
         )
         self.hierarchy = hierarchy
 
-    async def get_model(self, url: str, path: Path = Path("."), image=True):
+    async def get_model(self, url: str, path=Path("."), image=True):
         """
 
         :param url: model page url
@@ -53,7 +53,7 @@ class DownloaderJable(BaseDownloaderM3u8):
             path.mkdir(parents=True, exist_ok=True)
         await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
 
-    async def get_video(self, url: str, path: Path = Path("."), image=True, time_range: Tuple[int, int] = None):
+    async def get_video(self, url: str, path=Path("."), image=True, time_range: Tuple[int, int] = None):
         video_info = await api.get_video_info(self.client, url)
         if self.hierarchy:
             path /= f"{video_info.avid} {video_info.model_name}"

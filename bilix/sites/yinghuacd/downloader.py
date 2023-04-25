@@ -45,7 +45,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             _, _, content = content.partition(b'\x47\x40')
         return content
 
-    async def get_series(self, url: str, path: Path = Path("."), p_range: Sequence[int] = None):
+    async def get_series(self, url: str, path=Path("."), p_range: Sequence[int] = None):
         video_info = await api.get_video_info(self.api_client, url)
         if self.hierarchy:
             path /= video_info.title
@@ -56,7 +56,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path: Path = Path('.'), time_range=None, video_info=None):
+    async def get_video(self, url: str, path=Path('.'), time_range=None, video_info=None):
         if video_info is None:
             try:
                 video_info = await api.get_video_info(self.api_client, url)

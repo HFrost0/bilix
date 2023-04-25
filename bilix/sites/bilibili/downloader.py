@@ -81,7 +81,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             return cls.get_video
         raise ValueError(f'{url} no match for bilibili')
 
-    async def get_collect_or_list(self, url, path: Path = Path('.'),
+    async def get_collect_or_list(self, url, path=Path('.'),
                                   quality=0, image=False, subtitle=False, dm=False, only_audio=False, codec: str = ''):
         """
         下载合集或视频列表
@@ -112,7 +112,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                               image=image, subtitle=subtitle, dm=dm, only_audio=only_audio)
               for i in bvids])
 
-    async def get_favour(self, url_or_fid, path: Path = Path('.'),
+    async def get_favour(self, url_or_fid, path=Path('.'),
                          num=20, keyword='', quality=0, series=True, image=False, subtitle=False,
                          dm=False, only_audio=False, codec: str = ''):
         """
@@ -171,7 +171,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             await self._cate_meta
         return self._cate_meta
 
-    async def get_cate(self, cate_name: str, path: Path = Path('.'), num=10, order='click', keyword='', days=7,
+    async def get_cate(self, cate_name: str, path=Path('.'), num=10, order='click', keyword='', days=7,
                        quality=0, series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
         下载分区视频
@@ -228,7 +228,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
     async def get_up(
-            self, url_or_mid: str, path: Path = Path('.'), num=10, order='pubdate', keyword='', quality=0,
+            self, url_or_mid: str, path=Path('.'), num=10, order='pubdate', keyword='', quality=0,
             series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
 
@@ -276,7 +276,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             *[func(f'https://www.bilibili.com/video/{bv}', path=path, quality=quality, codec=codec,
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio) for bv in bvids])
 
-    async def get_series(self, url: str, path: Path = Path('.'),
+    async def get_series(self, url: str, path=Path('.'),
                          quality: Union[str, int] = 0, image=False, subtitle=False,
                          dm=False, only_audio=False, p_range: Sequence[int] = None, codec: str = ''):
         """
@@ -310,7 +310,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path: Path = Path('.'),
+    async def get_video(self, url: str, path=Path('.'),
                         quality: Union[str, int] = 0, image=False, subtitle=False, dm=False, only_audio=False,
                         codec: str = '', time_range: Tuple[int, int] = None, video_info: api.VideoInfo = None):
         """
@@ -437,7 +437,7 @@ class DownloaderBilibili(BaseDownloaderPart):
 
         return dm2ass
 
-    async def get_dm(self, url, path: Path = Path('.'), update=False, convert_func=None, video_info=None):
+    async def get_dm(self, url, path=Path('.'), update=False, convert_func=None, video_info=None):
         """
 
         :param url: 视频url
@@ -474,7 +474,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         self.logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
-    async def get_subtitle(self, url, path: Path = Path('.'), convert_func=json2srt, video_info=None):
+    async def get_subtitle(self, url, path=Path('.'), convert_func=json2srt, video_info=None):
         """
         获取某个视频的字幕文件
 

@@ -1,20 +1,53 @@
 import asyncio
+import inspect
 import logging
 import time
+from functools import wraps
 from typing import Union, Optional, Tuple
+from types import FunctionType
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 import aiofiles
 import httpx
 from bilix.log import logger as dft_logger
 from bilix.download.utils import req_retry, path_check
 from bilix.progress.abc import Progress
 from bilix.progress.cli_progress import CLIProgress
-from pathlib import Path
+from pathlib import Path, PurePath
 
 __all__ = ['BaseDownloader']
 
 
-class BaseDownloader:
+class BaseDownloaderMeta(type):
+    def __new__(cls, name, bases, dct):
+        for attr_name, attr_value in dct.items():
+            # check if attr is a non-private coroutine function
+            if not attr_name.startswith('__') \
+                    and isinstance(attr_value, FunctionType) and asyncio.iscoroutinefunction(attr_value):
+                # function has path argument
+                if 'path' in (sig := inspect.signature(attr_value)).parameters:
+                    dct[attr_name] = cls.ensure_path(attr_value, sig)
+        return super().__new__(cls, name, bases, dct)
+
+    @staticmethod
+    def ensure_path(func, sig):
+        path_index = next(i for i, name in enumerate(sig.parameters) if name == 'path')
+
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            new_args = list(args)
+            if path_index < len(args) and isinstance(args[path_index], str):
+                new_args[path_index] = Path(args[path_index])
+            elif 'path' in kwargs and isinstance(kwargs['path'], str):
+                kwargs['path'] = Path(kwargs['path'])
+
+            return await func(*new_args, **kwargs)
+
+        wrapper.__annotations__['path'] = Union[Path, str]
+        return wrapper
+
+
+class BaseDownloader(metaclass=BaseDownloaderMeta):
     COOKIE_DOMAIN: str = ""
 
     def __init__(
@@ -57,7 +90,7 @@ class BaseDownloader:
         """Close transport and proxies for httpx client"""
         await self.client.aclose()
 
-    async def get_static(self, url: str, path: Path, convert_func=None) -> Path:
+    async def get_static(self, url: str, path: Union[str, Path], convert_func=None) -> Path:
         """
 
         :param url:
@@ -70,7 +103,7 @@ class BaseDownloader:
             suffix = '.' + convert_func.__name__.split('2')[-1]
         # try to find suffix from url
         else:
-            suffix = Path(url).suffix
+            suffix = PurePath(urlparse(url).path).suffix
         path = path.with_name(path.name + suffix)
         exist, path = path_check(path)
         if exist:

@@ -34,7 +34,7 @@ class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
             video_concurrency=video_concurrency,
         )
 
-    async def get_video(self, url: str, path: Path = Path('.'), image=False, time_range: Tuple[int, int] = None):
+    async def get_video(self, url: str, path=Path('.'), image=False, time_range: Tuple[int, int] = None):
         video_info = await api.get_video_info(self.client, url)
         video_url = video_info.video_url
         cors = [

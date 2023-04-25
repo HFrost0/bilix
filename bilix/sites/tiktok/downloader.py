@@ -31,7 +31,7 @@ class DownloaderTiktok(BaseDownloaderPart):
             part_concurrency=part_concurrency,
         )
 
-    async def get_video(self, url: str, path: Path = Path('.'), image=False):
+    async def get_video(self, url: str, path=Path('.'), image=False):
         video_info = await api.get_video_info(self.client, url)
         title = legal_title(video_info.author_name, video_info.title)
         # since TikTok backup not fast enough some time, use the first one

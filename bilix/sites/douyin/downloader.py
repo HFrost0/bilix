@@ -34,7 +34,7 @@ class DownloaderDouyin(BaseDownloaderPart):
             part_concurrency=part_concurrency,
         )
 
-    async def get_video(self, url: str, path: Path = Path('.'), image=False):
+    async def get_video(self, url: str, path=Path('.'), image=False):
         video_info = await api.get_video_info(self.client, url)
         title = legal_title(video_info.author_name, video_info.title)
         cors = [self.get_file(video_info.nwm_urls, path=path / f"{title}.mp4")]

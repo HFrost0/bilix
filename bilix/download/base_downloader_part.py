@@ -1,6 +1,7 @@
 import asyncio
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Union, List, Iterable, Tuple
+from urllib.parse import urlparse
 import aiofiles
 import httpx
 import uuid
@@ -58,7 +59,7 @@ class BaseDownloaderPart(BaseDownloader):
     async def get_media_clip(
             self,
             url_or_urls: Union[str, Iterable[str]],
-            path: Path,
+            path: Union[Path, str],
             time_range: Tuple[int, int],
             init_range: str,
             seg_range: str,
@@ -133,7 +134,7 @@ class BaseDownloaderPart(BaseDownloader):
             self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
         return path
 
-    async def get_file(self, url_or_urls: Union[str, Iterable[str]], path: Path, task_id=None) -> Path:
+    async def get_file(self, url_or_urls: Union[str, Iterable[str]], path: Union[Path, str], task_id=None) -> Path:
         """
 
         :param url_or_urls: file url or urls with backups
@@ -154,7 +155,7 @@ class BaseDownloaderPart(BaseDownloader):
         total, req_filename = await self._pre_req(urls)
 
         if path.is_dir():
-            file_name = req_filename if req_filename else Path(urls[0]).name
+            file_name = req_filename if req_filename else PurePath(urlparse(urls[0]).path).name
             path /= file_name
             exist, path = path_check(path)
             if exist:

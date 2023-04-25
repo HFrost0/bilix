@@ -1,8 +1,9 @@
 import asyncio
 import re
 import uuid
-from pathlib import Path
-from typing import Union, Tuple
+from pathlib import Path, PurePath
+from typing import Tuple, Union
+from urllib.parse import urlparse
 import aiofiles
 import httpx
 import os
@@ -70,7 +71,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             return await self.to_invariant_m3u8(m3u8_info.playlists[0].absolute_uri)
         return m3u8_info
 
-    async def get_m3u8_video(self, m3u8_url: str, path: Path, time_range: Tuple[int, int] = None) -> Path:
+    async def get_m3u8_video(self, m3u8_url: str, path: Union[str, Path], time_range: Tuple[int, int] = None) -> Path:
         """
 
         :param m3u8_url:
@@ -79,7 +80,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         :return: downloaded file path
         """
         if path.is_dir():
-            path = (path / Path(m3u8_url).stem).with_suffix('.mp4')
+            path = (path / PurePath(urlparse(m3u8_url).path).stem).with_suffix('.mp4')
         if time_range:
             path = path.with_stem(f"{path.stem}-{time_range[0]}-{time_range[1]}")
         exist, path = path_check(path)

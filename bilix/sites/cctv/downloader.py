@@ -36,7 +36,7 @@ class DownloaderCctv(BaseDownloaderM3u8):
         )
         self.hierarchy = hierarchy
 
-    async def get_series(self, url: str, path: Path = Path('.'), quality=0):
+    async def get_series(self, url: str, path=Path('.'), quality=0):
         pid, vide, vida = await api.get_id(self.client, url)
         if vida is None:  # 单个视频
             await self.get_video(pid, quality=quality)
@@ -47,7 +47,7 @@ class DownloaderCctv(BaseDownloaderM3u8):
                 path.mkdir(parents=True, exist_ok=True)
             await asyncio.gather(*[self.get_video(pid, path, quality) for pid in pids])
 
-    async def get_video(self, url_or_pid: str, path: Path = Path('.'), quality=0, time_range: Tuple[int, int] = None):
+    async def get_video(self, url_or_pid: str, path=Path('.'), quality=0, time_range: Tuple[int, int] = None):
         if url_or_pid.startswith('http'):
             pid, _, _ = await api.get_id(self.client, url_or_pid)
         else:

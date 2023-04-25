@@ -37,7 +37,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         self.api_client = api_client or httpx.AsyncClient(**api.dft_client_settings)
         self.hierarchy = hierarchy
 
-    async def get_series(self, url: str, path: Path = Path('.'), p_range: Sequence[int] = None):
+    async def get_series(self, url: str, path=Path('.'), p_range: Sequence[int] = None):
         video_info = await api.get_video_info(self.api_client, url)
         ep_idx = video_info.ep_idx
         play_idx = video_info.play_idx
@@ -62,7 +62,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path: Path = Path('.'), time_range=None):
+    async def get_video(self, url: str, path=Path('.'), time_range=None):
         video_info = await api.get_video_info(self.api_client, url)
         name = legal_title(video_info.title, video_info.sub_title)
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.mp4', time_range=time_range)
