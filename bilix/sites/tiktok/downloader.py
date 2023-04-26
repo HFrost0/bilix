@@ -1,14 +1,16 @@
 import asyncio
+import re
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Union
 import httpx
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title
-from bilix.exception import HandleMethodError
 
 
 class DownloaderTiktok(BaseDownloaderPart):
+    pattern = re.compile(r"^https?://([A-Za-z0-9-]+\.)*(titok\.com)")
+
     def __init__(
             self,
             *,
@@ -32,6 +34,13 @@ class DownloaderTiktok(BaseDownloaderPart):
         )
 
     async def get_video(self, url: str, path=Path('.'), image=False):
+        """
+        :cli: short: v
+        :param url:
+        :param path:
+        :param image:
+        :return:
+        """
         video_info = await api.get_video_info(self.client, url)
         title = legal_title(video_info.author_name, video_info.title)
         # since TikTok backup not fast enough some time, use the first one
@@ -39,11 +48,3 @@ class DownloaderTiktok(BaseDownloaderPart):
         if image:
             cors.append(self.get_static(video_info.cover, path=path / title, ))
         await asyncio.gather(*cors)
-
-    @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if 'tiktok' in keys[0]:
-            if method == 'v' or method == 'get_video':
-                m = cls.get_video
-                return cls, m
-            raise HandleMethodError(cls, method)

@@ -58,10 +58,10 @@ def module_handle_funcs(module):
         yield handle_func
 
 
-def handler(handle_func):
+def auto_assemble(handle_func):
     @wraps(handle_func)
-    def wrapped(method: str, keys: Tuple[str, ...], options: dict):
-        res = handle_func(method, keys, options)
+    def wrapped(cls, method: str, keys: Tuple[str, ...], options: dict):
+        res = handle_func(cls, method, keys, options)
         if res is NotImplemented or res is None:
             return res
         executor, cor = res
@@ -72,11 +72,10 @@ def handler(handle_func):
             logger.debug(f"auto assemble {executor} by {kwargs}")
         # handle func return async function instead of coroutine
         if inspect.iscoroutinefunction(cor):
-            sig = inspect.signature(cor)
             kwargs = kwargs_filter(cor, options)
             cors = []
             for key in keys:
-                if 'self' in sig.parameters:  # coroutine function has not bound to instance
+                if not hasattr(cor, '__self__'):  # coroutine function has not bound to instance
                     cors.append(cor(executor, key, **kwargs))  # bound executor to self
                 else:
                     cors.append(cor(key, **kwargs))
@@ -141,7 +140,7 @@ def assign(cli_kwargs):
         exc = None
         for handle_func in module_handle_funcs(module):
             try:
-                res = handler(handle_func)(method, keys, options)
+                res = handle_func(method, keys, options)
             except HandleMethodError as e:
                 exc = e
                 continue

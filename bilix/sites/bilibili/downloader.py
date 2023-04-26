@@ -12,14 +12,14 @@ from bilix._process import SingletonPPE
 from bilix.utils import legal_title, cors_slice, valid_sess_data, t2s, json2srt
 from bilix.download.utils import req_retry, path_check
 from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
-from bilix.cli.assign import kwargs_filter
+from bilix.cli.assign import kwargs_filter, auto_assemble
 from bilix import ffmpeg
 
 from danmakuC.bilibili import proto2ass
 
 
 class DownloaderBilibili(BaseDownloaderPart):
-    COOKIE_DOMAIN = "bilibili.com"  # for load cookies quickly
+    cookie_domain = "bilibili.com"  # for load cookies quickly
     pattern = re.compile(r"^https?://([A-Za-z0-9-]+\.)*(bilibili\.com|b23\.tv)")
 
     def __init__(
@@ -85,7 +85,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                                   quality=0, image=False, subtitle=False, dm=False, only_audio=False, codec: str = ''):
         """
         下载合集或视频列表
-
+        :cli: short: col
         :param url: 合集或视频列表详情页url
         :param path: 保存路径
         :param quality:
@@ -117,7 +117,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                          dm=False, only_audio=False, codec: str = ''):
         """
         下载收藏夹内的视频
-
+        :cli: short: fav
         :param url_or_fid: 收藏夹url或收藏夹id
         :param path: 保存路径
         :param num: 下载数量
@@ -175,7 +175,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                        quality=0, series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
         下载分区视频
-
+        :cli: short: cate
         :param cate_name: 分区名称
         :param path: 保存路径
         :param num: 下载数量
@@ -231,7 +231,8 @@ class DownloaderBilibili(BaseDownloaderPart):
             self, url_or_mid: str, path=Path('.'), num=10, order='pubdate', keyword='', quality=0,
             series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
-
+        下载up主视频
+        :cli: short: up
         :param url_or_mid: b站用户空间页面url 或b站用户id，在空间页面的url中可以找到
         :param path: 保存路径
         :param num: 下载总数
@@ -281,7 +282,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                          dm=False, only_audio=False, p_range: Sequence[int] = None, codec: str = ''):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
-
+        :cli: short: s
         :param url: 系列中任意一个视频的url
         :param path: 保存路径
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
@@ -315,7 +316,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                         codec: str = '', time_range: Tuple[int, int] = None, video_info: api.VideoInfo = None):
         """
         下载单个视频
-
+        :cli: short: v
         :param url: 视频的url
         :param path: 保存路径
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
@@ -448,7 +449,8 @@ class DownloaderBilibili(BaseDownloaderPart):
 
     async def get_dm(self, url, path=Path('.'), update=False, convert_func=None, video_info=None):
         """
-
+        下载视频的弹幕
+        :cli: short: dm
         :param url: 视频url
         :param path: 保存路径
         :param update: 是否更新覆盖之前下载的弹幕文件
@@ -485,8 +487,8 @@ class DownloaderBilibili(BaseDownloaderPart):
 
     async def get_subtitle(self, url, path=Path('.'), convert_func=json2srt, video_info=None):
         """
-        获取某个视频的字幕文件
-
+        下载视频的字幕文件
+        :cli: short: sub
         :param url: 视频url
         :param path: 字幕文件保存路径
         :param convert_func: function used to convert original subtitle text
@@ -513,22 +515,13 @@ class DownloaderBilibili(BaseDownloaderPart):
         return paths
 
     @classmethod
+    @auto_assemble
     def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
         if cls.pattern.match(keys[0]) or method == 'cate' or method == 'get_cate':
-            if method == 'auto' or method == 'a':
+            if method in {'auto', 'a'}:
                 m = cls.parse_url(keys[0])
-            elif method == 'get_series' or method == 's':
-                m = cls.get_series
-            elif method == 'get_video' or method == 'v':
-                m = cls.get_video
-            elif method == 'get_up' or method == 'up':
-                m = cls.get_up
-            elif method == 'get_cate' or method == 'cate':
-                m = cls.get_cate
-            elif method == 'get_favour' or method == 'fav':
-                m = cls.get_favour
-            elif method == 'get_collect' or method == 'col':
-                m = cls.get_collect_or_list
+            elif method in cls._cli_map:
+                m = cls._cli_map[method]
             else:
                 raise HandleMethodError(cls, method=method)
             d = cls(sess_data=options['cookie'], **kwargs_filter(cls, options))

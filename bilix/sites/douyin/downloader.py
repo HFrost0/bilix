@@ -1,12 +1,11 @@
 import asyncio
 import re
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Union
 import httpx
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title
-from bilix.exception import HandleMethodError
 
 
 class DownloaderDouyin(BaseDownloaderPart):
@@ -35,18 +34,16 @@ class DownloaderDouyin(BaseDownloaderPart):
         )
 
     async def get_video(self, url: str, path=Path('.'), image=False):
+        """
+        :cli: short: v
+        :param url:
+        :param path:
+        :param image:
+        :return:
+        """
         video_info = await api.get_video_info(self.client, url)
         title = legal_title(video_info.author_name, video_info.title)
         cors = [self.get_file(video_info.nwm_urls, path=path / f"{title}.mp4")]
         if image:
             cors.append(self.get_static(video_info.cover, path / title))
         await asyncio.gather(*cors)
-
-    @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if cls.pattern.match(keys[0]):
-            if method == 'v' or method == 'get_video':
-                m = cls.get_video
-            else:
-                raise HandleMethodError(cls, method)
-            return cls, m

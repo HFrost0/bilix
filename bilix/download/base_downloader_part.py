@@ -18,6 +18,8 @@ __all__ = ['BaseDownloaderPart']
 
 
 class BaseDownloaderPart(BaseDownloader):
+    """Base Async http Content-Range Downloader"""
+
     def __init__(
             self,
             *,
@@ -30,7 +32,6 @@ class BaseDownloaderPart(BaseDownloader):
             # unique params
             part_concurrency: int = 10,
     ):
-        """Base Async http Content-Range Downloader"""
         super(BaseDownloaderPart, self).__init__(
             client=client,
             browser=browser,
@@ -148,7 +149,8 @@ class BaseDownloaderPart(BaseDownloader):
 
     async def get_file(self, url_or_urls: Union[str, Iterable[str]], path: Union[Path, str], task_id=None) -> Path:
         """
-
+        download file by http content-range
+        :cli: short: f
         :param url_or_urls: file url or urls with backups
         :param path: file path or dir path, if dir path, filename will be extracted from url
         :param task_id: if not provided, a new progress task will be created
@@ -227,8 +229,3 @@ class BaseDownloaderPart(BaseDownloader):
         else:
             raise Exception(f"STREAM 超过重复次数 {part_path.name}")
         return part_path
-
-    @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if method == 'f' or method == 'get_file':
-            return cls, cls.get_file

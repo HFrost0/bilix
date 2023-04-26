@@ -5,7 +5,6 @@ from typing import Union, Tuple
 import httpx
 from . import api
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
-from bilix.exception import HandleMethodError
 
 
 class DownloaderJable(BaseDownloaderM3u8):
@@ -41,7 +40,8 @@ class DownloaderJable(BaseDownloaderM3u8):
 
     async def get_model(self, url: str, path=Path("."), image=True):
         """
-
+        download videos of a model
+        :cli: short: m
         :param url: model page url
         :param path: save path
         :param image: download cover
@@ -54,6 +54,14 @@ class DownloaderJable(BaseDownloaderM3u8):
         await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
 
     async def get_video(self, url: str, path=Path("."), image=True, time_range: Tuple[int, int] = None):
+        """
+        :cli: short: v
+        :param url:
+        :param path:
+        :param image:
+        :param time_range:
+        :return:
+        """
         video_info = await api.get_video_info(self.client, url)
         if self.hierarchy:
             path /= f"{video_info.avid} {video_info.model_name}"
@@ -63,14 +71,3 @@ class DownloaderJable(BaseDownloaderM3u8):
         if image:
             cors.append(self.get_static(video_info.img_url, path=path / video_info.title, ))
         await asyncio.gather(*cors)
-
-    @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if cls.pattern.match(keys[0]):
-            if method == 'get_video' or method == 'v':
-                m = cls.get_video
-            elif method == 'get_model' or method == 'm':
-                m = cls.get_model
-            else:
-                raise HandleMethodError(DownloaderJable, method)
-            return cls, m

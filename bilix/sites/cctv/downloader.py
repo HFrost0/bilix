@@ -1,14 +1,16 @@
 import asyncio
+import re
 from pathlib import Path
 from typing import Union, Tuple
 import httpx
 
 from . import api
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
-from bilix.exception import HandleMethodError
 
 
 class DownloaderCctv(BaseDownloaderM3u8):
+    pattern = re.compile(r'https?://(?:tv\.cctv\.com|tv\.cctv\.cn)/?[?/](?:pid=)?(\d+)(?:&vid=(\d+))?(?:&v=(\d+))?')
+
     def __init__(
             self,
             *,
@@ -36,7 +38,14 @@ class DownloaderCctv(BaseDownloaderM3u8):
         )
         self.hierarchy = hierarchy
 
-    async def get_series(self, url: str, path=Path('.'), quality=0):
+    async def get_series(self, url: str, path=Path('.'), quality: int = 0):
+        """
+        :cli: short: s
+        :param url:
+        :param path:
+        :param quality:
+        :return:
+        """
         pid, vide, vida = await api.get_id(self.client, url)
         if vida is None:  # 单个视频
             await self.get_video(pid, quality=quality)
@@ -47,7 +56,15 @@ class DownloaderCctv(BaseDownloaderM3u8):
                 path.mkdir(parents=True, exist_ok=True)
             await asyncio.gather(*[self.get_video(pid, path, quality) for pid in pids])
 
-    async def get_video(self, url_or_pid: str, path=Path('.'), quality=0, time_range: Tuple[int, int] = None):
+    async def get_video(self, url_or_pid: str, path=Path('.'), quality: int = 0, time_range: Tuple[int, int] = None):
+        """
+        :cli: short: v
+        :param url_or_pid:
+        :param path:
+        :param quality:
+        :param time_range:
+        :return:
+        """
         if url_or_pid.startswith('http'):
             pid, _, _ = await api.get_id(self.client, url_or_pid)
         else:
@@ -56,14 +73,3 @@ class DownloaderCctv(BaseDownloaderM3u8):
         m3u8_url = m3u8_urls[min(quality, len(m3u8_urls) - 1)]
         file_path = await self.get_m3u8_video(m3u8_url, path / f"{title}.mp4", time_range=time_range)
         return file_path
-
-    @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if 'cctv' in keys[0]:
-            if method == 's' or method == 'get_series':
-                m = cls.get_series
-            elif method == 'v' or method == 'get_video':
-                m = cls.get_video
-            else:
-                raise HandleMethodError(cls, method)
-            return cls, m

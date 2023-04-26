@@ -7,7 +7,7 @@ from typing import Sequence, Union, Tuple
 from . import api
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
-from bilix.exception import HandleMethodError, APIError
+from bilix.exception import APIError
 
 
 class DownloaderYinghuacd(BaseDownloaderM3u8):
@@ -46,6 +46,13 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         return content
 
     async def get_series(self, url: str, path=Path("."), p_range: Sequence[int] = None):
+        """
+        :cli: short: s
+        :param url:
+        :param path:
+        :param p_range:
+        :return:
+        """
         video_info = await api.get_video_info(self.api_client, url)
         if self.hierarchy:
             path /= video_info.title
@@ -57,6 +64,14 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, path=Path('.'), time_range=None, video_info=None):
+        """
+        :cli: short: v
+        :param url:
+        :param path:
+        :param time_range:
+        :param video_info:
+        :return:
+        """
         if video_info is None:
             try:
                 video_info = await api.get_video_info(self.api_client, url)
@@ -68,12 +83,5 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.mp4', time_range=time_range)
 
     @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if 'yinghuacd' in keys[0]:
-            if method == 'get_series' or method == 's':
-                m = cls.get_series
-            elif method == 'get_video' or method == 'v':
-                m = cls.get_video
-            else:
-                raise HandleMethodError(cls, method)
-            return cls, m
+    def _decide_handle(cls, method: str, keys: Tuple[str, ...], options: dict):
+        return 'yinghuacd' in keys[0]

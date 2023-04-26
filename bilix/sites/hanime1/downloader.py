@@ -6,10 +6,11 @@ import httpx
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
-from bilix.exception import HandleMethodError
 
 
 class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
+    pattern = re.compile(r"^https?://([A-Za-z0-9-]+\.)*(hanime1\.me)")
+
     def __init__(
             self,
             *,
@@ -35,6 +36,14 @@ class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
         )
 
     async def get_video(self, url: str, path=Path('.'), image=False, time_range: Tuple[int, int] = None):
+        """
+        :cli: short: v
+        :param url:
+        :param path:
+        :param image:
+        :param time_range:
+        :return:
+        """
         video_info = await api.get_video_info(self.client, url)
         video_url = video_info.video_url
         cors = [
@@ -44,10 +53,3 @@ class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
         if image:
             cors.append(self.get_static(video_info.img_url, path=path / video_info.title))
         await asyncio.gather(*cors)
-
-    @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if 'hanime1.me' in keys[0]:
-            if method == 'get_video' or method == 'v':
-                return cls, cls.get_video
-            raise HandleMethodError(cls, method)

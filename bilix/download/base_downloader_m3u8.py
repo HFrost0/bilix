@@ -19,6 +19,8 @@ __all__ = ['BaseDownloaderM3u8']
 
 
 class BaseDownloaderM3u8(BaseDownloader):
+    """Base Async http m3u8 Downloader"""
+
     def __init__(
             self,
             *,
@@ -32,7 +34,6 @@ class BaseDownloaderM3u8(BaseDownloader):
             part_concurrency: int = 10,
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
     ):
-        """Base async m3u8 Downloader"""
         super(BaseDownloaderM3u8, self).__init__(
             client=client,
             browser=browser,
@@ -73,7 +74,8 @@ class BaseDownloaderM3u8(BaseDownloader):
 
     async def get_m3u8_video(self, m3u8_url: str, path: Union[str, Path], time_range: Tuple[int, int] = None) -> Path:
         """
-
+        download video from m3u8 url
+        :cli: short: m3u8
         :param m3u8_url:
         :param path: file path or file dir, if dir, filename will be set according to m3u8_url
         :param time_range: (start, end) in seconds, if provided, only download the clip and add start-end to filename
@@ -154,7 +156,8 @@ class BaseDownloaderM3u8(BaseDownloader):
                     async with self.client.stream("GET", seg_url,
                                                   follow_redirects=True) as r, self._stream_context(times):
                         r.raise_for_status()
-                        if 'content-length' in r.headers:  # pre-update total if content-length is provided
+                        # pre-update total if content-length is provided and first time to get content
+                        if 'content-length' in r.headers and not content:
                             await self._update_task_total(
                                 task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
                         async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
@@ -179,8 +182,3 @@ class BaseDownloaderM3u8(BaseDownloader):
     def _after_seg(self, seg: Segment, content: bytearray) -> bytearray:
         """hook for subclass to modify segment content, happened before decrypt"""
         return content
-
-    @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if method == 'm3u8':
-            return cls, cls.get_m3u8_video

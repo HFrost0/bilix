@@ -5,7 +5,6 @@ from typing import Sequence, Union, Tuple
 from . import api
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
-from bilix.exception import HandleMethodError
 
 
 class DownloaderYhdmp(BaseDownloaderM3u8):
@@ -38,6 +37,13 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         self.hierarchy = hierarchy
 
     async def get_series(self, url: str, path=Path('.'), p_range: Sequence[int] = None):
+        """
+        :cli: short: s
+        :param url:
+        :param path:
+        :param p_range:
+        :return:
+        """
         video_info = await api.get_video_info(self.api_client, url)
         ep_idx = video_info.ep_idx
         play_idx = video_info.play_idx
@@ -63,15 +69,17 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, path=Path('.'), time_range=None):
+        """
+        :cli: short: v
+        :param url:
+        :param path:
+        :param time_range:
+        :return:
+        """
         video_info = await api.get_video_info(self.api_client, url)
         name = legal_title(video_info.title, video_info.sub_title)
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.mp4', time_range=time_range)
 
     @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if 'yhdmp' in keys[0]:
-            if method == 'get_series' or method == 's':
-                return cls, cls.get_series
-            elif method == 'get_video' or method == 'v':
-                return cls, cls.get_video
-            raise HandleMethodError(cls, method)
+    def _decide_handle(cls, method: str, keys: Tuple[str, ...], options: dict) -> bool:
+        return 'yhdmp' in keys[0]

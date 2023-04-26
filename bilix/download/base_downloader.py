@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import re
 import time
 from functools import wraps
 from typing import Union, Optional, Tuple
@@ -8,10 +9,13 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import aiofiles
 import httpx
+
+from bilix.cli.assign import auto_assemble
 from bilix.log import logger as dft_logger
 from bilix.download.utils import req_retry, path_check
 from bilix.progress.abc import Progress
 from bilix.progress.cli_progress import CLIProgress
+from bilix.exception import HandleMethodError
 from pathlib import Path, PurePath
 
 __all__ = ['BaseDownloader']
@@ -19,13 +23,42 @@ __all__ = ['BaseDownloader']
 
 class BaseDownloaderMeta(type):
     def __new__(cls, name, bases, dct):
-        for attr_name, attr_value in dct.items():
-            # check if attr is a non-private coroutine function
-            if not attr_name.startswith('__') and asyncio.iscoroutinefunction(attr_value):
-                # function has path argument
-                if 'path' in (sig := inspect.signature(attr_value)).parameters:
-                    dct[attr_name] = cls.ensure_path(attr_value, sig)
+        dct['_cli_info'] = {}
+        dct['_cli_map'] = {}
+        for method_name, method in dct.items():
+            if not method_name.startswith('_') and asyncio.iscoroutinefunction(method):
+                if 'path' in (sig := inspect.signature(method)).parameters:
+                    dct[method_name] = cls.ensure_path(method, sig)
+
+                if cls.check_unique_method(method, bases):
+                    cli_info = cls.parse_cli_doc(method)
+                    if cli_info:
+                        dct['_cli_info'][method] = cli_info
+                        dct['_cli_map'][method_name] = method
+                        if cli_info['short']:
+                            dct['_cli_map'][cli_info['short']] = method
+
         return super().__new__(cls, name, bases, dct)
+
+    @staticmethod
+    def check_unique_method(method_name: str, bases: Tuple[type, ...]):
+        for base in bases:
+            if method_name in base.__dict__:
+                return False
+        return True
+
+    @staticmethod
+    def parse_cli_doc(func) -> Optional[dict]:
+        docstring = func.__doc__
+        if not docstring or ':cli:' not in docstring:
+            return
+        params_matches = re.findall(r":param (\w+): (.+)", docstring)
+        params = {param: description for param, description in params_matches}
+
+        cli_short_match = re.search(r":cli: short: (\w+)", docstring)
+        short_name = cli_short_match.group(1) if cli_short_match else None
+
+        return {"short": short_name, "params": params}
 
     @staticmethod
     def ensure_path(func, sig):
@@ -46,7 +79,10 @@ class BaseDownloaderMeta(type):
 
 
 class BaseDownloader(metaclass=BaseDownloaderMeta):
-    COOKIE_DOMAIN: str = ""
+    pattern: re.Pattern = None
+    cookie_domain: str = ""
+    _cli_info: dict
+    _cli_map: dict
 
     def __init__(
             self,
@@ -149,14 +185,11 @@ class BaseDownloader(metaclass=BaseDownloaderMeta):
         """current activate network stream number"""
         return self._stream_num
 
-    LIMIT_BOUND: float = 1e5
-    DELAY_SLOPE: float = 0.1
-
     @property
     def chunk_size(self) -> Optional[int]:
-        if self.speed_limit and self.speed_limit < self.LIMIT_BOUND:
+        if self.speed_limit and self.speed_limit < 1e5:  # 1e5 limit bound
             # only restrict chunk_size when speed_limit is too low
-            return int(self.speed_limit * self.DELAY_SLOPE)
+            return int(self.speed_limit * 0.1)  # 0.1 delay slope
         # default to None setup
         return None
 
@@ -172,12 +205,26 @@ class BaseDownloader(metaclass=BaseDownloaderMeta):
             a = time.time()
             import browser_cookie3
             f = getattr(browser_cookie3, browser.lower())
-            self.logger.debug(f"trying to load cookies from {browser}: {self.COOKIE_DOMAIN}, may need auth")
-            self.client.cookies.update(f(domain_name=self.COOKIE_DOMAIN))
+            self.logger.debug(f"trying to load cookies from {browser}: {self.cookie_domain}, may need auth")
+            self.client.cookies.update(f(domain_name=self.cookie_domain))
             self.logger.debug(f"load complete, consumed time: {time.time() - a} s")
         except AttributeError:
             raise AttributeError(f"Invalid Browser {browser}")
 
     @classmethod
+    def _decide_handle(cls, method: str, keys: Tuple[str, ...], options: dict) -> bool:
+        """check if the cls can be handled by this downloader"""
+        if cls.pattern:
+            return cls.pattern.match(keys[0]) is not None
+        else:
+            return method in cls._cli_map
+
+    @classmethod
+    @auto_assemble
     def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        return NotImplemented
+        if cls._decide_handle(method, keys, options):
+            try:
+                method = cls._cli_map[method]
+            except KeyError:
+                raise HandleMethodError(cls, method)
+            return cls, method
