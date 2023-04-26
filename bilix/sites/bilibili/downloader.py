@@ -369,16 +369,25 @@ class DownloaderBilibili(BaseDownloaderPart):
                     else:
                         self.logger.warning(f"No audio for {task_name}")
                     # convert to coroutines
-                    for t in tmp:
-                        if not time_range:
-                            media_cors.append(self.get_file(t[0].urls, path=t[1], task_id=task_id))
-                        else:
-                            media_cors.append(self.get_media_clip(
-                                url_or_urls=t[0].urls, path=t[1],
-                                time_range=time_range,
-                                init_range=t[0].segment_base['initialization'],
-                                seg_range=t[0].segment_base['index_range'],
-                                task_id=task_id))
+                    if not time_range:
+                        media_cors.extend(self.get_file(t[0].urls, path=t[1], task_id=task_id) for t in tmp)
+                    else:
+                        if len(tmp) > 0:
+                            fut = asyncio.Future()  # to fix key frame
+                            v = tmp[0]
+                            media_cors.append(self.get_media_clip(v[0].urls, v[1], time_range,
+                                                                  init_range=v[0].segment_base['initialization'],
+                                                                  seg_range=v[0].segment_base['index_range'],
+                                                                  set_s=fut,
+                                                                  task_id=task_id))
+                        if len(tmp) > 1:  # with audio
+                            a = tmp[1]
+                            media_cors.append(self.get_media_clip(a[0].urls, a[1], time_range,
+                                                                  init_range=a[0].segment_base['initialization'],
+                                                                  seg_range=a[0].segment_base['index_range'],
+                                                                  get_s=fut,
+                                                                  task_id=task_id))
+
             elif video_info.other:
                 self.logger.warning(
                     f"{task_name} 未解析到dash资源，转入durl mp4/flv下载（不需要会员的电影/番剧预览，不支持dash的视频）")

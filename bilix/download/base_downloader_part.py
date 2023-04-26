@@ -63,6 +63,8 @@ class BaseDownloaderPart(BaseDownloader):
             time_range: Tuple[int, int],
             init_range: str,
             seg_range: str,
+            get_s: asyncio.Future = None,
+            set_s: asyncio.Future = None,
             task_id=None,
     ):
         """
@@ -72,6 +74,8 @@ class BaseDownloaderPart(BaseDownloader):
         :param time_range: (start_time, end_time)
         :param init_range: xxx-xxx
         :param seg_range: xxx-xxx
+        :param get_s:
+        :param set_s:
         :param task_id:
         :return:
         """
@@ -89,7 +93,11 @@ class BaseDownloaderPart(BaseDownloader):
                               headers={'Range': f'bytes={seg_start}-{seg_end}'})
         container = Box.parse(res.content)
         assert container.type == b'sidx'
-        start_time, end_time = time_range
+        if get_s:
+            start_time = await get_s
+            end_time = time_range[1]
+        else:
+            start_time, end_time = time_range
         pre_time, pre_byte = 0, seg_end + 1
         inside = False
         parts = [(init_start, init_end)]
@@ -112,7 +120,8 @@ class BaseDownloaderPart(BaseDownloader):
             pre_byte += ref.referenced_size
         if len(parts) == 1:
             raise Exception(f"time range <{start_time}-{end_time}> invalid for <{path.name}>")
-
+        if set_s:
+            set_s.set_result(start_time - s)
         if task_id is not None:
             await self.progress.update(
                 task_id,
@@ -128,7 +137,10 @@ class BaseDownloaderPart(BaseDownloader):
         file_list = await asyncio.gather(*[get_seg(part_range) for part_range in parts])
         path_tmp = path.with_name(str(uuid.uuid4()))
         await merge_files(file_list, path_tmp)
-        await ffmpeg.time_range_clip(path_tmp, start=s, t=end_time - start_time, output_path=path)
+        if set_s:
+            await ffmpeg.time_range_clip(path_tmp, start=0, t=end_time - start_time + s, output_path=path)
+        else:
+            await ffmpeg.time_range_clip(path_tmp, start=s, t=end_time - start_time, output_path=path)
         if not upper:  # no upstream task
             await self.progress.update(task_id, visible=False)
             self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
