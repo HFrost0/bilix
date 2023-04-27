@@ -35,6 +35,37 @@ Submissions, anime, TV Series, video clip, audio, favourite, danmaku ,cover...
 
 Extensible Python module suitable for more download scenarios.
 
+## Install
+
+```shell
+pip install bilix
+```
+
+## Usage Example
+
+* If you prefer to use command line interface (cli)
+
+```shell
+bilix v 'url'
+```
+
+> `v` is a method short alias for `get_video`
+
+* If you prefer to code with python
+
+```python
+from bilix.sites.bilibili import DownloaderBilibili
+import asyncio
+
+
+async def main():
+    async with DownloaderBilibili() as d:
+        await d.get_video('url')
+
+
+asyncio.run(main())
+```
+
 ## Community
 
 If you find any bugs or other issues, feel free to raise an [Issue](https://github.com/HFrost0/bilix/issues).
