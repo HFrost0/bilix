@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Union, List
 import httpx
 from bs4 import BeautifulSoup
-from bilix.download.utils import req_retry, api
+from bilix.download.utils import req_retry, raise_api_error
 
 BASE_URL = "http://www.yinghuacd.com"
 dft_client_settings = {
@@ -19,7 +19,7 @@ class VideoInfo(BaseModel):
     m3u8_url: str
 
 
-@api
+@raise_api_error
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     # request
     res = await req_retry(client, url)

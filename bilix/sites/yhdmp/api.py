@@ -9,7 +9,7 @@ import httpx
 import execjs
 from bs4 import BeautifulSoup
 from bilix.utils import legal_title
-from bilix.download.utils import req_retry as rr, api
+from bilix.download.utils import req_retry as rr, raise_api_error
 
 BASE_URL = "https://www.yhdmp.cc"
 dft_client_settings = {
@@ -62,7 +62,7 @@ class VideoInfo(BaseModel):
     m3u8_url: str
 
 
-@api
+@raise_api_error
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     aid, play_idx, ep_idx = url.split('/')[-1].split('.')[0].split('-')
     play_idx, ep_idx = int(play_idx), int(ep_idx)
@@ -86,7 +86,7 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     return video_info
 
 
-@api
+@raise_api_error
 async def get_m3u8_url(client: httpx.AsyncClient, url):
     aid, play_idx, ep_idx = url.split('/')[-1].split('.')[0].split('-')
     params = {"aid": aid, "playindex": play_idx, "epindex": ep_idx, "r": random.random()}

@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 import httpx
 from bilix.utils import legal_title
-from bilix.download.utils import req_retry, api
+from bilix.download.utils import req_retry, raise_api_error
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://hanime1.me"
@@ -21,7 +21,7 @@ class VideoInfo(BaseModel):
     img_url: str
 
 
-@api
+@raise_api_error
 async def get_video_info(client: httpx.AsyncClient, url_or_avid: str) -> VideoInfo:
     if url_or_avid.startswith('http'):
         url = url_or_avid

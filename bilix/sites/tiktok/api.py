@@ -11,7 +11,7 @@ from typing import List
 import httpx
 from pydantic import BaseModel
 from bilix.utils import legal_title
-from bilix.download.utils import req_retry, api
+from bilix.download.utils import req_retry, raise_api_error
 
 dft_client_settings = {
     'headers': {'user-agent': 'com.ss.android.ugc.trill/494+Mozilla/5.0+(Linux;+Android+12;'
@@ -31,7 +31,7 @@ class VideoInfo(BaseModel):
     origin_cover: str
 
 
-@api
+@raise_api_error
 async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     if short_url := re.findall(r'https://www.tiktok.com/t/\w+/', url):
         res = await req_retry(client, short_url[0], follow_redirects=True)

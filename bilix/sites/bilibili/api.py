@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, validator
 from typing import Union, List, Tuple, Dict, Optional
 import json5
 from danmakuC.bilibili import parse_view
-from bilix.download.utils import req_retry, api
+from bilix.download.utils import req_retry, raise_api_error
 from bilix.utils import legal_title
 from bilix.exception import APIError, APIResourceError, APIUnsupportedError
 
@@ -17,8 +17,8 @@ dft_client_settings = {
 }
 
 
-@api
-async def get_cate_meta(client: httpx.AsyncClient) -> dict:
+@raise_api_error
+async def get_cate_meta(client: httpx.AsyncClient()) -> dict:
     """
     获取b站分区元数据
 
@@ -37,7 +37,7 @@ async def get_cate_meta(client: httpx.AsyncClient) -> dict:
     return cate_info
 
 
-@api
+@raise_api_error
 async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     """
     获取视频列表信息
@@ -63,7 +63,7 @@ async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     return list_name, up_name, bvids
 
 
-@api
+@raise_api_error
 async def get_collect_info(client: httpx.AsyncClient, url_or_sid: str):
     """
     获取合集信息
@@ -83,7 +83,7 @@ async def get_collect_info(client: httpx.AsyncClient, url_or_sid: str):
     return col_name, up_name, bvids
 
 
-@api
+@raise_api_error
 async def get_favour_page_info(client: httpx.AsyncClient, url_or_fid: str, pn=1, ps=20, keyword=''):
     """
     获取收藏夹信息（分页）
@@ -108,7 +108,7 @@ async def get_favour_page_info(client: httpx.AsyncClient, url_or_fid: str, pn=1,
     return fav_name, up_name, total_size, bvids
 
 
-@api
+@raise_api_error
 async def get_cate_page_info(client: httpx.AsyncClient, cate_id, time_from, time_to, pn=1, ps=30,
                              order='click', keyword=''):
     """
@@ -132,7 +132,7 @@ async def get_cate_page_info(client: httpx.AsyncClient, cate_id, time_from, time
     return bvids
 
 
-@api
+@raise_api_error
 async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order='pubdate', keyword=''):
     """
     获取up主信息
@@ -355,14 +355,14 @@ class VideoInfo(BaseModel):
         return video_info
 
 
-@api
+@raise_api_error
 async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
     res = await req_retry(client, url, follow_redirects=True)
     video_info = VideoInfo.parse_html(url, res.text)
     return video_info
 
 
-@api
+@raise_api_error
 async def get_subtitle_info(client: httpx.AsyncClient, bvid, cid):
     params = {'bvid': bvid, 'cid': cid}
     res = await req_retry(client, 'https://api.bilibili.com/x/player/v2', params=params)
@@ -372,7 +372,7 @@ async def get_subtitle_info(client: httpx.AsyncClient, bvid, cid):
     return [[f'http:{i["subtitle_url"]}', i['lan_doc']] for i in info['data']['subtitle']['subtitles']]
 
 
-@api
+@raise_api_error
 async def get_dm_urls(client: httpx.AsyncClient, aid, cid) -> List[str]:
     params = {'oid': cid, 'pid': aid, 'type': 1}
     res = await req_retry(client, f'https://api.bilibili.com/x/v2/dm/web/view', params=params)

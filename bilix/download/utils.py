@@ -81,7 +81,7 @@ def path_check(path: Path, retry: int = 100) -> Tuple[bool, Path]:
     raise OSError(f"filename too long for os {path.name}")
 
 
-def api(func):
+def raise_api_error(func):
     """Decorator to catch exceptions except APIError and HTTPError and raise APIParseError"""
 
     @wraps(func)

@@ -6,7 +6,7 @@ from typing import Sequence, Tuple
 import httpx
 import m3u8
 
-from bilix.download.utils import req_retry, api
+from bilix.download.utils import req_retry, raise_api_error
 from bilix.utils import legal_title
 
 dft_client_settings = {
@@ -15,7 +15,7 @@ dft_client_settings = {
 }
 
 
-@api
+@raise_api_error
 async def get_id(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str]:
     res_web = await req_retry(client, url)
     pid = re.findall(r'guid ?= ?"(\w+)"', res_web.text)[0]
@@ -27,7 +27,7 @@ async def get_id(client: httpx.AsyncClient, url: str) -> Tuple[str, str, str]:
     return pid, vide, vida
 
 
-@api
+@raise_api_error
 async def get_media_info(client: httpx.AsyncClient, pid: str) -> Tuple[str, Sequence[str]]:
     """
 
@@ -49,7 +49,7 @@ async def get_media_info(client: httpx.AsyncClient, pid: str) -> Tuple[str, Sequ
     return title, m3u8_urls
 
 
-@api
+@raise_api_error
 async def get_series_info(client: httpx.AsyncClient, vide: str, vida: str) -> Tuple[str, Sequence[str]]:
     """
 
