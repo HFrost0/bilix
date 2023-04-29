@@ -37,7 +37,7 @@ async def combine(path_lst: List[Path], output_path: Path, remove=True):
 
 async def time_range_clip(input_path: Path, start: int, t: int, output_path: Path, remove=True):
     # for flac, use -strict -2
-    cmd = ['ffmpeg', '-ss', str(start), '-t', str(t), '-i', str(input_path), '-codec', 'copy', '-strict', '-2',
+    cmd = ['ffmpeg', '-ss', f'{start:.1f}', '-t', f'{t:.1f}', '-i', str(input_path), '-codec', 'copy', '-strict', '-2',
            '-loglevel', 'quiet', '-f', 'mp4', str(output_path)]
     # print(' '.join(map(lambda x: f'"{x}"', cmd)))
     await run_process(cmd)
