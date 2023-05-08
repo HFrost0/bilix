@@ -42,7 +42,7 @@ class BaseDownloaderPart(BaseDownloader):
         )
         self.part_concurrency = part_concurrency
 
-    async def _pre_req(self, urls: List[Union[str, httpx.URL]]) -> Tuple[int, str]:
+    async def _pre_req(self, urls: List[str]) -> Tuple[int, str]:
         # use GET instead of HEAD due to 404 bug https://github.com/HFrost0/bilix/issues/16
         res = await req_retry(self.client, urls[0], follow_redirects=True, headers={'Range': 'bytes=0-1'})
         total = int(res.headers['Content-Range'].split('/')[-1])
@@ -54,7 +54,7 @@ class BaseDownloaderPart(BaseDownloader):
             filename = ''
         # change origin url to redirected position to avoid twice redirect
         if res.history:
-            urls[0] = res.url
+            urls[0] = str(res.url)
         return total, filename
 
     async def get_media_clip(
@@ -196,7 +196,7 @@ class BaseDownloaderPart(BaseDownloader):
             self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
         return path
 
-    async def _get_file_part(self, urls: List[Union[str, httpx.URL]], path: Path, part_range: Tuple[int, int],
+    async def _get_file_part(self, urls: List[str], path: Path, part_range: Tuple[int, int],
                              task_id) -> Path:
         start, end = part_range
         part_path = path.with_name(f'{path.name}.{part_range[0]}-{part_range[1]}')
