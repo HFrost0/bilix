@@ -1,11 +1,12 @@
 import asyncio
 import re
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Union, Tuple, Annotated
 import httpx
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.download.utils import str2path, parse_speed_str
 
 
 class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
@@ -16,7 +17,7 @@ class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: float = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,
@@ -35,7 +36,8 @@ class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
             video_concurrency=video_concurrency,
         )
 
-    async def get_video(self, url: str, path=Path('.'), image=False, time_range: Tuple[int, int] = None):
+    async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'),
+                        image=False, time_range: Tuple[int, int] = None):
         """
         :cli: short: v
         :param url:

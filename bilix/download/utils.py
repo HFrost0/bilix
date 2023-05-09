@@ -2,6 +2,7 @@ import asyncio
 import errno
 import os
 import random
+import re
 from functools import wraps
 from pathlib import Path
 
@@ -10,6 +11,7 @@ import httpx
 from typing import Union, Sequence, Tuple, List
 from bilix.exception import APIError, APIParseError
 from bilix.log import logger
+from bilix.utils import s2t
 
 
 async def merge_files(file_list: List[Path], new_path: Path):
@@ -94,3 +96,26 @@ def raise_api_error(func):
             raise APIParseError(e, func) from e
 
     return wrapped
+
+
+def parse_speed_str(value: str) -> float:
+    """Parse a string byte quantity into float"""
+    units_map = {unit: i for i, unit in enumerate(['', *'KMGTPEZY'])}
+    units_re = '|'.join(units_map.keys())
+    m = re.fullmatch(rf'(?P<num>\d+(?:\.\d+)?)\s*(?P<unit>{units_re})B?', value)
+    if not m:
+        raise ValueError(f"Invalid bytes str {value} to parse to number")
+    num = float(m.group('num'))
+    mult = 1000 ** units_map[m.group('unit')]
+    return num * mult
+
+
+def parse_time_range(value: str) -> Tuple[int, int]:
+    """Parse a time range string into start and end time"""
+    start_time, end_time = map(s2t, value.split('-'))
+    return start_time, end_time
+
+
+def str2path(value: str) -> Path:
+    """convert str to Path, but with type hint"""
+    return Path(value)

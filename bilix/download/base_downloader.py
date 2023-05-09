@@ -3,7 +3,7 @@ import inspect
 import logging
 import time
 from functools import wraps
-from typing import Union, Optional, Callable, Dict
+from typing import Union, Optional, Callable, Dict, Any, Tuple, List, Set
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import aiofiles
@@ -11,8 +11,7 @@ import httpx
 
 from bilix.cli_new.handler import Handler, HandlerMeta
 from bilix.log import logger as dft_logger
-from bilix.download.utils import req_retry, path_check
-from bilix.utils import parse_bytes_str
+from bilix.download.utils import req_retry, path_check, parse_speed_str, str2path
 from bilix.progress.abc import Progress
 from bilix.progress.cli_progress import CLIProgress
 from pathlib import Path, PurePath
@@ -22,66 +21,89 @@ try:
 except ImportError:  # lower than python 3.9
     from typing_extensions import Annotated, get_origin, get_args, get_type_hints
 
-__all__ = ['BaseDownloader']
+
+def is_instance_of_generic_type(value: Any, target_type: Any) -> bool:
+    origin = get_origin(target_type)
+    args = get_args(target_type)
+    if origin is None and args == ():
+        return isinstance(value, target_type)
+    if origin == Union:
+        return any(is_instance_of_generic_type(value, arg) for arg in args)
+    return isinstance(value, origin)
 
 
-def check_annotated(annotated_type) -> Callable:
+def annotated_convertors(annotated_type) -> Callable:
     assert get_origin(annotated_type) is Annotated
     args = get_args(annotated_type)
-    assert len(args) == 2
-    target_type, convertor = args
-    assert inspect.isfunction(convertor), f"{convertor} is not a function"
-    type_hints = get_type_hints(convertor)
-    assert len(type_hints) == (1 if 'return' not in type_hints else 2)
-    return convertor
+    assert len(args) > 1
+    target_type, *convertors = args
+    types = set()
+    for convertor in convertors:
+        assert inspect.isfunction(convertor), f"{convertor} is not a function"
+        sig = inspect.signature(convertor)
+        assert len(sig.parameters) == 1, f"convertor {convertor} must have exactly one parameter"
+        p = list(sig.parameters.values())[0]
+        assert p.annotation != p.empty, f"convertor's parameter must have annotation"
+        assert p.annotation not in types, f"convertor's parameter annotation must be unique"
+        types.add(p.annotation)
+    return target_type, convertors, types
+
+
+def _convert(convertors_map: Dict[Union[int, str], Tuple[Any, List[Callable], Set[Any]]], *args, **kwargs):
+    new_args = list(args)
+
+    for key, (tgt_type, convertors, types) in convertors_map.items():
+        if isinstance(key, str) and key in kwargs and not is_instance_of_generic_type(kwargs[key], tgt_type):
+            source = kwargs
+        elif isinstance(key, int) and key < len(args) and not is_instance_of_generic_type(args[key], tgt_type):
+            source = new_args
+        else:
+            continue
+        # find a convertor that can convert the source arg to target type
+        for convertor, t in zip(convertors, types):
+            if is_instance_of_generic_type(source[key], t):
+                source[key] = convertor(source[key])
+                break
+        else:
+            # no convertor is applied
+            pass
+    return new_args, kwargs
+
+
+def annotated_decorator(func: Callable) -> Callable:
+    sig = inspect.signature(func)
+
+    convertors_map: Dict[Union[int, str], Tuple[Any, List[Callable], List[Any]]] = {}
+    for idx, p in enumerate(sig.parameters.values()):
+        if get_origin(p.annotation) is Annotated:
+            try:
+                target_type, convertors, types = annotated_convertors(p.annotation)
+            except AssertionError:
+                continue
+            convertors_map[idx] = (target_type, convertors, types)  # for args
+            convertors_map[p.name] = (target_type, convertors, types)  # for kwargs
+    if len(convertors_map) == 0:  # if no Annotated, return original func
+        return func
+
+    if inspect.iscoroutinefunction(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            new_args, kwargs = _convert(convertors_map, *args, **kwargs)
+            return await func(*new_args, **kwargs)
+    else:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            new_args, kwargs = _convert(convertors_map, *args, **kwargs)
+            return func(*new_args, **kwargs)
+    return wrapper
 
 
 class BaseDownloaderMeta(HandlerMeta):
     def __new__(cls, name, bases, dct):
         for method_name, method in dct.items():
             if inspect.isfunction(method):
-                dct[method_name] = cls.ensure_path(method)
+                dct[method_name] = annotated_decorator(method)
         return super().__new__(cls, name, bases, dct)
-
-    @staticmethod
-    def ensure_path(func: Callable) -> Callable:
-        def convert(*args, **kwargs):
-            # todo check type hint of convertor
-            new_args = list(args)
-            for i, arg in enumerate(args):
-                if i in convertors:
-                    new_args[i] = convertors[i](arg)
-            for k, v in kwargs.items():
-                if k in convertors:
-                    kwargs[k] = convertors[k](v)
-            return new_args, kwargs
-
-        sig = inspect.signature(func)
-        convertors: Dict[Union[int, str], Callable] = {}
-        for idx, p in enumerate(sig.parameters.values()):
-            if get_origin(p.annotation) is Annotated:
-                convertor = check_annotated(p.annotation)
-                convertors[idx] = convertor  # for args
-                convertors[p.name] = convertor  # for kwargs
-        if len(convertors) == 0:  # if no Annotated, return original func
-            return func
-
-        if inspect.iscoroutinefunction(func):
-            @wraps(func)
-            async def wrapper(*args, **kwargs):
-                new_args, kwargs = convert(*args, **kwargs)
-                return await func(*new_args, **kwargs)
-        else:
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                new_args, kwargs = convert(*args, **kwargs)
-                return func(*new_args, **kwargs)
-        return wrapper
-
-
-def str2path(value: str) -> Path:
-    """convert str to Path, but with type hint"""
-    return Path(value)
 
 
 class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
@@ -92,7 +114,7 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Annotated[float, parse_bytes_str] = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress: Progress = None,
             logger: logging.Logger = None,
@@ -101,7 +123,7 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         :param client: client used for http request
         :param browser: load cookies from which browser
         :param stream_retry: retry times for http stream
-        :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit) or speed str
+        :param speed_limit: global download rate for the downloader. should be a float (Byte/s unit) or str (e.g. 1.5MB)
         :param progress: progress obj used to output download progress
         :param logger: logger obj used to output log
         """
@@ -190,7 +212,7 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         return self._stream_num
 
     @property
-    def chunk_size(self) -> Optional[int]:
+    def _chunk_size(self) -> Optional[int]:
         if self.speed_limit and self.speed_limit < 1e5:  # 1e5 limit bound
             # only restrict chunk_size when speed_limit is too low
             return int(self.speed_limit * 0.1)  # 0.1 delay slope

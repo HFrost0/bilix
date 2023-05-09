@@ -3,7 +3,7 @@ import logging
 import re
 import uuid
 from pathlib import Path, PurePath
-from typing import Tuple, Union
+from typing import Tuple, Union, Annotated
 from urllib.parse import urlparse
 import aiofiles
 import httpx
@@ -12,7 +12,7 @@ import m3u8
 from Crypto.Cipher import AES
 from m3u8 import Segment
 from bilix.download.base_downloader import BaseDownloader
-from bilix.download.utils import path_check
+from bilix.download.utils import path_check, parse_speed_str, str2path, parse_time_range
 from bilix.progress.abc import Progress
 from bilix import ffmpeg
 from .utils import req_retry
@@ -26,7 +26,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: float = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress: Progress = None,
             logger: logging.Logger = None,
@@ -76,13 +76,14 @@ class BaseDownloaderM3u8(BaseDownloader):
             return await self.to_invariant_m3u8(m3u8_info.playlists[0].absolute_uri)
         return m3u8_info
 
-    async def get_m3u8_video(self, m3u8_url: str, path: Union[Path, str], time_range: Tuple[int, int] = None) -> Path:
+    async def get_m3u8_video(self, m3u8_url: str, path: Annotated[Path, str2path],
+                             time_range: Annotated[Tuple[int, int], parse_time_range] = None) -> Path:
         """
         download video from m3u8 url
         :cli: short: m3u8
         :param m3u8_url:
         :param path: file path or file dir, if dir, filename will be set according to m3u8_url
-        :param time_range: (start, end) in seconds, if provided, only download the clip and add start-end to filename
+        :param time_range: tuple (start_time, end_time) or str like 00:01:00-00:01:05 (hour:minute:second)
         :return: downloaded file path
         """
         if path.is_dir():
@@ -164,7 +165,7 @@ class BaseDownloaderM3u8(BaseDownloader):
                         if 'content-length' in r.headers and not content:
                             await self._update_task_total(
                                 task_id, time_part=seg.duration, update_size=int(r.headers['content-length']))
-                        async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
+                        async for chunk in r.aiter_bytes(chunk_size=self._chunk_size):
                             content.extend(chunk)
                             await self.progress.update(task_id, advance=len(chunk))
                             await self._check_speed(len(chunk))

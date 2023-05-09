@@ -1,11 +1,13 @@
 import asyncio
 import re
+import logging
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Union, Tuple, Annotated
 import httpx
-
-from . import api
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.download.utils import parse_speed_str, str2path, parse_time_range
+from bilix.progress.abc import Progress
+from . import api
 
 
 class DownloaderCctv(BaseDownloaderM3u8):
@@ -16,10 +18,10 @@ class DownloaderCctv(BaseDownloaderM3u8):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int] = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
-            progress=None,
-            logger=None,
+            progress: Progress = None,
+            logger: logging.Logger = None,
             part_concurrency: int = 10,
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
             # unique params
@@ -38,12 +40,12 @@ class DownloaderCctv(BaseDownloaderM3u8):
         )
         self.hierarchy = hierarchy
 
-    async def get_series(self, url: str, path=Path('.'), quality: int = 0):
+    async def get_series(self, url: str, path: Annotated[Path, str2path] = Path('.'), quality: int = 0):
         """
         :cli: short: s
         :param url:
         :param path:
-        :param quality:
+        :param quality: 画面质量，越大画面质量越低，超过可选范围时自动选择最低画质
         :return:
         """
         pid, vide, vida = await api.get_id(self.client, url)
@@ -56,13 +58,14 @@ class DownloaderCctv(BaseDownloaderM3u8):
                 path.mkdir(parents=True, exist_ok=True)
             await asyncio.gather(*[self.get_video(pid, path, quality) for pid in pids])
 
-    async def get_video(self, url_or_pid: str, path=Path('.'), quality: int = 0, time_range: Tuple[int, int] = None):
+    async def get_video(self, url_or_pid: str, path: Annotated[Path, str2path] = Path('.'),
+                        quality: int = 0, time_range: Annotated[Tuple[int, int], parse_time_range] = None):
         """
         :cli: short: v
         :param url_or_pid:
         :param path:
-        :param quality:
-        :param time_range:
+        :param quality: 画面质量，越大画面质量越低，超过可选范围时自动选择最低画质
+        :param time_range: 切片的时间范围，例如(10, 20)：从第10秒到第20秒，或字符串如'00:00:10-00:00:20' (hour:minute:second)
         :return:
         """
         if url_or_pid.startswith('http'):

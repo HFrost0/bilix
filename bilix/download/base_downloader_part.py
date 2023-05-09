@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from pathlib import Path, PurePath
 from typing import Union, List, Iterable, Tuple
 from urllib.parse import urlparse
@@ -10,9 +11,9 @@ import os
 import cgi
 from pymp4.parser import Box
 from bilix.download.base_downloader import BaseDownloader, str2path
-from bilix.download.utils import path_check, merge_files
+from bilix.download.utils import path_check, merge_files, parse_speed_str, parse_time_range
+from bilix.progress.abc import Progress
 from bilix import ffmpeg
-from bilix.utils import parse_bytes_str
 from .utils import req_retry
 
 try:
@@ -30,10 +31,10 @@ class BaseDownloaderPart(BaseDownloader):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Annotated[float, parse_bytes_str] = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
-            progress=None,
-            logger=None,
+            progress: Progress = None,
+            logger: logging.Logger = None,
             # unique params
             part_concurrency: int = 10,
     ):
@@ -69,7 +70,7 @@ class BaseDownloaderPart(BaseDownloader):
             self,
             url_or_urls: Union[str, Iterable[str]],
             path: Annotated[Path, str2path],
-            time_range: Tuple[int, int],
+            time_range: Annotated[Tuple[int, int], parse_time_range],
             init_range: str,
             seg_range: str,
             get_s: asyncio.Future = None,
@@ -80,11 +81,11 @@ class BaseDownloaderPart(BaseDownloader):
 
         :param url_or_urls:
         :param path:
-        :param time_range: (start_time, end_time)
-        :param init_range: xxx-xxx
-        :param seg_range: xxx-xxx
-        :param get_s:
-        :param set_s:
+        :param time_range: tuple (start_time, end_time) or str like 00:01:00-00:01:05 (hour:minute:second)
+        :param init_range: init byte range, should be like xxx-xxx
+        :param seg_range: segment byte range, should be like xxx-xxx
+        :param get_s: Future to adjust start time
+        :param set_s: Future to set start time for other get_media_clip task (e.g. video audio merge)
         :param task_id:
         :return:
         """
@@ -232,7 +233,7 @@ class BaseDownloaderPart(BaseDownloader):
                     r.raise_for_status()
                     if r.history:  # avoid twice redirect
                         urls[url_idx] = r.url
-                    async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
+                    async for chunk in r.aiter_bytes(chunk_size=self._chunk_size):
                         await f.write(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
                         await self._check_speed(len(chunk))

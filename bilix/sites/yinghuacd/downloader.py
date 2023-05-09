@@ -3,11 +3,12 @@ from pathlib import Path
 import httpx
 import re
 from m3u8 import Segment
-from typing import Sequence, Union, Tuple
+from typing import Union, Tuple, Annotated
 from . import api
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
 from bilix.exception import APIError
+from bilix.download.utils import parse_speed_str, str2path
 
 
 class DownloaderYinghuacd(BaseDownloaderM3u8):
@@ -17,7 +18,7 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             stream_client: httpx.AsyncClient = None,
             api_client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int] = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,
@@ -45,7 +46,8 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             _, _, content = content.partition(b'\x47\x40')
         return content
 
-    async def get_series(self, url: str, path=Path("."), p_range: Sequence[int] = None):
+    async def get_series(self, url: str, path: Annotated[Path, str2path] = Path("."),
+                         p_range: Tuple[int, int] = None):
         """
         :cli: short: s
         :param url:
@@ -63,7 +65,8 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path=Path('.'), time_range=None, video_info=None):
+    async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'),
+                        time_range: Tuple[int, int] = None, video_info=None):
         """
         :cli: short: v
         :param url:

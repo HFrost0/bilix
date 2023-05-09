@@ -1,10 +1,11 @@
 import asyncio
 from pathlib import Path
 import httpx
-from typing import Sequence, Union, Tuple
+from typing import Union, Tuple, Annotated
 from . import api
 from bilix.utils import legal_title, cors_slice
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
+from bilix.download.utils import parse_speed_str, str2path
 
 
 class DownloaderYhdmp(BaseDownloaderM3u8):
@@ -14,7 +15,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
             api_client: httpx.AsyncClient = None,
             stream_client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int] = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,
@@ -36,7 +37,8 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
         self.api_client = api_client or httpx.AsyncClient(**api.dft_client_settings)
         self.hierarchy = hierarchy
 
-    async def get_series(self, url: str, path=Path('.'), p_range: Sequence[int] = None):
+    async def get_series(self, url: str, path: Annotated[Path, str2path] = Path('.'),
+                         p_range: Tuple[int, int] = None):
         """
         :cli: short: s
         :param url:
@@ -68,7 +70,8 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
             cors = cors_slice(cors, p_range)
         await asyncio.gather(*cors)
 
-    async def get_video(self, url: str, path=Path('.'), time_range=None):
+    async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'),
+                        time_range: Tuple[int, int] = None):
         """
         :cli: short: v
         :param url:

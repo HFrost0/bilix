@@ -1,6 +1,8 @@
+"""
+find and assign handler class for command line interface
+"""
 from dataclasses import dataclass
 from itertools import chain
-import inspect
 import re
 import time
 from pathlib import Path
@@ -66,14 +68,14 @@ def sorted_modules(method: str, keys: List[str]) -> List[ModuleInfo]:
 
 
 def handler_classes(module: ModuleType):
-    """find and yield all available class in module"""
+    """find and yield all available handler class in module"""
     attrs = getattr(module, '__all__', None)
     attrs = attrs or dir(module)
     for attr_name in attrs:
         if attr_name.startswith('_'):
             continue
         handler_cls = getattr(module, attr_name)
-        if not inspect.isclass(handler_cls) or not getattr(handler_cls, 'cli_info', None):
+        if not issubclass(handler_cls, Handler):
             continue
         yield handler_cls
 

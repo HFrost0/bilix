@@ -251,9 +251,22 @@ class Dash(BaseModel):
         raise KeyError(f'no match for audio codec: {audio_codec}')
 
     def choose_quality(self, quality: Union[str, int], codec: str = '') -> Tuple[Media, Optional[Media]]:
+        if isinstance(quality, str):
+            quality = self.parse_quality(quality)
         v_codec, a_codec, *_ = codec.split(':') + [""]
         video, audio = self.choose_video(quality, v_codec), self.choose_audio(a_codec)
         return video, audio
+
+    @staticmethod
+    def parse_quality(value: str) -> Union[int, str]:
+        """for relative choice (0, 1, 2, ...) return int, else return str"""
+        if value.isdigit():
+            # some special digit
+            if value in {1080, 720, 480, 360}:
+                return value
+            return int(value)
+        else:
+            return value
 
 
 class Status(BaseModel):

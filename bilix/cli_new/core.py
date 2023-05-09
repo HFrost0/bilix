@@ -1,4 +1,7 @@
-from typing import List, Optional, Union, get_origin
+"""
+use handler to provide click(typer) cli service
+"""
+from typing import List, Optional, Union, get_origin, get_args, Annotated
 from click import UsageError, Context
 from typer.models import OptionInfo, ParameterInfo, ParamMeta
 from typer.core import TyperCommand, TyperOption, TyperArgument
@@ -13,13 +16,15 @@ def to_typer_param_meta(p: ParamInfo) -> ParamMeta:
 
     if annotation == p.empty and default != p.empty:
         annotation = type(default)
-    elif get_origin(annotation) is Union:
-        annotation = annotation.__args__[0]  # use the first type in Union
-
+    elif (origin := get_origin(annotation)) is Union:
+        annotation = get_args(annotation)[0]  # use the first type in Union, it's a convention
+    elif origin is Annotated:
+        # base_annotation, *convertors = get_args(annotation)
+        # todo metavar
+        annotation = str
+    # convert default to OptionInfo to ensure no ArgumentInfo is created
     if not isinstance(default, ParameterInfo):
-        default = OptionInfo(default=... if default == p.empty else default)
-    elif default.callback:
-        annotation = str  # use str as type for callback options
+        default = OptionInfo(default=... if default == p.empty else default, help=p.desc)
     return ParamMeta(name=p.name, annotation=annotation, default=default)
 
 
@@ -55,20 +60,19 @@ class CustomCommand(TyperCommand):
         for p in cli_info['__init__'].params.values():
             if option := get_click_option(p):
                 option.rich_help_panel = f"Options for {handler_cls.__name__}"
-                option.help = cli_info['__init__'].params[option.name].desc
                 self.params.append(option)
                 ctx.obj["init_options"].append(option.name)
 
         for p in cli_info[method].params.values():
             if option := get_click_option(p):
                 option.rich_help_panel = f"Options for {cli_info[method].name}"
-                option.help = cli_info[method].params[option.name].desc
                 self.params.append(option)
                 ctx.obj["method_options"].append(option.name)
         ctx.obj['handler_cls'] = handler_cls
 
         self.params.append(TyperArgument(param_decls=['method'], type=str, required=True, hidden=True))
-        self.params.append(TyperArgument(param_decls=['keys'], type=str, nargs=-1, hidden=True))
+        self.params.append(TyperArgument(param_decls=['keys'], type=str, required=True, nargs=-1,
+                                         help=cli_info[method].desc))
 
         return super().parse_args(ctx, args)
 

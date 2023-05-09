@@ -1,11 +1,12 @@
 import asyncio
 import re
 from pathlib import Path
-from typing import Union
+from typing import Annotated
 import httpx
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title
+from bilix.download.utils import str2path, parse_speed_str
 
 
 class DownloaderDouyin(BaseDownloaderPart):
@@ -16,7 +17,7 @@ class DownloaderDouyin(BaseDownloaderPart):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int, None] = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,
@@ -33,7 +34,7 @@ class DownloaderDouyin(BaseDownloaderPart):
             part_concurrency=part_concurrency,
         )
 
-    async def get_video(self, url: str, path=Path('.'), image=False):
+    async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'), image=False):
         """
         :cli: short: v
         :param url:

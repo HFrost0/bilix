@@ -57,18 +57,6 @@ def pick_unit_and_suffix(size: int, suffixes: List[str], base: int) -> Tuple[int
     return unit, suffix
 
 
-def parse_bytes_str(s: str) -> float:
-    """Parse a string byte quantity into float"""
-    units_map = {unit: i for i, unit in enumerate(['', *'KMGTPEZY'])}
-    units_re = '|'.join(units_map.keys())
-    m = re.fullmatch(rf'(?P<num>\d+(?:\.\d+)?)\s*(?P<unit>{units_re})B?', s)
-    if not m:
-        raise ValueError(f"Invalid bytes str {s} to parse to number")
-    num = float(m.group('num'))
-    mult = 1000 ** units_map[m.group('unit')]
-    return num * mult
-
-
 def valid_sess_data(sess_data: Optional[str]) -> str:
     """check and encode sess_data"""
     # url-encoding sess_data if it's not encoded
