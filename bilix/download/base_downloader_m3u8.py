@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 import uuid
 from pathlib import Path, PurePath
@@ -12,6 +13,7 @@ from Crypto.Cipher import AES
 from m3u8 import Segment
 from bilix.download.base_downloader import BaseDownloader
 from bilix.download.utils import path_check
+from bilix.progress.abc import Progress
 from bilix import ffmpeg
 from .utils import req_retry
 
@@ -19,21 +21,23 @@ __all__ = ['BaseDownloaderM3u8']
 
 
 class BaseDownloaderM3u8(BaseDownloader):
-    """Base Async http m3u8 Downloader"""
-
     def __init__(
             self,
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int] = None,
+            speed_limit: float = None,
             stream_retry: int = 5,
-            progress=None,
-            logger=None,
+            progress: Progress = None,
+            logger: logging.Logger = None,
             # unique params
             part_concurrency: int = 10,
             video_concurrency: Union[int, asyncio.Semaphore] = 3,
     ):
+        """Base Async http m3u8 Downloader
+        :param part_concurrency: max concurrency of seg download
+        :param video_concurrency: max concurrency of video download
+        """
         super(BaseDownloaderM3u8, self).__init__(
             client=client,
             browser=browser,
@@ -72,7 +76,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             return await self.to_invariant_m3u8(m3u8_info.playlists[0].absolute_uri)
         return m3u8_info
 
-    async def get_m3u8_video(self, m3u8_url: str, path: Union[str, Path], time_range: Tuple[int, int] = None) -> Path:
+    async def get_m3u8_video(self, m3u8_url: str, path: Union[Path, str], time_range: Tuple[int, int] = None) -> Path:
         """
         download video from m3u8 url
         :cli: short: m3u8

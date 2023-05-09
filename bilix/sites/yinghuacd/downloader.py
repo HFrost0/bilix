@@ -83,5 +83,5 @@ class DownloaderYinghuacd(BaseDownloaderM3u8):
         await self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f'{name}.mp4', time_range=time_range)
 
     @classmethod
-    def _decide_handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        return 'yinghuacd' in keys[0]
+    def decide_handle(cls, method: str, keys: Tuple[str, ...]):
+        return 'yinghuacd.' in keys[0]

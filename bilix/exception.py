@@ -26,18 +26,3 @@ class APIResourceError(APIError):
 
 class APIUnsupportedError(APIError):
     """The resource parse is not supported yet"""
-
-
-class HandleError(Exception):
-    """the error related to bilix cli handle"""
-
-
-class HandleMethodError(HandleError):
-    """the error that handler can not recognize the method"""
-
-    def __init__(self, executor_cls, method):
-        self.executor_cls = executor_cls
-        self.method = method
-
-    def __str__(self):
-        return f"For {self.executor_cls.__name__} method '{self.method}' is not available"

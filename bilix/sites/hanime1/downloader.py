@@ -16,7 +16,7 @@ class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int] = None,
+            speed_limit: float = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,

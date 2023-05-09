@@ -1,5 +1,4 @@
 import asyncio
-import re
 from typing import Tuple
 from rich.tree import Tree
 from .downloader import DownloaderBilibili
@@ -8,7 +7,6 @@ from bilix.log import logger
 from rich import print as rprint
 from bilix.utils import convert_size
 from bilix.download.utils import req_retry
-from bilix.cli.assign import kwargs_filter
 
 
 class InformerBilibili(DownloaderBilibili):
@@ -21,6 +19,11 @@ class InformerBilibili(DownloaderBilibili):
         return getattr(cls, func_name)
 
     async def info_key(self, key):
+        """
+        :cli: short: info
+        :param key:
+        :return:
+        """
         await self.parse_url(key)(self, key)
 
     async def info_up(self, url: str):
@@ -75,15 +78,20 @@ class InformerBilibili(DownloaderBilibili):
         rprint(tree)
 
     @classmethod
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if cls.pattern.match(keys[0]) and 'info' == method:
-            informer = InformerBilibili(sess_data=options['cookie'], **kwargs_filter(cls, options))
+    def decide_handle(cls, method_name: str, keys: Tuple[str, ...]):
+        return cls.pattern.match(keys[0]) and method_name == 'info'
+
+    @classmethod
+    def handle(cls, method_name: str, keys: Tuple[str, ...], init_options: dict, method_options: dict):
+        if cls.decide_handle(method_name, keys):
+            handler = cls(**init_options)
+            func = cls.cli_info[method_name].func
 
             # in order to maintain order
             async def temp():
                 for key in keys:
                     if len(keys) > 1:
                         logger.info(f"For {key}")
-                    await informer.info_key(key)
+                    await func(handler, key, **method_options)
 
-            return informer, temp()
+            return handler, temp()

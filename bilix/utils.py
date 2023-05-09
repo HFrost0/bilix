@@ -58,7 +58,7 @@ def pick_unit_and_suffix(size: int, suffixes: List[str], base: int) -> Tuple[int
 
 
 def parse_bytes_str(s: str) -> float:
-    """"Parse a string byte quantity into an integer"""
+    """Parse a string byte quantity into float"""
     units_map = {unit: i for i, unit in enumerate(['', *'KMGTPEZY'])}
     units_re = '|'.join(units_map.keys())
     m = re.fullmatch(rf'(?P<num>\d+(?:\.\d+)?)\s*(?P<unit>{units_re})B?', s)

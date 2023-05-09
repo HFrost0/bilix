@@ -2,20 +2,33 @@ import asyncio
 import functools
 import re
 from pathlib import Path
-from typing import Union, Sequence, Tuple, List
+from typing import Union, Tuple, List
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix._process import SingletonPPE
-from bilix.utils import legal_title, cors_slice, valid_sess_data, t2s, json2srt
+from bilix.utils import legal_title, cors_slice, valid_sess_data, t2s, json2srt, parse_bytes_str
 from bilix.download.utils import req_retry, path_check
-from bilix.exception import HandleMethodError, APIUnsupportedError, APIResourceError, APIError
-from bilix.cli.assign import kwargs_filter, auto_assemble
+from bilix.exception import APIUnsupportedError, APIResourceError, APIError
 from bilix import ffmpeg
-
 from danmakuC.bilibili import proto2ass
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
+
+
+def _dm2ass_factory(width: int, height: int):
+    async def dm2ass(protobuf_bytes: bytes) -> bytes:
+        loop = asyncio.get_event_loop()
+        f = functools.partial(proto2ass, protobuf_bytes, width, height, font_size=width / 40, )
+        content = await loop.run_in_executor(SingletonPPE(), f)
+        return content.encode('utf-8')
+
+    return dm2ass
 
 
 class DownloaderBilibili(BaseDownloaderPart):
@@ -27,7 +40,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int, None] = None,
+            speed_limit: Annotated[float, parse_bytes_str] = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,
@@ -48,7 +61,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param sess_data: bilibili SESSDATA cookie
         :param part_concurrency: 媒体分段并发数
         :param video_concurrency: 视频并发数
-        :param hierarchy: 是否使用层级目录
+        :param hierarchy: 是否使用层级目录，如果为否，将所有文件下载到同一目录下
         """
         client = client or httpx.AsyncClient(**api.dft_client_settings)
         super(DownloaderBilibili, self).__init__(
@@ -81,6 +94,17 @@ class DownloaderBilibili(BaseDownloaderPart):
             return cls.get_video
         raise ValueError(f'{url} no match for bilibili')
 
+    async def auto(self, key: str, **method_options: dict):
+        """
+        自动选择下载方法
+        :cli: short: a
+        :param key:
+        :param method_options:
+        :return:
+        """
+        method = self.parse_url(key)
+        return await method(self, key, **method_options)
+
     async def get_collect_or_list(self, url, path=Path('.'),
                                   quality=0, image=False, subtitle=False, dm=False, only_audio=False, codec: str = ''):
         """
@@ -88,11 +112,11 @@ class DownloaderBilibili(BaseDownloaderPart):
         :cli: short: col
         :param url: 合集或视频列表详情页url
         :param path: 保存路径
-        :param quality:
-        :param image:
-        :param subtitle:
-        :param dm:
-        :param only_audio:
+        :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
+        :param image: 是否下载封面
+        :param subtitle: 是否下载字幕
+        :param dm: 是否下载弹幕
+        :param only_audio: 是否只下载音频
         :param codec:
         :return:
         """
@@ -128,7 +152,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
-        :param codec:
+        :param codec: 视频编码
         :return:
         """
         fav_name, up_name, total_size, bvids = await api.get_favour_page_info(self.client, url_or_fid, keyword=keyword)
@@ -188,7 +212,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
-        :param codec:
+        :param codec: 视频编码
         :return:
         """
         cate_meta = await self.cate_meta
@@ -244,7 +268,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param subtitle: 是否下载字幕
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
-        :param codec:
+        :param codec: 视频编码
         :return:
         """
         ps = 30
@@ -278,8 +302,8 @@ class DownloaderBilibili(BaseDownloaderPart):
                    image=image, subtitle=subtitle, dm=dm, only_audio=only_audio) for bv in bvids])
 
     async def get_series(self, url: str, path=Path('.'),
-                         quality: Union[str, int] = 0, image=False, subtitle=False,
-                         dm=False, only_audio=False, p_range: Sequence[int] = None, codec: str = ''):
+                         quality: Union[int, str] = 0, image: bool = False, subtitle=False,
+                         dm=False, only_audio=False, p_range: Tuple[int, int] = None, codec: str = ''):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
         :cli: short: s
@@ -291,7 +315,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param dm: 是否下载弹幕
         :param only_audio: 是否仅下载音频
         :param p_range: 下载集数范围，例如(1, 3)：P1至P3
-        :param codec: 视频编码（可通过info获取）
+        :param codec: 视频编码
         :return:
         """
         try:
@@ -312,7 +336,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
     async def get_video(self, url: str, path=Path('.'),
-                        quality: Union[str, int] = 0, image=False, subtitle=False, dm=False, only_audio=False,
+                        quality: Union[int, str] = 0, image=False, subtitle=False, dm=False, only_audio=False,
                         codec: str = '', time_range: Tuple[int, int] = None, video_info: api.VideoInfo = None):
         """
         下载单个视频
@@ -376,18 +400,14 @@ class DownloaderBilibili(BaseDownloaderPart):
                         if len(tmp) > 0:
                             fut = asyncio.Future()  # to fix key frame
                             v = tmp[0]
-                            media_cors.append(self.get_media_clip(v[0].urls, v[1], time_range,
-                                                                  init_range=v[0].segment_base['initialization'],
-                                                                  seg_range=v[0].segment_base['index_range'],
-                                                                  set_s=fut,
-                                                                  task_id=task_id))
+                            media_cors.append(self.get_media_clip(
+                                v[0].urls, v[1], time_range, init_range=v[0].segment_base['initialization'],
+                                seg_range=v[0].segment_base['index_range'], set_s=fut, task_id=task_id))
                         if len(tmp) > 1:  # with audio
                             a = tmp[1]
-                            media_cors.append(self.get_media_clip(a[0].urls, a[1], time_range,
-                                                                  init_range=a[0].segment_base['initialization'],
-                                                                  seg_range=a[0].segment_base['index_range'],
-                                                                  get_s=fut,
-                                                                  task_id=task_id))
+                            media_cors.append(self.get_media_clip(
+                                a[0].urls, a[1], time_range, init_range=a[0].segment_base['initialization'],
+                                seg_range=a[0].segment_base['index_range'], get_s=fut, task_id=task_id))
 
             elif video_info.other:
                 self.logger.warning(
@@ -429,7 +449,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                     except UnboundLocalError:
                         width, height = 1920, 1080
                     add_cors.append(self.get_dm(
-                        url, path=extra_path, convert_func=self._dm2ass_factory(width, height), video_info=video_info))
+                        url, path=extra_path, convert_func=_dm2ass_factory(width, height), video_info=video_info))
             path_lst, _ = await asyncio.gather(asyncio.gather(*media_cors), asyncio.gather(*add_cors))
 
         if upper := self.progress.tasks[task_id].fields.get('upper', None):
@@ -437,24 +457,15 @@ class DownloaderBilibili(BaseDownloaderPart):
             self.logger.info(f'[cyan]已完成[/cyan] {media_path.name}')
         await self.progress.update(task_id, visible=False)
 
-    @staticmethod
-    def _dm2ass_factory(width: int, height: int):
-        async def dm2ass(protobuf_bytes: bytes) -> bytes:
-            loop = asyncio.get_event_loop()
-            f = functools.partial(proto2ass, protobuf_bytes, width, height, font_size=width / 40, )
-            content = await loop.run_in_executor(SingletonPPE(), f)
-            return content.encode('utf-8')
-
-        return dm2ass
-
-    async def get_dm(self, url, path=Path('.'), update=False, convert_func=None, video_info=None):
+    async def get_dm(self, url: str, path=Path('.'), update: bool = False, convert_func=_dm2ass_factory(1920, 1080),
+                     video_info: api.VideoInfo = None):
         """
         下载视频的弹幕
         :cli: short: dm
         :param url: 视频url
         :param path: 保存路径
         :param update: 是否更新覆盖之前下载的弹幕文件
-        :param convert_func:
+        :param convert_func: function used to convert original danmaku bytes
         :param video_info: 额外数据，提供则不再访问前端
         :return:
         """
@@ -485,7 +496,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         self.logger.info(f"[cyan]已完成[/cyan] {file_name}")
         return file_path
 
-    async def get_subtitle(self, url, path=Path('.'), convert_func=json2srt, video_info=None):
+    async def get_subtitle(self, url, path=Path('.'), convert_func=json2srt, video_info: api.VideoInfo = None):
         """
         下载视频的字幕文件
         :cli: short: sub
@@ -515,14 +526,5 @@ class DownloaderBilibili(BaseDownloaderPart):
         return paths
 
     @classmethod
-    @auto_assemble
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if cls.pattern.match(keys[0]) or method == 'cate' or method == 'get_cate':
-            if method in {'auto', 'a'}:
-                m = cls.parse_url(keys[0])
-            elif method in cls._cli_map:
-                m = cls._cli_map[method]
-            else:
-                raise HandleMethodError(cls, method=method)
-            d = cls(sess_data=options['cookie'], **kwargs_filter(cls, options))
-            return d, m
+    def decide_handle(cls, method_name: str, keys: Tuple[str, ...]):
+        return method_name in {'cate', 'get_cate'} or super().decide_handle(method_name, keys)

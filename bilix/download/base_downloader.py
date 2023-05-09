@@ -1,105 +1,109 @@
 import asyncio
 import inspect
 import logging
-import re
 import time
 from functools import wraps
-from typing import Union, Optional, Tuple
+from typing import Union, Optional, Callable, Dict
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import aiofiles
 import httpx
 
-from bilix.cli.assign import auto_assemble
+from bilix.cli_new.handler import Handler, HandlerMeta
 from bilix.log import logger as dft_logger
 from bilix.download.utils import req_retry, path_check
+from bilix.utils import parse_bytes_str
 from bilix.progress.abc import Progress
 from bilix.progress.cli_progress import CLIProgress
-from bilix.exception import HandleMethodError
 from pathlib import Path, PurePath
+
+try:
+    from typing import Annotated, get_origin, get_args, get_type_hints
+except ImportError:  # lower than python 3.9
+    from typing_extensions import Annotated, get_origin, get_args, get_type_hints
 
 __all__ = ['BaseDownloader']
 
 
-class BaseDownloaderMeta(type):
+def check_annotated(annotated_type) -> Callable:
+    assert get_origin(annotated_type) is Annotated
+    args = get_args(annotated_type)
+    assert len(args) == 2
+    target_type, convertor = args
+    assert inspect.isfunction(convertor), f"{convertor} is not a function"
+    type_hints = get_type_hints(convertor)
+    assert len(type_hints) == (1 if 'return' not in type_hints else 2)
+    return convertor
+
+
+class BaseDownloaderMeta(HandlerMeta):
     def __new__(cls, name, bases, dct):
-        dct['_cli_info'] = {}
-        dct['_cli_map'] = {}
         for method_name, method in dct.items():
-            if not method_name.startswith('_') and asyncio.iscoroutinefunction(method):
-                if 'path' in (sig := inspect.signature(method)).parameters:
-                    dct[method_name] = cls.ensure_path(method, sig)
-
-                if cls.check_unique_method(method, bases):
-                    cli_info = cls.parse_cli_doc(method)
-                    if cli_info:
-                        dct['_cli_info'][method] = cli_info
-                        dct['_cli_map'][method_name] = method
-                        if cli_info['short']:
-                            dct['_cli_map'][cli_info['short']] = method
-
+            if inspect.isfunction(method):
+                dct[method_name] = cls.ensure_path(method)
         return super().__new__(cls, name, bases, dct)
 
     @staticmethod
-    def check_unique_method(method_name: str, bases: Tuple[type, ...]):
-        for base in bases:
-            if method_name in base.__dict__:
-                return False
-        return True
-
-    @staticmethod
-    def parse_cli_doc(func) -> Optional[dict]:
-        docstring = func.__doc__
-        if not docstring or ':cli:' not in docstring:
-            return
-        params_matches = re.findall(r":param (\w+): (.+)", docstring)
-        params = {param: description for param, description in params_matches}
-
-        cli_short_match = re.search(r":cli: short: (\w+)", docstring)
-        short_name = cli_short_match.group(1) if cli_short_match else None
-
-        return {"short": short_name, "params": params}
-
-    @staticmethod
-    def ensure_path(func, sig):
-        path_index = next(i for i, name in enumerate(sig.parameters) if name == 'path')
-
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
+    def ensure_path(func: Callable) -> Callable:
+        def convert(*args, **kwargs):
+            # todo check type hint of convertor
             new_args = list(args)
-            if path_index < len(args) and isinstance(args[path_index], str):
-                new_args[path_index] = Path(args[path_index])
-            elif 'path' in kwargs and isinstance(kwargs['path'], str):
-                kwargs['path'] = Path(kwargs['path'])
+            for i, arg in enumerate(args):
+                if i in convertors:
+                    new_args[i] = convertors[i](arg)
+            for k, v in kwargs.items():
+                if k in convertors:
+                    kwargs[k] = convertors[k](v)
+            return new_args, kwargs
 
-            return await func(*new_args, **kwargs)
+        sig = inspect.signature(func)
+        convertors: Dict[Union[int, str], Callable] = {}
+        for idx, p in enumerate(sig.parameters.values()):
+            if get_origin(p.annotation) is Annotated:
+                convertor = check_annotated(p.annotation)
+                convertors[idx] = convertor  # for args
+                convertors[p.name] = convertor  # for kwargs
+        if len(convertors) == 0:  # if no Annotated, return original func
+            return func
 
-        wrapper.__annotations__['path'] = Union[Path, str]
+        if inspect.iscoroutinefunction(func):
+            @wraps(func)
+            async def wrapper(*args, **kwargs):
+                new_args, kwargs = convert(*args, **kwargs)
+                return await func(*new_args, **kwargs)
+        else:
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                new_args, kwargs = convert(*args, **kwargs)
+                return func(*new_args, **kwargs)
         return wrapper
 
 
-class BaseDownloader(metaclass=BaseDownloaderMeta):
-    pattern: re.Pattern = None
-    cookie_domain: str = ""
-    _cli_info: dict
-    _cli_map: dict
+def str2path(value: str) -> Path:
+    """convert str to Path, but with type hint"""
+    return Path(value)
+
+
+class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
+    cookie_domain: str = ""  # cookie domain used to accelerate cookie load
 
     def __init__(
             self,
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int] = None,
+            speed_limit: Annotated[float, parse_bytes_str] = None,
             stream_retry: int = 5,
             progress: Progress = None,
             logger: logging.Logger = None,
     ):
         """
-
         :param client: client used for http request
         :param browser: load cookies from which browser
-        :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit)
-        :param progress: progress obj
+        :param stream_retry: retry times for http stream
+        :param speed_limit: global download rate for the downloader, should be a number (Byte/s unit) or speed str
+        :param progress: progress obj used to output download progress
+        :param logger: logger obj used to output log
         """
         # use cli progress by default
         self.progress = progress or CLIProgress()
@@ -124,9 +128,9 @@ class BaseDownloader(metaclass=BaseDownloaderMeta):
         """Close transport and proxies for httpx client"""
         await self.client.aclose()
 
-    async def get_static(self, url: str, path: Union[str, Path], convert_func=None) -> Path:
+    async def get_static(self, url: str, path: Annotated[Path, str2path], convert_func=None) -> Path:
         """
-
+        download static file from url
         :param url:
         :param path: file path without suffix
         :param convert_func: function used to convert http bytes content, must be named like ...2...
@@ -210,21 +214,3 @@ class BaseDownloader(metaclass=BaseDownloaderMeta):
             self.logger.debug(f"load complete, consumed time: {time.time() - a} s")
         except AttributeError:
             raise AttributeError(f"Invalid Browser {browser}")
-
-    @classmethod
-    def _decide_handle(cls, method: str, keys: Tuple[str, ...], options: dict) -> bool:
-        """check if the cls can be handled by this downloader"""
-        if cls.pattern:
-            return cls.pattern.match(keys[0]) is not None
-        else:
-            return method in cls._cli_map
-
-    @classmethod
-    @auto_assemble
-    def handle(cls, method: str, keys: Tuple[str, ...], options: dict):
-        if cls._decide_handle(method, keys, options):
-            try:
-                method = cls._cli_map[method]
-            except KeyError:
-                raise HandleMethodError(cls, method)
-            return cls, method

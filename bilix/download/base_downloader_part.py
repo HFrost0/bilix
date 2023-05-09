@@ -9,29 +9,37 @@ import random
 import os
 import cgi
 from pymp4.parser import Box
-from bilix.download.base_downloader import BaseDownloader
+from bilix.download.base_downloader import BaseDownloader, str2path
 from bilix.download.utils import path_check, merge_files
 from bilix import ffmpeg
+from bilix.utils import parse_bytes_str
 from .utils import req_retry
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 __all__ = ['BaseDownloaderPart']
 
 
 class BaseDownloaderPart(BaseDownloader):
-    """Base Async http Content-Range Downloader"""
 
     def __init__(
             self,
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int, None] = None,
+            speed_limit: Annotated[float, parse_bytes_str] = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,
             # unique params
             part_concurrency: int = 10,
     ):
+        """Base Async http Content-Range Downloader
+        :param part_concurrency: max concurrency of range parts
+        """
         super(BaseDownloaderPart, self).__init__(
             client=client,
             browser=browser,
@@ -60,7 +68,7 @@ class BaseDownloaderPart(BaseDownloader):
     async def get_media_clip(
             self,
             url_or_urls: Union[str, Iterable[str]],
-            path: Union[Path, str],
+            path: Annotated[Path, str2path],
             time_range: Tuple[int, int],
             init_range: str,
             seg_range: str,
@@ -147,7 +155,12 @@ class BaseDownloaderPart(BaseDownloader):
             self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
         return path
 
-    async def get_file(self, url_or_urls: Union[str, Iterable[str]], path: Union[Path, str], task_id=None) -> Path:
+    async def get_file(
+            self,
+            url_or_urls: Union[str, Iterable[str]],
+            path: Annotated[Path, str2path],
+            task_id=None
+    ) -> Path:
         """
         download file by http content-range
         :cli: short: f
