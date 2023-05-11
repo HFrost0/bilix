@@ -14,13 +14,6 @@ def handle_version(ctx: click.Context, param, value):
     ctx.exit()
 
 
-def handle_debug(ctx: click.Context, param, value):
-    if not value or ctx.resilient_parsing:
-        return
-    logger.setLevel('DEBUG')
-    logger.debug("Debug on, more information will be shown")
-
-
 @click.command(cls=CustomCommand)
 @click.option(
     "--debug",
@@ -28,7 +21,6 @@ def handle_debug(ctx: click.Context, param, value):
     is_eager=True,
     expose_value=False,
     help="Enable debug mode.",
-    callback=handle_debug,
 )
 @click.option(
     "--version", '-v',

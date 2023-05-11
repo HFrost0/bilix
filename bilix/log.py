@@ -11,7 +11,7 @@ def get_logger():
     # 创建自定义的RichHandler
     custom_rich_handler = RichHandler(
         show_time=False,
-        show_path=False,
+        show_path=True,
         markup=True,
         keywords=RichHandler.KEYWORDS + ['STREAM'],
         rich_tracebacks=True

@@ -8,6 +8,7 @@ from typer.core import TyperCommand, TyperOption, TyperArgument
 from typer.main import get_click_param
 from bilix.cli_new.assign import assign
 from bilix.cli_new.handler import ParamInfo
+from bilix.log import logger
 
 
 def to_typer_param_meta(p: ParamInfo) -> ParamMeta:
@@ -36,17 +37,20 @@ def get_click_option(p: ParamInfo) -> Optional[TyperOption]:
     try:
         option, convertor = get_click_param(p)
         if convertor:
-            print(convertor)
+            logger.debug(f"ignore {convertor}")
         return option
     except RuntimeError as e:
-        print(e)
+        logger.debug(e)
     except AssertionError as e:
-        print(e)
+        logger.debug(e)
     assert p.default != p.empty, f"Parameter '{p.name}' has no available type hint and no default value."
 
 
 class CustomCommand(TyperCommand):
     def parse_args(self, ctx: Context, args: List[str]):
+        if '--debug' in args:  # preparse debug option to ensure log assign debug info
+            logger.setLevel('DEBUG')
+            logger.debug("Debug on, more information will be shown")
         try:
             method, keys = self._find_method_keys(ctx, args)
         except UsageError:
