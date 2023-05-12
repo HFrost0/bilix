@@ -57,26 +57,31 @@ class CustomCommand(TyperCommand):
             return super().parse_args(ctx, args)
         handler_cls = assign(method, keys)
         cli_info = handler_cls.cli_info
+        method = cli_info[method]
         # add dynamic_params to ctx
         ctx.ensure_object(dict)
         ctx.obj["init_options"] = []
         ctx.obj["method_options"] = []
+        # for handler init
         for p in cli_info['__init__'].params.values():
             if option := get_click_option(p):
                 option.rich_help_panel = f"Options for {handler_cls.__name__}"
                 self.params.append(option)
                 ctx.obj["init_options"].append(option.name)
-
-        for p in cli_info[method].params.values():
+        # for method
+        ps = list(method.params.values())
+        # skip key
+        for p in ps[1:]:
             if option := get_click_option(p):
-                option.rich_help_panel = f"Options for {cli_info[method].name}"
+                option.rich_help_panel = f"Options for {method.name}"
                 self.params.append(option)
                 ctx.obj["method_options"].append(option.name)
         ctx.obj['handler_cls'] = handler_cls
 
-        self.params.append(TyperArgument(param_decls=['method'], type=str, required=True, hidden=True))
-        self.params.append(TyperArgument(param_decls=['keys'], type=str, required=True, nargs=-1,
-                                         help=cli_info[method].desc))
+        self.params.append(TyperArgument(param_decls=['method'], type=str, required=True, hidden=True,
+                                         metavar=f'{method.name} ({method.short})' if method.short else method.name, ))
+        self.params.append(TyperArgument(param_decls=['keys'], type=str, required=True, nargs=-1, help=ps[0].desc, ))
+        self.help = '✨ ' + method.desc
 
         return super().parse_args(ctx, args)
 
@@ -90,3 +95,12 @@ class CustomCommand(TyperCommand):
                     raise UsageError("method should be first", ctx)
                 return args[0], args[1:idx]
         return args[0], args[1:]
+
+    def collect_usage_pieces(self, ctx: Context) -> List[str]:
+        """basically copy from click.core.Command.collect_usage_pieces, but with option metavar moved to the end"""
+        rv = []
+        for param in self.get_params(ctx):
+            rv.extend(param.get_usage_pieces(ctx))
+        if self.options_metavar:
+            rv.append(self.options_metavar)
+        return rv

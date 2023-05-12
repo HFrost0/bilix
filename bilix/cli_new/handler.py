@@ -34,7 +34,7 @@ def parse_method_desc(docstring: Optional[str]) -> str:
     if not docstring:
         return ""
     else:
-        return docstring.strip().split('\n')[0]
+        return inspect.cleandoc(docstring).split(":")[0]
 
 
 def parse_param_descriptions(docstring: Optional[str]) -> dict:
@@ -105,8 +105,10 @@ def parse_method(func: Callable) -> Optional[MethodInfo]:
     # parse params
     params = {}
     sig = inspect.signature(func)
-    # skip self and key
-    for param in list(sig.parameters.values())[2:]:
+    for param in sig.parameters.values():
+        # skip self
+        if param.name == 'self':
+            continue
         params[param.name] = ParamInfo(
             name=param.name,
             annotation=param.annotation,

@@ -61,7 +61,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param progress:
         :param logger:
         :param sess_data: bilibili SESSDATA cookie
-        :param part_concurrency: 媒体分段并发数
+        :param part_concurrency:
         :param video_concurrency: 视频并发数
         :param hierarchy: 是否使用层级目录，如果为否，将所有文件下载到同一目录下
         """
