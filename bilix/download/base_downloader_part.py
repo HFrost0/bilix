@@ -221,6 +221,7 @@ class BaseDownloaderPart(BaseDownloader):
                         urls[url_idx] = r.url
                     async for chunk in r.aiter_bytes(chunk_size=self.chunk_size):
                         await f.write(chunk)
+                        start += len(chunk)
                         await self.progress.update(task_id, advance=len(chunk))
                         await self._check_speed(len(chunk))
                 break
