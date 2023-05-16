@@ -34,7 +34,7 @@ def parse_method_desc(docstring: Optional[str]) -> str:
     if not docstring:
         return ""
     else:
-        return inspect.cleandoc(docstring).split(":")[0]
+        return inspect.cleandoc(docstring.split(":")[0])
 
 
 def parse_param_descriptions(docstring: Optional[str]) -> dict:
