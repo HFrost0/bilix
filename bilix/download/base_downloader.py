@@ -2,6 +2,8 @@ import asyncio
 import inspect
 import logging
 import time
+import random
+from collections import defaultdict
 from functools import wraps
 from typing import Union, Optional, Callable, Dict, Any, Tuple, List, Set
 from contextlib import asynccontextmanager
@@ -138,6 +140,8 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         self.stream_retry = stream_retry
         # active stream number
         self._stream_num = 0
+        # url score
+        self._url_score = defaultdict(lambda: self.stream_retry * 5)
 
     async def __aenter__(self):
         await self.client.__aenter__()
@@ -176,6 +180,18 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         self.logger.info(f'[cyan]已完成[/cyan] {path.name}')
         return path
 
+    def _change_sore(self, exc: Union[httpx.HTTPStatusError, httpx.TransportError]):
+        """change url score according to exception"""
+        if isinstance(exc, httpx.HTTPStatusError):
+            self._url_score[exc.request.url] -= 4
+        elif isinstance(exc, httpx.TransportError):
+            self._url_score[exc.request.url] -= 1
+        self._url_score[exc.request.url] = max(0, self._url_score[exc.request.url])
+
+    def _choose_stream_url(self, urls: List[str]) -> int:
+        """choose a stream url idx from urls"""
+        return random.choices(range(len(urls)), weights=[self._url_score[url] for url in urls], k=1)[0]
+
     @asynccontextmanager
     async def _stream_context(self, times: int):
         """
@@ -194,11 +210,13 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
             else:
                 self.logger.warning(f"STREAM {e}")
                 await asyncio.sleep(.5 * (times + 1))
+            self._change_sore(e)
             raise
         except httpx.TransportError as e:
             msg = f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数'
             self.logger.warning(msg) if times > 2 else self.logger.debug(msg)
             await asyncio.sleep(.1 * (times + 1))
+            self._change_sore(e)
             raise
         except Exception as e:
             self.logger.warning(f'STREAM Unexpected Exception class:{e.__class__.__name__} {e}')

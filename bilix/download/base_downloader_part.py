@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 import aiofiles
 import httpx
 import uuid
-import random
 import os
 import cgi
 from pymp4.parser import Box
@@ -221,9 +220,9 @@ class BaseDownloaderPart(BaseDownloader):
             await self.progress.update(task_id, advance=downloaded)
         if start > end:
             return part_path  # skip already finished
-        url_idx = random.randint(0, len(urls) - 1)
 
         for times in range(1 + self.stream_retry):
+            url_idx = self._choose_stream_url(urls)
             try:
                 async with \
                         self.client.stream("GET", urls[url_idx], follow_redirects=True,
