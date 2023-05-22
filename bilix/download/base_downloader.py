@@ -182,11 +182,12 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
 
     def _change_sore(self, exc: Union[httpx.HTTPStatusError, httpx.TransportError]):
         """change url score according to exception"""
+        # todo clean score
         if isinstance(exc, httpx.HTTPStatusError):
             self._url_score[exc.request.url] -= 4
         elif isinstance(exc, httpx.TransportError):
             self._url_score[exc.request.url] -= 1
-        self._url_score[exc.request.url] = max(0, self._url_score[exc.request.url])
+        self._url_score[exc.request.url] = max(1, self._url_score[exc.request.url])
 
     def _choose_stream_url(self, urls: List[str]) -> int:
         """choose a stream url idx from urls"""
