@@ -3,12 +3,19 @@ use handler to provide click(typer) cli service
 """
 from typing import List, Optional, Union, get_origin, get_args, Annotated
 from click import UsageError, Context, Command
+from rich.padding import Padding
+from rich.panel import Panel
+from typer import rich_utils
 from typer.models import OptionInfo, ParameterInfo, ParamMeta
 from typer.core import TyperCommand, TyperOption, TyperArgument
 from typer.main import get_click_param
-from bilix.cli_new.assign import assign
+from typer.rich_utils import STYLE_OPTIONS_PANEL_BORDER, ALIGN_OPTIONS_PANEL, highlighter
+from bilix import __version__
+from bilix.cli_new.assign import assign, sites_module_infos, base_module_infos
 from bilix.cli_new.handler import ParamInfo
 from bilix.log import logger
+from rich import print as rprint
+from rich.markdown import Markdown
 
 
 def to_typer_param_meta(p: ParamInfo) -> ParamMeta:
@@ -83,6 +90,13 @@ class CustomCommand(TyperCommand):
             method, keys = self._find_method_keys(ctx, args)
         except UsageError:
             return super().parse_args(ctx, args)
+
+        # todo help method
+        if method == 'help':
+            if len(keys) == 0:
+                pass
+            else:
+                pass
         handler_cls = assign(method, keys)
         cli_info = handler_cls.cli_info
         method = cli_info[method]
@@ -138,3 +152,41 @@ class CustomCommand(TyperCommand):
         if self.options_metavar:
             rv.append(self.options_metavar)
         return rv
+
+    def format_help(self, ctx: Context, formatter) -> None:
+        if ctx.obj:  # with method and keys
+            self.help = f"✨ {ctx.obj['method'].desc}"
+            return rich_utils.rich_format_help(
+                obj=self,
+                ctx=ctx,
+                markup_mode=self.rich_markup_mode,
+            )
+        else:
+            rprint(Padding(
+                highlighter(f"⚡️ bilix: a lightning-fast download tool for bilibili and more. Version {__version__}"),
+                1
+            ))
+            msg = "bilix supports many sites:\n"
+            for info in sorted(sites_module_infos(), key=lambda x: x.cmp_key):  # alphasort
+                msg += f"* {info.cmp_key}\n"
+            msg += "\n✨ use `bilix help <site>` to see more\n"
+            rprint(Panel(
+                Markdown(msg),
+                border_style=STYLE_OPTIONS_PANEL_BORDER,
+                title="Supported Sites",
+                title_align=ALIGN_OPTIONS_PANEL,
+            ))
+            msg = "For fundamental downloading scenarios such as file downloads or m3u8 video downloads: \n"
+            for info in base_module_infos():
+                msg += f"* `{_convert_path_to_name(info.module_path)}` for {info.cmp_key} downloads\n"
+            msg += "\n✨ use `bilix help <downloader>` to see more\n"
+            rprint(Panel(
+                Markdown(msg),
+                border_style=STYLE_OPTIONS_PANEL_BORDER,
+                title="Base Downloaders",
+                title_align=ALIGN_OPTIONS_PANEL,
+            ))
+
+
+def _convert_path_to_name(module_path):
+    return ''.join([name.capitalize() for name in module_path.split('.')[-1].split('_')])
