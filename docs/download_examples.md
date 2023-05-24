@@ -123,3 +123,19 @@ async def main():
             cctv_d.get_series('https://www.douyin.com/video/7132430286415252773')
         )
 ```
+
+## 显示进度条
+
+使用python模块时，进度条默认不显示，如需显示，可以
+
+```python
+from bilix.progress.cli_progress import CLIProgress
+
+CLIProgress.start()
+```
+
+或者通过任意下载器内部的`progress`对象打开
+
+```python
+d.progress.start()
+```
