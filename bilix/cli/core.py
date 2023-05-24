@@ -13,8 +13,8 @@ from typer.core import TyperCommand, TyperOption, TyperArgument
 from typer.main import get_click_param
 from typer.rich_utils import STYLE_OPTIONS_PANEL_BORDER, ALIGN_OPTIONS_PANEL, highlighter
 from bilix import __version__
-from bilix.cli_new.assign import assign, sites_module_infos, base_module_infos, sorted_modules, handler_classes
-from bilix.cli_new.handler import ParamInfo, Handler
+from bilix.cli.assign import assign, sites_module_infos, base_module_infos, sorted_modules, handler_classes
+from bilix.cli.handler import ParamInfo, Handler
 from bilix.log import logger
 from rich import print as rprint
 from rich.markdown import Markdown

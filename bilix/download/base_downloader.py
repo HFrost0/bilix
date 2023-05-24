@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 import aiofiles
 import httpx
 
-from bilix.cli_new.handler import Handler, HandlerMeta
+from bilix.cli.handler import Handler, HandlerMeta
 from bilix.log import logger as dft_logger
 from bilix.download.utils import req_retry, path_check, parse_speed_str, str2path
 from bilix.progress.abc import Progress

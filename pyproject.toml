@@ -45,7 +45,7 @@ serve = [
 ]
 
 [project.scripts]
-bilix = "bilix.cli_new.main:main"
+bilix = "bilix.cli.main:main"
 
 [project.urls]
 Homepage = "https://github.com/HFrost0/bilix"
