@@ -1,6 +1,7 @@
 import asyncio
 import json
 import re
+from urllib.parse import quote
 import httpx
 from pydantic import BaseModel, Field, validator
 from typing import Union, List, Tuple, Dict, Optional
@@ -9,6 +10,8 @@ from danmakuC.bilibili import parse_view
 from bilix.download.utils import req_retry, raise_api_error
 from bilix.utils import legal_title
 from bilix.exception import APIError, APIResourceError, APIUnsupportedError
+import hashlib
+import time
 
 dft_client_settings = {
     'headers': {'user-agent': 'PostmanRuntime/7.29.0', 'referer': 'https://www.bilibili.com'},
@@ -132,8 +135,36 @@ async def get_cate_page_info(client: httpx.AsyncClient, cate_id, time_from, time
     return bvids
 
 
+async def _add_sign(client: httpx.AsyncClient, params: dict):
+    """添加b站api签名到params中
+    :param params:
+    :return:
+    """
+    OE = [46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45,
+          35, 27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38,
+          41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60,
+          51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36,
+          20, 34, 44, 52]
+    res = await req_retry(
+        client, "https://api.bilibili.com/x/web-interface/nav"
+    )
+    info = json.loads(res.text)
+    img_val = info['data']['wbi_img']['img_url'].split('/')[-1].split('.')[0]
+    sub_val = info['data']['wbi_img']['sub_url'].split('/')[-1].split('.')[0]
+    val = img_val + sub_val
+    request_token = ''.join([val[v] for v in OE])[:32]
+
+    wts = int(time.time())
+    params["wts"] = wts
+    data = dict(sorted(params.items()))
+    data_str = "&".join([f"{k}={v}" for k, v in data.items()]) + request_token
+    md5 = hashlib.md5(data_str.encode("utf-8")).hexdigest()
+    params["w_rid"] = md5
+    return params
+
+
 @raise_api_error
-async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order='pubdate', keyword=''):
+async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order="pubdate", keyword=""):
     """
     获取up主信息
 
@@ -145,16 +176,19 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
     :param client:
     :return:
     """
-    if url_or_mid.startswith('http'):
-        mid = re.findall(r'/(\d+)', url_or_mid)[0]
+    if url_or_mid.startswith("http"):
+        mid = re.findall(r"/(\d+)", url_or_mid)[0]
     else:
         mid = url_or_mid
-    params = {'mid': mid, 'order': order, 'ps': ps, 'pn': pn, 'keyword': keyword}
-    res = await req_retry(client, 'https://api.bilibili.com/x/space/wbi/arc/search', params=params)
+
+    params = {"mid": mid, "order": order, "ps": ps, "pn": pn, "keyword": quote(keyword)}
+    await _add_sign(client, params)
+
+    res = await req_retry(client, "https://api.bilibili.com/x/space/wbi/arc/search", params=params)
     info = json.loads(res.text)
-    up_name = info['data']['list']['vlist'][0]['author']
-    total_size = info['data']['page']['count']
-    bv_ids = [i['bvid'] for i in info['data']['list']['vlist']]
+    up_name = info["data"]["list"]["vlist"][0]["author"]
+    total_size = info["data"]["page"]["count"]
+    bv_ids = [i["bvid"] for i in info["data"]["list"]["vlist"]]
     return up_name, total_size, bv_ids
 
 
