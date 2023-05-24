@@ -25,6 +25,9 @@ class MethodInfo:
     params: Dict[str, ParamInfo]
     desc: str
 
+    def __hash__(self):
+        return hash((self.name, self.short))
+
 
 def check_unique_method(method_name: str, bases: Tuple[type, ...]):
     return not any(method_name in base.__dict__ for base in bases)

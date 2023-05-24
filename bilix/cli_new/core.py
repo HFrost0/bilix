@@ -1,18 +1,20 @@
 """
 use handler to provide click(typer) cli service
 """
+from importlib import import_module
 from typing import List, Optional, Union, get_origin, get_args, Annotated
 from click import UsageError, Context, Command
 from rich.padding import Padding
 from rich.panel import Panel
+from rich.table import Table
 from typer import rich_utils
 from typer.models import OptionInfo, ParameterInfo, ParamMeta
 from typer.core import TyperCommand, TyperOption, TyperArgument
 from typer.main import get_click_param
 from typer.rich_utils import STYLE_OPTIONS_PANEL_BORDER, ALIGN_OPTIONS_PANEL, highlighter
 from bilix import __version__
-from bilix.cli_new.assign import assign, sites_module_infos, base_module_infos
-from bilix.cli_new.handler import ParamInfo
+from bilix.cli_new.assign import assign, sites_module_infos, base_module_infos, sorted_modules, handler_classes
+from bilix.cli_new.handler import ParamInfo, Handler
 from bilix.log import logger
 from rich import print as rprint
 from rich.markdown import Markdown
@@ -53,6 +55,52 @@ def get_click_option(p: ParamInfo) -> Optional[TyperOption]:
     assert p.default != p.empty, f"Parameter '{p.name}' has no available type hint and no default value."
 
 
+def print_site_help(name: str):
+    """print help for site downloader or base downloader
+    :param name: BaseDownloaderXxx or site name
+    :return:
+    """
+    infos = sorted_modules(name, [name])
+    for info in infos:
+        if (name.startswith('Base') and _convert_path_to_name(info.module_path) == name) or \
+                name == info.module_path.split('.')[-1]:
+            try:
+                module = import_module(info.module_path)
+            except ImportError as e:
+                logger.debug(f"duo to ImportError <{e}>, skip <module '{info.module_path}'>")
+                continue
+            for cls in handler_classes(module):
+                print_handler_help(cls)
+            rprint('✨ use [cyan]bilix METHOD KEYS... --help[/cyan] to get more help for options of method')
+            return
+    predicted_info = infos[0]
+    predicted_name = predicted_info.module_path.split('.')[-1]
+    if '_' in predicted_name:
+        predicted_name = _convert_path_to_name(predicted_info.module_path)
+    rprint(f"Can't find help for name: [cyan]{name}[/cyan]. Do you mean: [cyan]bilix help {predicted_name}[/cyan] ?")
+
+
+def print_handler_help(cls: Handler):
+    table = Table(show_header=True, show_lines=False, title_justify='left', box=None, header_style='yellow',
+                  expand=True)
+    table.add_column("Method Name")
+    table.add_column("Short Name")
+    table.add_column("Method Description")
+    table.add_column("Key Description")
+    methods = sorted(set(cls.cli_info.values()), key=lambda x: x.name)
+    for method_info in methods:
+        if method_info.name == '__init__':
+            continue
+        method_key_desc = next(iter(method_info.params.values())).desc
+        table.add_row(method_info.name, method_info.short, method_info.desc or '...', method_key_desc or '...')
+    rprint(Panel(
+        table,
+        border_style=STYLE_OPTIONS_PANEL_BORDER,
+        title=cls.__name__,
+        title_align=ALIGN_OPTIONS_PANEL,
+    ))
+
+
 class CustomContext(Context):
     @property
     def command_path(self) -> str:
@@ -91,12 +139,14 @@ class CustomCommand(TyperCommand):
         except UsageError:
             return super().parse_args(ctx, args)
 
-        # todo help method
+        # method is help
         if method == 'help':
-            if len(keys) == 0:
-                pass
+            if len(keys) != 1:
+                raise UsageError("Please specify one site name or downloader name")
             else:
-                pass
+                print_site_help(keys[0])
+                ctx.exit()
+
         handler_cls = assign(method, keys)
         cli_info = handler_cls.cli_info
         method = cli_info[method]
@@ -163,7 +213,8 @@ class CustomCommand(TyperCommand):
             )
         else:
             rprint(Padding(
-                highlighter(f"⚡️ bilix: a lightning-fast download tool for bilibili and more. Version {__version__}"),
+                highlighter(f"⚡️ bilix: a lightning-fast async download tool for bilibili and more. "
+                            f"Version {__version__}"),
                 1
             ))
             msg = "bilix supports many sites:\n"

@@ -54,8 +54,8 @@ if __name__ == "__main__":
     runner = CliRunner()
     result = runner.invoke(main(
         [
-            'v',
-            'https://www.bilibili.com/video/BV1Zk4y1772p/',
+            'help',
+            'bilibili',
             # '--debug',
             # '-p', '3jfjf/123',
             # '-a', 'adfad',
