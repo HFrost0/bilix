@@ -213,8 +213,7 @@ class CustomCommand(TyperCommand):
             )
         else:
             rprint(Padding(
-                highlighter(f"⚡️ bilix: a lightning-fast async download tool for bilibili and more. "
-                            f"Version {__version__}"),
+                highlighter(f"⚡️ bilix: a lightning-fast async download tool. Version {__version__}"),
                 1
             ))
             msg = "bilix supports many sites:\n"

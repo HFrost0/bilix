@@ -76,12 +76,12 @@ class BaseDownloaderM3u8(BaseDownloader):
             return await self.to_invariant_m3u8(m3u8_info.playlists[0].absolute_uri)
         return m3u8_info
 
-    async def get_m3u8_video(self, m3u8_url: str, path: Annotated[Path, str2path],
+    async def get_m3u8_video(self, m3u8_url: str, path: Annotated[Path, str2path] = Path('.'),
                              time_range: Annotated[Tuple[int, int], parse_time_range] = None) -> Path:
         """
         download video from m3u8 url
         :cli: short: m3u8
-        :param m3u8_url:
+        :param m3u8_url: m3u8 url, can be invariant or variant
         :param path: file path or file dir, if dir, filename will be set according to m3u8_url
         :param time_range: tuple (start_time, end_time) or str like 00:01:00-00:01:05 (hour:minute:second)
         :return: downloaded file path

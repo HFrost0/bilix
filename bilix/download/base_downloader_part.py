@@ -158,7 +158,7 @@ class BaseDownloaderPart(BaseDownloader):
     async def get_file(
             self,
             url_or_urls: Union[str, Iterable[str]],
-            path: Annotated[Path, str2path],
+            path: Annotated[Path, str2path] = Path('.'),
             task_id=None
     ) -> Path:
         """
