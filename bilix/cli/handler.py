@@ -53,7 +53,7 @@ def parse_param_descriptions(docstring: Optional[str]) -> dict:
 def parse_short_name(docstring: str) -> Optional[str]:
     if docstring is None:
         return None
-    cli_short_match = re.search(r":cli: short: (\w+)", docstring)
+    cli_short_match = re.search(r":cli short: (\w+)", docstring)
     return cli_short_match.group(1) if cli_short_match else None
 
 
@@ -99,7 +99,7 @@ def parse_init(init_func: Callable, bases) -> MethodInfo:
 
 def parse_method(func: Callable) -> Optional[MethodInfo]:
     docstring = func.__doc__
-    if not docstring or ':cli:' not in docstring:
+    if not docstring or ':cli' not in docstring:
         return None
     method_desc = parse_method_desc(docstring)
     # parse short name

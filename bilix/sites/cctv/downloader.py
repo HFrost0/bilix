@@ -42,7 +42,7 @@ class DownloaderCctv(BaseDownloaderM3u8):
 
     async def get_series(self, url: str, path: Annotated[Path, str2path] = Path('.'), quality: int = 0):
         """
-        :cli: short: s
+        :cli short: s
         :param url:
         :param path:
         :param quality: 画面质量，越大画面质量越低，超过可选范围时自动选择最低画质
@@ -61,7 +61,7 @@ class DownloaderCctv(BaseDownloaderM3u8):
     async def get_video(self, url_or_pid: str, path: Annotated[Path, str2path] = Path('.'),
                         quality: int = 0, time_range: Annotated[Tuple[int, int], parse_time_range] = None):
         """
-        :cli: short: v
+        :cli short: v
         :param url_or_pid:
         :param path:
         :param quality: 画面质量，越大画面质量越低，超过可选范围时自动选择最低画质

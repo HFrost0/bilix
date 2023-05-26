@@ -42,7 +42,7 @@ class DownloaderJable(BaseDownloaderM3u8):
     async def get_model(self, url: str, path: Annotated[Path, str2path] = Path("."), image=True):
         """
         download videos of a model
-        :cli: short: m
+        :cli short: m
         :param url: model page url
         :param path: save path
         :param image: download cover
@@ -57,7 +57,7 @@ class DownloaderJable(BaseDownloaderM3u8):
     async def get_video(self, url: str, path: Annotated[Path, str2path] = Path("."),
                         image=True, time_range: Tuple[int, int] = None):
         """
-        :cli: short: v
+        :cli short: v
         :param url:
         :param path:
         :param image:

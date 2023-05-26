@@ -21,7 +21,7 @@ class InformerBilibili(DownloaderBilibili):
     async def info_key(self, key):
         """
         打印url所属资源的详细信息（例如点赞数，画质，编码格式等）
-        :cli: short: info
+        :cli short: info
         :param key: 资源url，当前仅支持视频url
         :return:
         """

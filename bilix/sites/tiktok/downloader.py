@@ -36,7 +36,7 @@ class DownloaderTiktok(BaseDownloaderPart):
 
     async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'), image: bool = False):
         """
-        :cli: short: v
+        :cli short: v
         :param url:
         :param path:
         :param image:

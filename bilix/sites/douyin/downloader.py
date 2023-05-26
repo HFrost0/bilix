@@ -36,7 +36,7 @@ class DownloaderDouyin(BaseDownloaderPart):
 
     async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'), image=False):
         """
-        :cli: short: v
+        :cli short: v
         :param url:
         :param path:
         :param image:

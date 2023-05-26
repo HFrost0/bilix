@@ -163,7 +163,7 @@ class BaseDownloaderPart(BaseDownloader):
     ) -> Path:
         """
         download file by http content-range
-        :cli: short: f
+        :cli short: f
         :param url_or_urls: file url or urls with backups
         :param path: file path or dir path, if dir path, filename will be extracted from url
         :param task_id: if not provided, a new progress task will be created

@@ -99,7 +99,7 @@ class DownloaderBilibili(BaseDownloaderPart):
     async def auto(self, key: str, **method_options: dict):
         """
         自动选择下载方法
-        :cli: short: a
+        :cli short: a
         :param key:
         :param method_options:
         :return:
@@ -112,7 +112,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                                   codec: str = ''):
         """
         下载合集或视频列表
-        :cli: short: col
+        :cli short: col
         :param url: 合集或视频列表详情页url
         :param path: 保存路径
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
@@ -144,7 +144,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                          dm=False, only_audio=False, codec: str = ''):
         """
         下载收藏夹内的视频
-        :cli: short: fav
+        :cli short: fav
         :param url_or_fid: 收藏夹url或收藏夹id
         :param path: 保存路径
         :param num: 下载数量
@@ -203,7 +203,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                        series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
         下载分区视频
-        :cli: short: cate
+        :cli short: cate
         :param cate_name: 分区名称
         :param path: 保存路径
         :param num: 下载数量
@@ -261,7 +261,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                      series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
         下载up主视频
-        :cli: short: up
+        :cli short: up
         :param url_or_mid: b站用户空间页面url 或b站用户id，在空间页面的url中可以找到
         :param path: 保存路径
         :param num: 下载总数
@@ -312,7 +312,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                          dm=False, only_audio=False, p_range: Tuple[int, int] = None, codec: str = ''):
         """
         下载某个系列（包括up发布的多p投稿，动画，电视剧，电影等）的所有视频。只有一个视频的情况下仍然可用该方法
-        :cli: short: s
+        :cli short: s
         :param url: 系列中任意一个视频的url
         :param path: 保存路径
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
@@ -347,7 +347,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                         video_info: api.VideoInfo = None):
         """
         下载单个视频
-        :cli: short: v
+        :cli short: v
         :param url: 视频的url
         :param path: 保存路径
         :param quality: 画面质量，0为可以观看的最高画质，越大质量越低，超过范围时自动选择最低画质，或者直接使用字符串指定'1080p'等名称
@@ -468,7 +468,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                      update: bool = False, convert_func=_dm2ass_factory(1920, 1080), video_info: api.VideoInfo = None):
         """
         下载视频的弹幕
-        :cli: short: dm
+        :cli short: dm
         :param url: 视频url
         :param path: 保存路径
         :param update: 是否更新覆盖之前下载的弹幕文件
@@ -507,7 +507,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                            convert_func=json2srt, video_info: api.VideoInfo = None):
         """
         下载视频的字幕文件
-        :cli: short: sub
+        :cli short: sub
         :param url: 视频url
         :param path: 字幕文件保存路径
         :param convert_func: function used to convert original subtitle text

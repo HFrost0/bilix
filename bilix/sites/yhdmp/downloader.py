@@ -40,7 +40,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
     async def get_series(self, url: str, path: Annotated[Path, str2path] = Path('.'),
                          p_range: Tuple[int, int] = None):
         """
-        :cli: short: s
+        :cli short: s
         :param url:
         :param path:
         :param p_range:
@@ -73,7 +73,7 @@ class DownloaderYhdmp(BaseDownloaderM3u8):
     async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'),
                         time_range: Tuple[int, int] = None):
         """
-        :cli: short: v
+        :cli short: v
         :param url:
         :param path:
         :param time_range:
