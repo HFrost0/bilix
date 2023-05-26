@@ -181,7 +181,7 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
     else:
         mid = url_or_mid
 
-    params = {"mid": mid, "order": order, "ps": ps, "pn": pn, "keyword": quote(keyword)}
+    params = {"mid": mid, "order": order, "ps": ps, "pn": pn, "keyword": quote(keyword or "")}
     await _add_sign(client, params)
 
     res = await req_retry(client, "https://api.bilibili.com/x/space/wbi/arc/search", params=params)
