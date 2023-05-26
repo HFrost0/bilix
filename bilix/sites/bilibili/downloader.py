@@ -2,6 +2,7 @@ import asyncio
 import functools
 import logging
 import re
+from enum import Enum
 from pathlib import Path
 from typing import Union, Tuple, List, Annotated
 import aiofiles
@@ -193,8 +194,17 @@ class DownloaderBilibili(BaseDownloaderPart):
             await self._cate_meta
         return self._cate_meta
 
+    class CateOrder(Enum):
+        click = 'click'
+        scores = 'scores'
+        stow = 'stow'
+        coin = 'coin'
+        dm = 'dm'
+
     async def get_cate(self, cate_name: str, path: Annotated[Path, str2path] = Path('.'),
-                       num=10, order='click', keyword='', days=7, quality: Union[str, int] = 0,
+                       num=10,
+                       order: CateOrder = CateOrder.click,
+                       keyword='', days=7, quality: Union[str, int] = 0,
                        series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
         下载分区视频
@@ -239,7 +249,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
     async def _get_cate_by_page(self, cate_id, path: Path,
-                                time_from, time_to, pn=1, num=30, order='click', keyword='',
+                                time_from, time_to, pn=1, num=30, order: CateOrder = CateOrder.click, keyword='',
                                 quality: Union[str, int] = 0,
                                 series=True, image=False, subtitle=False, dm=False, only_audio=False, codec=''):
         bvids = await api.get_cate_page_info(self.client, cate_id, time_from, time_to, pn, 30, order, keyword)
@@ -251,8 +261,13 @@ class DownloaderBilibili(BaseDownloaderPart):
                 for i in bvids]
         await asyncio.gather(*cors)
 
+    class UpOrder(Enum):
+        pubdate = 'pubdate'
+        click = 'click'
+        stow = 'stow'
+
     async def get_up(self, url_or_mid: str, path: Annotated[Path, str2path] = Path('.'),
-                     num=10, order='pubdate', keyword='', quality: Union[str, int] = 0,
+                     num=10, order: UpOrder = UpOrder.pubdate, keyword='', quality: Union[str, int] = 0,
                      series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         """
         下载up主视频
@@ -290,7 +305,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         await asyncio.gather(*cors)
 
     async def _get_up_by_page(self, url_or_mid, path: Path,
-                              pn=1, num=30, order='pubdate', keyword='', quality: Union[str, int] = 0,
+                              pn=1, num=30, order=UpOrder.pubdate, keyword='', quality: Union[str, int] = 0,
                               series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         ps = 30
         num = min(ps, num)
