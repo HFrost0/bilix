@@ -3,7 +3,7 @@ import functools
 import logging
 import re
 from pathlib import Path
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Annotated
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
@@ -16,11 +16,6 @@ from bilix.exception import APIUnsupportedError, APIResourceError, APIError
 from bilix.progress.abc import Progress
 from bilix import ffmpeg
 from danmakuC.bilibili import proto2ass
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
 
 
 def _dm2ass_factory(width: int, height: int):

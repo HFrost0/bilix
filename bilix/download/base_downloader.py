@@ -5,7 +5,8 @@ import time
 import random
 from collections import defaultdict
 from functools import wraps
-from typing import Union, Optional, Callable, Dict, Any, Tuple, List, Set
+from typing import Union, Optional, Callable, Dict, Any, Tuple, List, Set, Annotated, get_origin, get_args, \
+    get_type_hints
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import aiofiles
@@ -17,11 +18,6 @@ from bilix.download.utils import req_retry, path_check, parse_speed_str, str2pat
 from bilix.progress.abc import Progress
 from bilix.progress.cli_progress import CLIProgress
 from pathlib import Path, PurePath
-
-try:
-    from typing import Annotated, get_origin, get_args, get_type_hints
-except ImportError:  # lower than python 3.9
-    from typing_extensions import Annotated, get_origin, get_args, get_type_hints
 
 
 def is_instance_of_generic_type(value: Any, target_type: Any) -> bool:

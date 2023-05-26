@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from pathlib import Path, PurePath
-from typing import Union, List, Iterable, Tuple
+from typing import Union, List, Iterable, Tuple, Annotated
 from urllib.parse import urlparse
 import aiofiles
 import httpx
@@ -14,11 +14,6 @@ from bilix.download.utils import path_check, merge_files, parse_speed_str, parse
 from bilix.progress.abc import Progress
 from bilix import ffmpeg
 from .utils import req_retry
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
 
 __all__ = ['BaseDownloaderPart']
 
