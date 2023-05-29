@@ -62,7 +62,7 @@ class CLIProgress(Progress):
             self,
             description: str,
             start: bool = True,
-            total: Optional[float] = 100.0,
+            total: Optional[float] = None,
             completed: int = 0,
             visible: bool = True,
             **fields: Any,
