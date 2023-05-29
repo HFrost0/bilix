@@ -1,9 +1,10 @@
 import re
 import asyncio
 from pathlib import Path
-from typing import Union
+from typing import Union, Annotated
 import httpx
 from . import api
+from bilix.download.utils import str2path, parse_speed_str
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix import ffmpeg
 
@@ -16,7 +17,7 @@ class DownloaderYoutube(BaseDownloaderPart):
             *,
             client: httpx.AsyncClient = None,
             browser: str = None,
-            speed_limit: Union[float, int] = None,
+            speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress=None,
             logger=None,
@@ -36,11 +37,12 @@ class DownloaderYoutube(BaseDownloaderPart):
         )
         self.video_sema = asyncio.Semaphore(video_concurrency) if type(video_concurrency) is int else video_concurrency
 
-    async def get_video(self, url: str, path=Path('.')):
+    async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.')):
         """
-        :cli: short: v
-        :param url
-        :param path:
+        download youtube video by url
+        :cli short: v
+        :param url: youtube video url
+        :param path: download dir
         :return:
         """
         async with self.video_sema:
