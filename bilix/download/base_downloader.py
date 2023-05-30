@@ -167,13 +167,13 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         path = path.with_name(path.name + suffix)
         exist, path = path_check(path)
         if exist:
-            self.logger.info(f'[green]已存在[/green] {path.name}')
+            self.logger.exist(path.name)
             return path
         res = await req_retry(self.client, url)
         content = convert_func(res.content) if convert_func else res.content
         async with aiofiles.open(path, 'wb') as f:
             await f.write(content)
-        self.logger.info(f'[cyan]已完成[/cyan] {path.name}')
+        self.logger.done(path.name)
         return path
 
     def _change_sore(self, exc: Union[httpx.HTTPStatusError, httpx.TransportError]):

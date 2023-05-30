@@ -49,12 +49,12 @@ class DownloaderYoutube(BaseDownloaderPart):
             video_info = await api.get_video_info(self.client, url)
             video_path = path / (video_info.title + '.mp4')
             if video_path.exists():
-                return self.logger.info(f'[green]已存在[/green] {video_path.name}')
+                return self.logger.exist(video_path.name)
             task_id = await self.progress.add_task(description=video_info.title, upper=True)
             path_lst = await asyncio.gather(
                 self.get_file(url_or_urls=video_info.video_url, path=path / (video_info.title + '-v'), task_id=task_id),
                 self.get_file(url_or_urls=video_info.audio_url, path=path / (video_info.title + '-a'), task_id=task_id)
             )
         await ffmpeg.combine(path_lst, output_path=path / (video_info.title + '.mp4'))
-        self.logger.info(f'[cyan]已完成[/cyan] {video_path.name}')
+        self.logger.done(video_path.name)
         await self.progress.update(task_id=task_id, visible=False)

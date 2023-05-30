@@ -92,7 +92,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             path = path.with_stem(f"{path.stem}-{time_range[0]}-{time_range[1]}")
         exist, path = path_check(path)
         if exist:
-            self.logger.info(f"[green]已存在[/green] {path.name}")
+            self.logger.exist(path.name)
             return path
         async with self.v_sema:
             task_id = await self.progress.add_task(total=None, description=path.name)
@@ -130,7 +130,7 @@ class BaseDownloaderM3u8(BaseDownloader):
             # to save key frame, use 0 as start time instead of s, clip will be a little longer than expected
             await ffmpeg.time_range_clip(path, 0, end_time - start_time + s, path_tmp)
             os.rename(path_tmp, path)
-        self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
+        self.logger.done(path.name)
         await self.progress.update(task_id, visible=False)
         return path
 

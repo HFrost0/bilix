@@ -87,7 +87,7 @@ class BaseDownloaderPart(BaseDownloader):
         exist, path = path_check(path)
         if exist:
             if not upper:
-                self.logger.info(f'[green]已存在[/green] {path.name}')
+                self.logger.exist(path.name)
             return path
 
         urls = [url_or_urls] if isinstance(url_or_urls, str) else [url for url in url_or_urls]
@@ -147,7 +147,7 @@ class BaseDownloaderPart(BaseDownloader):
             await ffmpeg.time_range_clip(path_tmp, start=s, t=end_time - start_time, output_path=path)
         if not upper:  # no upstream task
             await self.progress.update(task_id, visible=False)
-            self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
+            self.logger.done(path.name)
         return path
 
     async def get_file(
@@ -171,7 +171,7 @@ class BaseDownloaderPart(BaseDownloader):
             exist, path = path_check(path)
             if exist:
                 if not upper:
-                    self.logger.info(f'[green]已存在[/green] {path.name}')
+                    self.logger.exist(path.name)
                 return path
 
         total, req_filename = await self._pre_req(urls)
@@ -182,7 +182,7 @@ class BaseDownloaderPart(BaseDownloader):
             exist, path = path_check(path)
             if exist:
                 if not upper:
-                    self.logger.info(f'[green]已存在[/green] {path.name}')
+                    self.logger.exist(path.name)
                 return path
 
         if task_id is not None:
@@ -201,7 +201,7 @@ class BaseDownloaderPart(BaseDownloader):
         await merge_files(file_list, new_path=path)
         if not upper:
             await self.progress.update(task_id, visible=False)
-            self.logger.info(f"[cyan]已完成[/cyan] {path.name}")
+            self.logger.done(path.name)
         return path
 
     async def _get_file_part(self, urls: List[str], path: Path, part_range: Tuple[int, int],

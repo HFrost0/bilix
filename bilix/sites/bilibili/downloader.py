@@ -399,7 +399,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                     elif audio and not only_audio:
                         exists, media_path = path_check(path / f'{media_name}.mp4')
                         if exists:
-                            self.logger.info(f'[green]已存在[/green] {media_path.name}')
+                            self.logger.exist(media_path.name)
                         else:
                             tmp.append((video, path / f'{media_name}-v'))
                             tmp.append((audio, path / f'{media_name}-a'))
@@ -437,7 +437,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                 else:
                     exist, media_path = path_check(path / f'{media_name}.mp4')
                     if exist:
-                        self.logger.info(f'[green]已存在[/green] {media_path.name}')
+                        self.logger.exist(media_path.name)
                     else:
                         p_sema = asyncio.Semaphore(self.part_concurrency)
 
@@ -471,7 +471,7 @@ class DownloaderBilibili(BaseDownloaderPart):
 
         if upper := self.progress.tasks[task_id].fields.get('upper', None):
             await upper(path_lst, media_path)
-            self.logger.info(f'[cyan]已完成[/cyan] {media_path.name}')
+            self.logger.done(media_path.name)
         await self.progress.update(task_id, visible=False)
 
     async def get_dm(self, url: str, path: Annotated[Path, str2path] = Path('.'),
@@ -499,7 +499,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         file_path = path / file_name
         exist, file_path = path_check(file_path)
         if not update and exist:
-            self.logger.info(f"[green]已存在[/green] {file_name}")
+            self.logger.exist(file_name)
             return file_path
         dm_urls = await api.get_dm_urls(self.client, aid, cid)
         cors = [req_retry(self.client, dm_url) for dm_url in dm_urls]
@@ -510,7 +510,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             content = await content
         async with aiofiles.open(file_path, 'wb') as f:
             await f.write(content)
-        self.logger.info(f"[cyan]已完成[/cyan] {file_name}")
+        self.logger.done(file_name)
         return file_path
 
     async def get_subtitle(self, url: str, path: Annotated[Path, str2path] = Path('.'),
