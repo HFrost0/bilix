@@ -45,6 +45,6 @@ def main(ctx, method, keys, **options):
         CLIProgress.start()
         loop.run_until_complete(cor)
     except KeyboardInterrupt:
-        logger.info('[cyan]提示：用户中断，重复执行命令可继续下载')
+        logger.info('[yellow]Interrupted, repeated command execution can continue downloading')
     finally:
         CLIProgress.stop()
