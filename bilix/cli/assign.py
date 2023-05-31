@@ -75,7 +75,10 @@ def handler_classes(module: ModuleType):
         if attr_name.startswith('_'):
             continue
         handler_cls = getattr(module, attr_name)
-        if not issubclass(handler_cls, Handler):
+        try:
+            if not issubclass(handler_cls, Handler):
+                continue
+        except TypeError:
             continue
         yield handler_cls
 

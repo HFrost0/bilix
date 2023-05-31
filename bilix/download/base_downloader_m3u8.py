@@ -154,7 +154,6 @@ class BaseDownloaderM3u8(BaseDownloader):
             return path
         seg_url = seg.absolute_uri
         async with p_sema:
-            content = None
             for times in range(1 + self.stream_retry):
                 content = bytearray()
                 try:

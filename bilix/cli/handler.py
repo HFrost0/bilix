@@ -156,7 +156,7 @@ class Handler(metaclass=HandlerMeta):
     def decide_handle(cls, method_name: str, keys: Tuple[str, ...]) -> bool:
         """check if the method and keys can be handled by this handler"""
         if cls.pattern:
-            return cls.pattern.match(keys[0]) is not None
+            return cls.pattern.match(keys[0]) is not None and method_name in cls.cli_info
         else:
             return method_name in cls.cli_info
 
