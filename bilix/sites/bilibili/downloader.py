@@ -603,16 +603,18 @@ class DownloaderBilibili(BaseDownloaderPart):
             path = path / name
             path.mkdir(parents=True, exist_ok=True)
         cors = []
+        part_sema = asyncio.Semaphore(self.part_concurrency)
 
         async def get_static(u, p):
-            async with self.v_sema:
+            async with part_sema:
                 await self.get_static(url=u, path=p, task_id=task_id)
 
         task_id = await self.progress.add_task(description=name, visible=False)
         for pic in album_info['pictures']:
             file_name = pic['img_src'].rsplit('/', 1)[-1].split('.', 1)[0]
             cors.append(get_static(pic['img_src'], path / file_name))
-        lst = await asyncio.gather(*cors, return_exceptions=True)
+        async with self.v_sema:
+            lst = await asyncio.gather(*cors, return_exceptions=True)
         downloaded_paths = []
         for res in lst:
             if not isinstance(res, Exception):
