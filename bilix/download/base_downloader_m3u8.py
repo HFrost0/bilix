@@ -175,7 +175,7 @@ class BaseDownloaderM3u8(BaseDownloader):
                 except (httpx.HTTPStatusError, httpx.TransportError):
                     continue
             else:
-                raise Exception(f"STREAM 超过重复次数 {seg_url}")
+                raise Exception(f"STREAM max retry {seg_url}")
         content = self._after_seg(seg, content)
         # in case encrypted
         if seg.key:

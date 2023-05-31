@@ -4,7 +4,7 @@ import logging
 import re
 from enum import Enum
 from pathlib import Path
-from typing import Union, Tuple, List, Annotated
+from typing import Union, Tuple, List, Annotated, Dict, Optional
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
@@ -17,6 +17,12 @@ from bilix.exception import APIUnsupportedError, APIResourceError, APIError
 from bilix.progress.abc import Progress
 from bilix import ffmpeg
 from danmakuC.bilibili import proto2ass
+
+
+class UpOrder(str, Enum):
+    pubdate = 'pubdate'
+    click = 'click'
+    stow = 'stow'
 
 
 def _dm2ass_factory(width: int, height: int):
@@ -194,7 +200,7 @@ class DownloaderBilibili(BaseDownloaderPart):
             await self._cate_meta
         return self._cate_meta
 
-    class CateOrder(Enum):
+    class CateOrder(str, Enum):
         click = 'click'
         scores = 'scores'
         stow = 'stow'
@@ -261,11 +267,6 @@ class DownloaderBilibili(BaseDownloaderPart):
                 for i in bvids]
         await asyncio.gather(*cors)
 
-    class UpOrder(Enum):
-        pubdate = 'pubdate'
-        click = 'click'
-        stow = 'stow'
-
     async def get_up(self, url_or_mid: str, path: Annotated[Path, str2path] = Path('.'),
                      num=10, order: UpOrder = UpOrder.pubdate, keyword='', quality: Union[str, int] = 0,
                      series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
@@ -287,7 +288,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         ps = 30
-        up_name, total_size, bv_ids = await api.get_up_info(self.client, url_or_mid, 1, ps, order, keyword)
+        up_name, total_size, bv_ids = await api.get_up_video_info(self.client, url_or_mid, 1, ps, order, keyword)
         if self.hierarchy:
             path /= legal_title(f"【up】{up_name}")
             path.mkdir(parents=True, exist_ok=True)
@@ -309,7 +310,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                               series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         ps = 30
         num = min(ps, num)
-        _, _, bvids = await api.get_up_info(self.client, url_or_mid, pn, ps, order, keyword)
+        _, _, bvids = await api.get_up_video_info(self.client, url_or_mid, pn, ps, order, keyword)
         bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList
@@ -542,6 +543,83 @@ class DownloaderBilibili(BaseDownloaderPart):
             cors.append(self.get_static(sub_url, path / file_name, convert_func=convert_func))
         paths = await asyncio.gather(*cors)
         return paths
+
+    async def get_up_album(self, url: str, path: Annotated[Path, str2path] = Path('.'),
+                           p_range: Tuple[int, int] = None,
+                           name_fmt: str = '【相簿】{up_name}/{ctime}-{doc_id}/'
+                           ):
+        """
+        下载up主的相簿
+        :cli short: upa
+        :param url: b站用户空间页面url
+        :param path: 保存路径
+        :param p_range: 下载范围，从0开始计数，左闭右开
+        :param name_fmt: 命名格式（以/分割层级），此层级支持的变量有：up_name
+        :return:
+        """
+        async with self.api_sema:
+            up_info, up_album_info = await api.get_up_album_info(self.client, url)
+        if p_range:
+            start, end = p_range
+            up_album_info = up_album_info[start: end]
+        if self.hierarchy:
+            up_name = legal_title(up_info['name'])
+            if name_fmt:
+                fmt, name_fmt = name_fmt.split('/', 1)
+                name = fmt.format(up_name=up_name)
+            else:
+                name = up_name
+            path = path / name
+            path.mkdir(parents=True, exist_ok=True)
+        await asyncio.gather(*[
+            self.get_album(album_info, path=path, name_fmt=name_fmt) for album_info in up_album_info
+        ])
+
+    async def get_album(self, url_or_info: Union[str, Dict], path: Annotated[Path, str2path] = Path('.'),
+                        name_fmt: str = '{ctime}-{doc_id}/'):
+        """
+        下载某个相簿
+        :param url_or_info:
+        :param path:
+        :param name_fmt: 命名格式，命名格式，此层级支持的变量有：ctime, doc_id
+        :return:
+        """
+        if isinstance(url_or_info, str):
+            async with self.api_sema:
+                # todo
+                album_info = await api.get_album_info(self.client, url_or_info)
+        else:
+            album_info = url_or_info
+        name_d = {
+            'ctime': datetime.fromtimestamp(album_info['ctime']).strftime('%Y-%m-%d'),
+            'doc_id': album_info['doc_id']
+        }
+        if name_fmt:
+            fmt, name_fmt = name_fmt.split('/', 1)
+            name = fmt.format(**name_d)
+        else:
+            name = '{ctime}-{doc_id}'.format(**name_d)
+        if self.hierarchy:
+            path = path / name
+            path.mkdir(parents=True, exist_ok=True)
+        cors = []
+
+        async def get_static(u, p):
+            async with self.v_sema:
+                await self.get_static(url=u, path=p, task_id=task_id)
+
+        task_id = await self.progress.add_task(description=name, visible=False)
+        for pic in album_info['pictures']:
+            file_name = pic['img_src'].rsplit('/', 1)[-1].split('.', 1)[0]
+            cors.append(get_static(pic['img_src'], path / file_name))
+        lst = await asyncio.gather(*cors, return_exceptions=True)
+        downloaded_paths = []
+        for res in lst:
+            if not isinstance(res, Exception):
+                downloaded_paths.append(res)
+        await self.progress.update(task_id, visible=False)
+        self.logger.done(name)
+        return downloaded_paths
 
     @classmethod
     def decide_handle(cls, method_name: str, keys: Tuple[str, ...]):

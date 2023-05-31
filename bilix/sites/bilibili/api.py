@@ -163,8 +163,12 @@ async def _add_sign(client: httpx.AsyncClient, params: dict):
     return params
 
 
+def _find_mid(space_url: str):
+    return re.search(r'^https://space.bilibili.com/(\d+)/?', space_url).group(1)
+
+
 @raise_api_error
-async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order="pubdate", keyword=""):
+async def get_up_video_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order="pubdate", keyword=""):
     """
     获取up主信息
 
@@ -177,7 +181,7 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
     :return:
     """
     if url_or_mid.startswith("http"):
-        mid = re.findall(r"/(\d+)", url_or_mid)[0]
+        mid = _find_mid(url_or_mid)
     else:
         mid = url_or_mid
 
@@ -190,6 +194,18 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
     total_size = info["data"]["page"]["count"]
     bv_ids = [i["bvid"] for i in info["data"]["list"]["vlist"]]
     return up_name, total_size, bv_ids
+
+
+async def get_up_info(client: httpx.AsyncClient, url_or_mid: str):
+    if url_or_mid.startswith("http"):
+        mid = _find_mid(url_or_mid)
+    else:
+        mid = url_or_mid
+    params = {"mid": mid}
+    await _add_sign(client, params)
+    res = await req_retry(client, "https://api.bilibili.com/x/space/wbi/acc/info", params=params)
+    data = json.loads(res.text)['data']
+    return data
 
 
 class Media(BaseModel):
@@ -426,3 +442,29 @@ async def get_dm_urls(client: httpx.AsyncClient, aid, cid) -> List[str]:
     view = parse_view(res.content)
     total = int(view['dmSge']['total'])
     return [f'https://api.bilibili.com/x/v2/dm/web/seg.so?oid={cid}&type=1&segment_index={i + 1}' for i in range(total)]
+
+
+async def get_up_album_info(client: httpx.AsyncClient, url: str) -> Tuple[Dict, List[Dict]]:
+    """todo it seems that page_size is not working, count may be incorrect"""
+    uid = re.search(r'^https://space.bilibili.com/(\d+)/?', url).group(1)
+    up_meta = asyncio.create_task(get_up_info(client, uid))
+    res = await req_retry(client, f'https://api.bilibili.com/x/dynamic/feed/draw/upload_count?uid={uid}')
+    count = json.loads(res.text)['data']['all_count']
+    sema = asyncio.Semaphore(3)
+
+    async def get_page(p: int):
+        async with sema:
+            params = {'uid': uid, 'page_num': p, 'page_size': ps, 'biz': 'all'}
+            r = await req_retry(client, 'https://api.bilibili.com/x/dynamic/feed/draw/doc_list', params=params)
+            data = json.loads(r.text)['data']['items']
+            return data
+
+    pn, ps, cur = 0, 30, 0
+    cors = []
+    while cur < count:
+        cors.append(get_page(pn))
+        pn += 1
+        cur += ps
+    lst = await asyncio.gather(*cors)
+    lst = [item for d in lst for item in d]
+    return await up_meta, lst

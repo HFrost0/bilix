@@ -82,3 +82,10 @@ async def test_choose_quality():
         video, audio = data.dash.choose_quality(quality='1080P', codec="hev:fLaC")
     except KeyError:
         assert not os.getenv("BILI_TOKEN")
+
+
+@pytest.mark.asyncio
+async def test_get_up_album():
+    d = DownloaderBilibili()
+    await d.get_up_album("https://space.bilibili.com/233962606")
+    await d.aclose()

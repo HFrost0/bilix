@@ -226,7 +226,7 @@ class BaseDownloaderPart(BaseDownloader):
                         aiofiles.open(part_path, 'ab') as f:
                     r.raise_for_status()
                     if r.history:  # avoid twice redirect
-                        urls[url_idx] = r.url
+                        urls[url_idx] = str(r.url)
                     async for chunk in r.aiter_bytes(chunk_size=self._chunk_size):
                         await f.write(chunk)
                         start += len(chunk)
@@ -236,5 +236,5 @@ class BaseDownloaderPart(BaseDownloader):
             except (httpx.HTTPStatusError, httpx.TransportError):
                 continue
         else:
-            raise Exception(f"STREAM 超过重复次数 {part_path.name}")
+            raise Exception(f"STREAM max retry {part_path.name}")
         return part_path

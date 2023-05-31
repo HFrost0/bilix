@@ -61,8 +61,8 @@ async def test_get_cate_page_info():
 
 
 @pytest.mark.asyncio
-async def test_get_up_info():
-    up_name, total_size, bvids = await api.get_up_info(client, "316568752", keyword="什么")
+async def test_get_up_video_info():
+    up_name, total_size, bvids = await api.get_up_video_info(client, "316568752", keyword="什么")
     assert len(bvids) > 0 and bvids[0].startswith('BV')
 
 
@@ -85,7 +85,7 @@ async def test_get_video_info():
     assert data.p == 0
     assert data.bvid
     assert data.img_url.startswith('http://') or data.img_url.startswith('https://')
-    # assert data.dash  # todo since GitHub action can not get dash, there is no dash check...
+    assert data.dash
     # 多个bv视频
     data = await api.get_video_info(client, "https://www.bilibili.com/video/BV1jK4y1N7ST?p=5")
     assert len(data.pages) > 1
@@ -125,3 +125,17 @@ async def test_get_dm_info():
                                     "https://www.bilibili.com/bangumi/play/ss33343?theme=movie&spm_id_from=333.337.0.0")
     data = await api.get_dm_urls(client, data.aid, data.cid)
     assert len(data) > 0
+
+
+@pytest.mark.asyncio
+async def test_get_up_info():
+    data = await api.get_up_info(client, "https://space.bilibili.com/1575476")
+    assert data['name']
+    assert data['mid'] == 1575476
+
+
+@pytest.mark.asyncio
+async def test_get_up_album_info():
+    up_info, up_album_info = await api.get_up_album_info(client, "https://space.bilibili.com/1575476/album")
+    assert len(up_album_info) > 0
+    assert up_info['name']

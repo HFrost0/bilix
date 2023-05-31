@@ -28,8 +28,8 @@ class InformerBilibili(DownloaderBilibili):
         await self.parse_url(key)(self, key)
 
     async def info_up(self, url: str):
-        up_name, total_size, bvids = await api.get_up_info(self.client, url)
-        rprint(up_name)
+        up_info = await api.get_up_info(self.client, url)
+        rprint(up_info)
 
     async def info_favour(self, url: str):
         pass

@@ -1,20 +1,18 @@
 import asyncio
 import inspect
-import logging
 import time
 import random
 from collections import defaultdict
 from functools import wraps
-from typing import Union, Optional, Callable, Dict, Any, Tuple, List, Set, Annotated, get_origin, get_args, \
-    get_type_hints
+from typing import Union, Optional, Callable, Dict, Any, Tuple, List, Set, Annotated, get_origin, get_args
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 import aiofiles
 import httpx
 
 from bilix.cli.handler import Handler, HandlerMeta
-from bilix.log import logger as dft_logger
-from bilix.download.utils import req_retry, path_check, parse_speed_str, str2path
+from bilix.log import logger as dft_logger, CustomLogger
+from bilix.download.utils import path_check, parse_speed_str, str2path
 from bilix.progress.abc import Progress
 from bilix.progress.cli_progress import CLIProgress
 from pathlib import Path, PurePath
@@ -115,7 +113,7 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
             speed_limit: Annotated[float, parse_speed_str] = None,
             stream_retry: int = 5,
             progress: Progress = None,
-            logger: logging.Logger = None,
+            logger: CustomLogger = None,
     ):
         """
         :param client: client used for http request
@@ -150,12 +148,13 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         """Close transport and proxies for httpx client"""
         await self.client.aclose()
 
-    async def get_static(self, url: str, path: Annotated[Path, str2path], convert_func=None) -> Path:
+    async def get_static(self, url: str, path: Annotated[Path, str2path], convert_func=None, task_id=None) -> Path:
         """
         download static file from url
         :param url:
         :param path: file path without suffix
         :param convert_func: function used to convert http bytes content, must be named like ...2...
+        :param task_id: task id used to update progress, if None, progress will not be updated
         :return: downloaded file path
         """
         # use suffix from convert_func's name
@@ -167,13 +166,40 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         path = path.with_name(path.name + suffix)
         exist, path = path_check(path)
         if exist:
-            self.logger.exist(path.name)
+            if task_id is None:
+                self.logger.exist(path.name)
             return path
-        res = await req_retry(self.client, url)
-        content = convert_func(res.content) if convert_func else res.content
+
+        async def update_progress_total(length):
+            if (t := self.progress.tasks[task_id].total) is None:
+                await self.progress.update(task_id, total=length, visible=True)
+            else:
+                await self.progress.update(task_id, total=length + t)
+
+        for times in range(1 + self.stream_retry):
+            content = bytearray()
+            try:
+                async with self.client.stream('GET', url) as r, self._stream_context(times):
+                    r.raise_for_status()
+                    if task_id is not None and 'content-length' in r.headers and not content:
+                        await update_progress_total(int(r.headers['content-length']))
+                    async for chunk in r.aiter_bytes(chunk_size=self._chunk_size):
+                        content.extend(chunk)
+                        if task_id is not None:
+                            await self.progress.update(task_id, advance=len(chunk))
+                        await self._check_speed(len(chunk))
+                if task_id is not None and 'content-length' not in r.headers:
+                    await update_progress_total(len(content))
+                break
+            except (httpx.HTTPStatusError, httpx.TransportError):
+                continue
+        else:
+            raise Exception(f"STREAM max retry {url}")
+        content = convert_func(bytes(content)) if convert_func else content
         async with aiofiles.open(path, 'wb') as f:
             await f.write(content)
-        self.logger.done(path.name)
+        if task_id is None:
+            self.logger.done(path.name)
         return path
 
     def _change_sore(self, exc: Union[httpx.HTTPStatusError, httpx.TransportError]):
