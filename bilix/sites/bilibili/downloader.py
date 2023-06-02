@@ -572,24 +572,18 @@ class DownloaderBilibili(BaseDownloaderPart):
             path = path / name
             path.mkdir(parents=True, exist_ok=True)
         await asyncio.gather(*[
-            self.get_album(album_info, path=path, name_fmt=name_fmt) for album_info in up_album_info
+            self._get_album(album_info, path=path, name_fmt=name_fmt) for album_info in up_album_info
         ])
 
-    async def get_album(self, url_or_info: Union[str, Dict], path: Annotated[Path, str2path] = Path('.'),
-                        name_fmt: str = '{ctime}-{doc_id}/'):
+    async def _get_album(self, album_info: Dict, path: Annotated[Path, str2path] = Path('.'),
+                         name_fmt: str = '{ctime}-{doc_id}/'):
         """
         下载某个相簿
-        :param url_or_info:
+        :param album_info:
         :param path:
         :param name_fmt: 命名格式，命名格式，此层级支持的变量有：ctime, doc_id
         :return:
         """
-        if isinstance(url_or_info, str):
-            async with self.api_sema:
-                # todo
-                album_info = await api.get_album_info(self.client, url_or_info)
-        else:
-            album_info = url_or_info
         name_d = {
             'ctime': datetime.fromtimestamp(album_info['ctime']).strftime('%Y-%m-%d'),
             'doc_id': album_info['doc_id']
