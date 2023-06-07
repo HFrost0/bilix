@@ -1,6 +1,6 @@
 import asyncio
 import click
-from click.testing import CliRunner
+from click import Path as ClickPath
 from bilix import __version__
 from bilix.log import logger
 from bilix.cli.core import CustomCommand
@@ -14,7 +14,8 @@ def handle_version(ctx: click.Context, param, value):
     ctx.exit()
 
 
-@click.command(cls=CustomCommand)
+@click.command(cls=CustomCommand,
+               help=f"""⚡️ bilix: a lightning-fast async download tool. Version {__version__}""")
 @click.option(
     "--debug",
     is_flag=True,
@@ -29,6 +30,14 @@ def handle_version(ctx: click.Context, param, value):
     expose_value=False,
     callback=handle_version,
     help="Show version and exit",
+)
+@click.option(
+    "--config",
+    # cls=TyperOption,  # not supported since TyperOption's init signature is different from click.Option
+    type=ClickPath(exists=True, file_okay=True, dir_okay=False, readable=True),
+    show_default=True,  # not effective due to the cls
+    expose_value=False,
+    help="config file path, if not specified, no config file will be loaded (default)",
 )
 @click.pass_context
 def main(ctx, method, keys, **options):

@@ -4,15 +4,13 @@ use handler to provide click(typer) cli service
 from importlib import import_module
 from typing import List, Optional, Union, get_origin, get_args, Annotated
 from click import UsageError, Context, Command
-from rich.padding import Padding
 from rich.panel import Panel
 from rich.table import Table
 from typer import rich_utils
 from typer.models import OptionInfo, ParameterInfo, ParamMeta
 from typer.core import TyperCommand, TyperOption, TyperArgument
 from typer.main import get_click_param
-from typer.rich_utils import STYLE_OPTIONS_PANEL_BORDER, ALIGN_OPTIONS_PANEL, highlighter
-from bilix import __version__
+from typer.rich_utils import STYLE_OPTIONS_PANEL_BORDER, ALIGN_OPTIONS_PANEL
 from bilix.cli.assign import assign, sites_module_infos, base_module_infos, sorted_modules, handler_classes
 from bilix.cli.handler import ParamInfo, Handler
 from bilix.log import logger
@@ -30,7 +28,6 @@ def to_typer_param_meta(p: ParamInfo) -> ParamMeta:
         annotation = get_args(annotation)[0]  # use the first type in Union, it's a convention
     elif origin is Annotated:
         # base_annotation, *convertors = get_args(annotation)
-        # todo metavar
         annotation = str
     # convert default to OptionInfo to ensure no ArgumentInfo is created
     if not isinstance(default, ParameterInfo):
@@ -43,6 +40,7 @@ def get_click_option(p: ParamInfo) -> Optional[TyperOption]:
     typer get_click_param with some logic to handle more cases
     """
     p = to_typer_param_meta(p)
+    # todo change default here
     try:
         option, convertor = get_click_param(p)
         if convertor:
@@ -212,10 +210,11 @@ class CustomCommand(TyperCommand):
                 markup_mode=self.rich_markup_mode,
             )
         else:
-            rprint(Padding(
-                highlighter(f"⚡️ bilix: a lightning-fast async download tool. Version {__version__}"),
-                1
-            ))
+            rich_utils.rich_format_help(
+                obj=self,
+                ctx=ctx,
+                markup_mode=self.rich_markup_mode,
+            )
             msg = "bilix supports many sites:\n"
             for info in sorted(sites_module_infos(), key=lambda x: x.cmp_key):  # alphasort
                 msg += f"* {info.cmp_key}\n"
