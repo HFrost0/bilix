@@ -5,6 +5,11 @@ bilix是一个强大的Python异步视频下载工具，安装它需要完成两
    ```shell
    pip install bilix
    ```
+   
+   如果你是macOS用户，可以使用brew安装：
+   ```shell
+    brew install bilix
+    ```
 
 2. [FFmpeg](https://ffmpeg.org) ：一个命令行视频工具，用于合成下载的音频和视频
 
