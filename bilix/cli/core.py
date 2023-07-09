@@ -40,7 +40,6 @@ def get_click_option(p: ParamInfo) -> Optional[TyperOption]:
     typer get_click_param with some logic to handle more cases
     """
     p = to_typer_param_meta(p)
-    # todo change default here
     try:
         option, convertor = get_click_param(p)
         if convertor:

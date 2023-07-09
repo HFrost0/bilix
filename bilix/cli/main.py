@@ -1,6 +1,5 @@
 import asyncio
 import click
-from click import Path as ClickPath
 from bilix import __version__
 from bilix.log import logger
 from bilix.cli.core import CustomCommand
@@ -20,7 +19,6 @@ def handle_version(ctx: click.Context, param, value):
     "--debug",
     is_flag=True,
     is_eager=True,
-    expose_value=False,
     help="Enable debug mode.",
 )
 @click.option(
@@ -31,16 +29,12 @@ def handle_version(ctx: click.Context, param, value):
     callback=handle_version,
     help="Show version and exit",
 )
-@click.option(
-    "--config",
-    # cls=TyperOption,  # not supported since TyperOption's init signature is different from click.Option
-    type=ClickPath(exists=True, file_okay=True, dir_okay=False, readable=True),
-    show_default=True,  # not effective due to the cls
-    expose_value=False,
-    help="config file path, if not specified, no config file will be loaded (default)",
-)
 @click.pass_context
-def main(ctx, method, keys, **options):
+def main(ctx, method=None, keys=None, **options):
+    if method is None and keys is None:
+        print(ctx.get_help())
+        ctx.exit()
+    debug = options.pop('debug')
     loop = asyncio.new_event_loop()  # avoid deprecated warning in 3.11
     asyncio.set_event_loop(loop)
     logger.debug(f"method: {method}, keys: {keys}, options: {options}")
@@ -55,5 +49,10 @@ def main(ctx, method, keys, **options):
         loop.run_until_complete(cor)
     except KeyboardInterrupt:
         logger.interrupted()
+    except Exception as e:
+        if debug:
+            raise e
+        else:
+            logger.error(f"Unexpected Exception: {repr(e)}. Use --debug to see more information.")
     finally:
         CLIProgress.stop()
