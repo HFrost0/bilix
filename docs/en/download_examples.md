@@ -72,7 +72,9 @@ if __name__ == '__main__':
 ## Download from multiple sites simultaneously
 
 You can initialize downloaders for different websites, and use the coroutine objects returned by their
-methods for concurrent downloads. The concurrency control between different downloaders is independent, allowing you to maximize the use of your network resources.
+methods for concurrent downloads. The concurrency control between different downloaders is independent, allowing you to
+maximize the use of your network resources.
+
 ```python
 import asyncio
 from bilix.sites.bilibili import DownloaderBilibili
@@ -124,3 +126,21 @@ async def main():
             cctv_d.get_series('https://www.douyin.com/video/7132430286415252773')
         )
 ```
+
+## Show progress bar
+
+When using the python module, the progress bar is not displayed by default. If you want to display it, you can
+
+```python
+from bilix.progress.cli_progress import CLIProgress
+
+CLIProgress.start()
+```
+
+or open via the `progress` object inside any downloader
+
+```python
+d.progress.start()
+```
+
+
