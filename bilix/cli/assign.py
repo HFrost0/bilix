@@ -45,6 +45,7 @@ def base_module_infos():
     infos = (
         ModuleInfo('bilix.download.base_downloader_m3u8', cmp_key='m3u8'),
         ModuleInfo('bilix.download.base_downloader_part', cmp_key='file'),
+        ModuleInfo('bilix.download.auto_downloader', cmp_key='autov'),
     )
     for info in infos:
         yield info
@@ -70,7 +71,8 @@ def sorted_modules(method: str, keys: List[str]) -> List[ModuleInfo]:
 def handler_classes(module: ModuleType):
     """find and yield all available handler class in module"""
     attrs = getattr(module, '__all__', None)
-    attrs = attrs or dir(module)
+    if attrs is None:
+        attrs = dir(module)
     for attr_name in attrs:
         if attr_name.startswith('_'):
             continue
