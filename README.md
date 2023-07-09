@@ -41,7 +41,7 @@ Extensible Python module suitable for more download scenarios.
 pip install bilix
 ```
 
-### Mac
+for macOS, you can also install `bilix` by `brew`
 
 ```shell
 brew install bilix

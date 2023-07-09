@@ -6,7 +6,7 @@ bilix是一个强大的Python异步视频下载工具，安装它需要完成两
    pip install bilix
    ```
    
-   如果你是macOS用户，可以使用brew安装：
+   如果你是macOS用户，也可以使用`brew`安装：
    ```shell
     brew install bilix
     ```
