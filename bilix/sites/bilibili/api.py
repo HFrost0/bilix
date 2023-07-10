@@ -395,7 +395,7 @@ class VideoInfo(BaseModel):
 
 
 @raise_api_error
-async def get_video_info(client: httpx.AsyncClient, url, api_only: bool = True) -> VideoInfo:
+async def get_video_info(client: httpx.AsyncClient, url, api_only: bool = False) -> VideoInfo:
     """
     默认访问视频页 HTML 内嵌的 JSON 获取视频信息，如果失败则通过 API 获取。
 
