@@ -53,18 +53,18 @@ class AutoDownloader(BaseDownloaderM3u8, BaseDownloaderPart):
         return list(video_srcs)
 
     def _find_m3u8_urls(self, html: str) -> List[str]:
-        m3u8_urls = re.findall(r'https?://\S+\.m3u8(?:\?\S+)?', html)
+        m3u8_urls = re.findall(r'https?://[^\'"]+\.m3u8(?:\?[^\'"]+)?', html)
         m3u8_urls = set(m3u8_urls)  # remove duplicate
         return list(m3u8_urls)
 
     def _find_mp4_urls(self, html: str) -> List[str]:
-        mp4_urls = re.findall(r'https?://\S+\.mp4(?:\?\S+)?', html)
+        mp4_urls = re.findall(r'https?://[^\'"]+\.mp4(?:\?[^\'"]+)?', html)
         mp4_urls = set(mp4_urls)  # remove duplicate
         return list(mp4_urls)
 
     def _find_title(self, html: str) -> str:
         """find html title"""
-        title = re.findall(r'<title>(.+?)</title>', html)[0]
+        title = re.findall(r'<title>([^<]+)</title>', html)[0]
         title = legal_title(title)
         return title
 
@@ -147,6 +147,5 @@ class AutoDownloader(BaseDownloaderM3u8, BaseDownloaderPart):
                 break
         else:
             self.logger.error("no m3u8 or mp4 urls found")
-            self.logger.debug(f"html: {html}")
             return
         return await cor
