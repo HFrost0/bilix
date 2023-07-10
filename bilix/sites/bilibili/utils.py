@@ -1,9 +1,9 @@
 import re
 
 
-def parse_ids_from_url(UrlOrString: str):
+def parse_ids_from_url(url_or_string: str):
     """
-    aid, bvid, page_num = parse_ids_from_url(UrlOrString)
+    aid, bvid, page_num = parse_ids_from_url(url_or_string)
 
     例如：
     ```
@@ -19,18 +19,18 @@ def parse_ids_from_url(UrlOrString: str):
     """
 
     bvid = aid = page_num = None
-    if re.match(r'https?://www.bilibili.com/video/BV\w+', UrlOrString) or re.match(r'BV\w+', UrlOrString):
-        bvid = re.search(r'BV(\w+)', UrlOrString).groups()[0]
+    if re.match(r'https?://www.bilibili.com/video/BV\w+', url_or_string) or re.match(r'BV\w+', url_or_string):
+        bvid = re.search(r'BV(\w+)', url_or_string).groups()[0]
         assert bvid.isalnum()
         assert isinstance(bvid, str)
-    elif re.match(r'https?://www.bilibili.com/video/av\d+', UrlOrString) or re.match(r'av\d+', UrlOrString):
-        aid = re.search(r'av(\d+)', UrlOrString).groups()[0]
+    elif re.match(r'https?://www.bilibili.com/video/av\d+', url_or_string) or re.match(r'av\d+', url_or_string):
+        aid = re.search(r'av(\d+)', url_or_string).groups()[0]
         assert aid.isdigit()
         aid = int(aid)
 
     # ?p=123 or &p=123
-    if re.match(r'.*[?&]p=(\d+)', UrlOrString):
-        page_num = int(re.search(r'.*[?&]p=(\d+)', UrlOrString).groups()[0])
+    if re.match(r'.*[?&]p=(\d+)', url_or_string):
+        page_num = int(re.search(r'.*[?&]p=(\d+)', url_or_string).groups()[0])
 
     assert bvid or aid, "url is not a valid bilibili video url"
 

@@ -331,8 +331,10 @@ class VideoInfo(BaseModel):
         :param init_dash: 原样添加到 VideoInfo 对象中
         :param init_other: 原样添加到 VideoInfo 对象中，但如果是 None 则会被初始化为 []
         """
-        if init_other is None: init_other = []
-        if isinstance(response, str): response = json.loads(response)
+        if init_other is None:
+            init_other = []
+        if isinstance(response, str):
+            response = json.loads(response)
         
         assert isinstance(response, dict)
         if response['code'] != 0:
@@ -462,14 +464,14 @@ async def get_video_info_from_api(client: httpx.AsyncClient, url) -> VideoInfo:
     aid, bvid, page_num = parse_ids_from_url(url)
     page_num = page_num or 1
 
-    video_info = await get_basic_video_info_from_api(client, aid=aid, bvid=bvid, selected_page_num=page_num)
-    video_info.dash, video_info.other = await get_video_dashAndDurl_from_api(client, aid=aid, bvid=bvid, cid=video_info.cid)
+    video_info = await get_video_basic_info_from_api(client, aid=aid, bvid=bvid, selected_page_num=page_num)
+    video_info.dash, video_info.other = await get_video_dash_and_durl_from_api(client, aid=aid, bvid=bvid, cid=video_info.cid)
 
     return video_info
 
 
 @raise_api_error
-async def get_video_dashAndDurl_from_api(client: httpx.AsyncClient,* ,
+async def get_video_dash_and_durl_from_api(client: httpx.AsyncClient,* ,
                          aid: Optional[int] = None, bvid: Optional[str] = None, cid: int) -> Tuple[Dash, List[Media]]:
     """
     从 api 获取视频的 dash 和 durl
@@ -481,8 +483,10 @@ async def get_video_dashAndDurl_from_api(client: httpx.AsyncClient,* ,
               'fnval': 4048, # 请求 dash 格式的全部可用流
               'fourk': 1, # 请求 4k 资源
               'fnver': 0, 'platform': 'pc', 'otype': 'json'}
-    if bvid is not None: params['bvid'] = bvid
-    elif aid is not None: params['avid'] = aid
+    if bvid is not None:
+        params['bvid'] = bvid
+    elif aid is not None:
+        params['avid'] = aid
     dash_response = await req_retry(client, DASH_API_URL, params=params, follow_redirects=True)
     dash_json = json.loads(dash_response.text)    
     assert dash_json['code'] == 0, f"获取视频 dash/durl 失败，原因：{dash_json['message']}"
@@ -499,15 +503,17 @@ async def get_video_dashAndDurl_from_api(client: httpx.AsyncClient,* ,
     return dash, other
 
 @raise_api_error
-async def get_basic_video_info_from_api(client: httpx.AsyncClient,*, aid:Optional[int], bvid:Optional[str], selected_page_num:int = 1) -> VideoInfo:
+async def get_video_basic_info_from_api(client: httpx.AsyncClient,*, aid:Optional[int], bvid:Optional[str], selected_page_num:int = 1) -> VideoInfo:
     """
     通过 view api 获取视频信息，不包括 dash 或 durl(other) 资源
     """
     API_URL = 'https://api.bilibili.com/x/web-interface/view'
     assert aid or bvid
     params = {}
-    if bvid: params = {'bvid': bvid}
-    elif aid: params = {'avid': aid}
+    if bvid:
+        params = {'bvid': bvid}
+    elif aid:
+        params = {'avid': aid}
     r = await req_retry(client, API_URL, params=params, follow_redirects=True)
     raw_json = json.loads(r.text)
     basic_video_info_without_DashAndDurl = VideoInfo.parse_response_from_basic_video_info_api(raw_json, selected_page_num=selected_page_num)
