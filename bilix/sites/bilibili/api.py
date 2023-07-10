@@ -478,7 +478,7 @@ async def get_video_dashAndDurl_from_api(client: httpx.AsyncClient,* ,
     DASH_API_URL = 'https://api.bilibili.com/x/player/playurl'
     params = {'cid': cid,
               'qn': 116, # 1080P60（请求 DASH 会取到所有分辨率的流地址，应该不用设置 qn）
-              'fnval': 16, # 16->请求 dash 格式, 1-> durl 格式
+              'fnval': 4048, # 请求 dash 格式的全部可用流
               'fourk': 1, # 请求 4k 资源
               'fnver': 0, 'platform': 'pc', 'otype': 'json'}
     if bvid is not None: params['bvid'] = bvid
