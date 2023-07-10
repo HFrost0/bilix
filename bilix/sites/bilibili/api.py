@@ -435,14 +435,14 @@ async def _get_video_info_from_api(client: httpx.AsyncClient, url) -> VideoInfo:
     page_num = page_num or 1
     assert isinstance(page_num, int) and page_num >= 1
 
-    video_info = await get_video_basic_info_from_api(client, aid=aid, bvid=bvid, selected_page_num=page_num)
-    video_info.dash, video_info.other = await get_video_dash_and_durl_from_api(client, aid=aid, bvid=bvid, cid=video_info.cid)
+    video_info = await _get_video_basic_info_from_api(client, aid=aid, bvid=bvid, selected_page_num=page_num)
+    video_info.dash, video_info.other = await _get_video_dash_and_durl_from_api(client, aid=aid, bvid=bvid, cid=video_info.cid)
 
     return video_info
 
 
 @raise_api_error
-async def get_video_dash_and_durl_from_api(client: httpx.AsyncClient,* ,
+async def _get_video_dash_and_durl_from_api(client: httpx.AsyncClient,* ,
                          aid: Optional[int] = None, bvid: Optional[str] = None, cid: int) -> Tuple[Dash, List[Media]]:
     """
     从 api 获取视频的 dash 和 durl
@@ -474,7 +474,7 @@ async def get_video_dash_and_durl_from_api(client: httpx.AsyncClient,* ,
     return dash, other
 
 @raise_api_error
-async def get_video_basic_info_from_api(client: httpx.AsyncClient,*, aid:Optional[int], bvid:Optional[str], selected_page_num:int = 1) -> VideoInfo:
+async def _get_video_basic_info_from_api(client: httpx.AsyncClient,*, aid:Optional[int], bvid:Optional[str], selected_page_num:int = 1) -> VideoInfo:
     """
     通过 view api 获取视频的基本信息，不包括 dash 或 durl(other) 视频流资源
     """
