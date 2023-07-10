@@ -325,6 +325,8 @@ class VideoInfo(BaseModel):
 
     @staticmethod
     def parse_html(url, html: str):
+        if "window._riskdata_" in html:
+            raise APIError("web 前端访问可能被风控，请尝试打开浏览器通过验证码、更换 IP 或使用 API 后重试", html)
         init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
         init_info = json.loads(init_info)
         if len(init_info.get('error', {})) > 0:
