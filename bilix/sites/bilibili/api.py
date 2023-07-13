@@ -8,8 +8,9 @@ from typing import Union, List, Tuple, Dict, Optional
 import json5
 from danmakuC.bilibili import parse_view
 from bilix.download.utils import req_retry, raise_api_error
+from bilix.sites.bilibili.utils import parse_ids_from_url
 from bilix.utils import legal_title
-from bilix.exception import APIError, APIResourceError, APIUnsupportedError
+from bilix.exception import APIBannedError, APIError, APIResourceError, APIUnsupportedError
 import hashlib
 import time
 
@@ -21,7 +22,7 @@ dft_client_settings = {
 
 
 @raise_api_error
-async def get_cate_meta(client: httpx.AsyncClient()) -> dict:
+async def get_cate_meta(client: httpx.AsyncClient) -> dict:
     """
     获取b站分区元数据
 
@@ -349,11 +350,13 @@ class VideoInfo(BaseModel):
     img_url: str
     status: Status
     bvid: str = None
-    dash: Dash = None
-    other: List[Media] = None  # flv, mp4
+    dash: Optional[Dash] = None
+    other: Optional[List[Media]] = None  # durl resource: flv, mp4.
 
     @staticmethod
     def parse_html(url, html: str):
+        if "window._riskdata_" in html:
+            raise APIBannedError("web 前端访问被风控", url)
         init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
         init_info = json.loads(init_info)
         if len(init_info.get('error', {})) > 0:
@@ -419,10 +422,84 @@ class VideoInfo(BaseModel):
 
 
 @raise_api_error
-async def get_video_info(client: httpx.AsyncClient, url) -> VideoInfo:
+async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
+    try:
+        # try to get video info from web front-end first
+        return await _get_video_info_from_html(client, url)
+    except APIBannedError:
+        # try to get video info from api if web front-end is banned
+        await _get_video_info_from_api(client, url)
+
+
+async def _get_video_info_from_html(client: httpx.AsyncClient, url: str) -> VideoInfo:
     res = await req_retry(client, url, follow_redirects=True)
     video_info = VideoInfo.parse_html(url, res.text)
     return video_info
+
+
+async def _get_video_info_from_api(client: httpx.AsyncClient, url: str) -> VideoInfo:
+    assert '/av' in url or '/BV' in url  # TODO: only support BV or av url
+    video_info = await _get_video_basic_info_from_api(client, url)
+    # can not be parallelized since we need to get cid first
+    await _attach_dash_and_durl_from_api(client, video_info)
+    return video_info
+
+
+async def _attach_dash_and_durl_from_api(client: httpx.AsyncClient, video_info: VideoInfo) \
+        -> Tuple[Dash, List[Media]]:
+    params = {'cid': video_info.cid, 'bvid': video_info.bvid,
+              'qn': 116,  # 1080P60（请求 DASH 会取到所有分辨率的流地址，应该不用设置 qn）
+              'fnval': 4048,  # 请求 dash 格式的全部可用流
+              'fourk': 1,  # 请求 4k 资源
+              'fnver': 0, 'platform': 'pc', 'otype': 'json'}
+    dash_response = await req_retry(client, 'https://api.bilibili.com/x/player/playurl',
+                                    params=params, follow_redirects=True)
+    dash_json = json.loads(dash_response.text)
+    if dash_json['code'] != 0:
+        raise APIResourceError(dash_json['message'], video_info.bvid)
+    dash, other = None, []
+    if 'dash' in dash_json['data']:
+        dash = Dash.from_dict(dash_json)
+    if 'durl' in dash_json['data']:
+        # 请求了 dash ，API 应该永远不会返回 durl 资源。解析一下以防万一
+        assert len(dash_json['data']['durl']) == 1, "durl 中返回了多个视频流，这可能是错误？请报告"
+        for i in dash_json['data']['durl']:
+            suffix = re.search(r'\.([a-zA-Z0-9]+)\?', i['url']).group(1)
+            other.append(Media(base_url=i['url'], backup_url=i['backup_url'], size=i['size'], suffix=suffix))
+    video_info.dash, video_info.other = dash, other
+
+
+async def _get_video_basic_info_from_api(client: httpx.AsyncClient, url) -> VideoInfo:
+    """通过 view api 获取视频的基本信息，不包括 dash 或 durl(other) 视频流资源"""
+    aid, bvid, selected_page_num = parse_ids_from_url(url)
+    params = {'bvid': bvid} if bvid else {'aid': aid}
+    r = await req_retry(client, 'https://api.bilibili.com/x/web-interface/view',
+                        params=params, follow_redirects=True)
+    raw_json = json.loads(r.text)
+    if raw_json['code'] != 0:
+        raise APIResourceError(raw_json['message'], raw_json['message'])
+    title = legal_title(raw_json['data']['title'])
+    h1_title = title  # TODO: 根据视频类型，使 h1_title 与实际网页标题的格式一致
+    aid = raw_json['data']['aid']
+    bvid = raw_json['data']['bvid']
+    base_url = f"https://www.bilibili.com/video/{bvid}/"
+    status = Status(**raw_json['data']['stat'])
+    pages = []
+    p = None
+    cid = None
+    for idx, i in enumerate(raw_json['data']['pages']):
+        page_num = int(i['page'])
+        if page_num == selected_page_num:
+            p = idx  # selected_page_num 的分p 在 pages 列表中的 index 位置
+            cid = int(i['cid'])  # selected_page_num 的分p 的 cid
+        p_url = f"{base_url}?p={page_num}"
+        p_name = f"P{page_num}-{i['part']}"
+        pages.append(Page(p_name=p_name, p_url=p_url))
+    assert p is not None, f"没有找到分P: p{selected_page_num}，请检查输入"  # cid 也会是 None
+    img_url = raw_json['data']['pic']
+    basic_video_info = VideoInfo(title=title, h1_title=h1_title, aid=aid, cid=cid, status=status,
+                                 p=p, pages=pages, img_url=img_url, bvid=bvid, dash=None, other=None)
+    return basic_video_info
 
 
 @raise_api_error

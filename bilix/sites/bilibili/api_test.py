@@ -79,36 +79,39 @@ async def test_get_up_video_info():
 
 @pytest.mark.asyncio
 async def test_get_video_info():
-    # 单个bv视频
-    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV1sS4y1b7qb?spm_id_from=333.999.0.0")
-    assert len(data.pages) == 1
-    assert data.p == 0
-    assert data.bvid
-    assert data.img_url.startswith('http://') or data.img_url.startswith('https://')
-    assert data.dash
-    # 多个bv视频
-    data = await api.get_video_info(client, "https://www.bilibili.com/video/BV1jK4y1N7ST?p=5")
-    assert len(data.pages) > 1
-    assert data.p == 4
-    assert data.bvid
-    # 电视剧
-    data = await api.get_video_info(client, "https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0")
-    assert len(data.pages) > 1
-    assert data.status.follow
-    # 动漫
-    data = await api.get_video_info(client, "https://www.bilibili.com/bangumi/play/ss5043?spm_id_from=333.337.0.0")
-    assert len(data.pages) > 1
-    assert data.status.follow
-
-    # 电影
-    data = await api.get_video_info(client,
-                                    "https://www.bilibili.com/bangumi/play/ss33343?theme=movie&spm_id_from=333.337.0.0")
-    assert data.title == '天气之子'
-    assert data.status.follow
-    # 纪录片
-    data = await api.get_video_info(client, "https://www.bilibili.com/bangumi/play/ss40509?from_spmid=666.9.hotlist.3")
-    assert len(data.pages) > 1
-    assert data.status.follow
+    methods = (api._get_video_info_from_html, api._get_video_info_from_api)
+    for method in methods:
+        # 单个bv视频
+        data = await method(client, "https://www.bilibili.com/video/BV1sS4y1b7qb?spm_id_from=333.999.0.0")
+        assert len(data.pages) == 1
+        assert data.p == 0
+        assert data.bvid
+        assert data.img_url.startswith('http://') or data.img_url.startswith('https://')
+        assert data.dash
+        # 多个bv视频
+        data = await method(client, "https://www.bilibili.com/video/BV1jK4y1N7ST?p=5")
+        assert len(data.pages) > 1
+        assert data.p == 4
+        assert data.bvid
+        if method is api._get_video_info_from_api:
+            continue
+        # 电视剧
+        data = await method(client, "https://www.bilibili.com/bangumi/play/ss24053?spm_id_from=333.337.0.0")
+        assert len(data.pages) > 1
+        assert data.status.follow
+        # 动漫
+        data = await method(client, "https://www.bilibili.com/bangumi/play/ss5043?spm_id_from=333.337.0.0")
+        assert len(data.pages) > 1
+        assert data.status.follow
+        # 电影
+        data = await method(client,
+                            "https://www.bilibili.com/bangumi/play/ss33343?theme=movie&spm_id_from=333.337.0.0")
+        assert data.title == '天气之子'
+        assert data.status.follow
+        # 纪录片
+        data = await method(client, "https://www.bilibili.com/bangumi/play/ss40509?from_spmid=666.9.hotlist.3")
+        assert len(data.pages) > 1
+        assert data.status.follow
 
 
 @pytest.mark.asyncio

@@ -5,6 +5,10 @@ bilix is a powerful Python asynchronous video download tool that requires two st
    ```shell
    pip install bilix
    ```
+   If you are a macOS user, you can also use `brew` to install:
+   ```shell
+    brew install bilix
+    ```
 
 2. [FFmpeg](https://ffmpeg.org) ：A command-line video tool for compositing downloaded audio and video
 

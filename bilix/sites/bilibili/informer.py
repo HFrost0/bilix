@@ -39,8 +39,10 @@ class InformerBilibili(DownloaderBilibili):
 
     async def info_video(self, url: str):
         video_info = await api.get_video_info(self.client, url)
-        if video_info.dash is None:
+        if video_info.dash is None and video_info.other is None:
             return logger.warning(f'{video_info.h1_title} 需要大会员或该地区不支持')
+        elif video_info.other and video_info.dash is None:
+            return rprint(video_info.other)  # todo: beautify durl info
 
         async def ensure_size(m: api.Media):
             if m.size is None:

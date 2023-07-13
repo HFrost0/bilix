@@ -26,3 +26,7 @@ class APIResourceError(APIError):
 
 class APIUnsupportedError(APIError):
     """The resource parse is not supported yet"""
+
+
+class APIBannedError(APIError):
+    """API request is banned"""
