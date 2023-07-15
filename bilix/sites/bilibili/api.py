@@ -326,7 +326,6 @@ class VideoInfo(BaseModel):
 
     @staticmethod
     def parse_html(url, html: str):
-        _, _, selected_page_num = parse_ids_from_url(url)
         if "window._riskdata_" in html:
             raise APIBannedError("web 前端访问被风控", url)
         init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
@@ -340,19 +339,14 @@ class VideoInfo(BaseModel):
             status = Status(**init_info['videoData']['stat'])
             bvid = init_info['bvid']
             aid = init_info['aid']
+            (p, cid), = init_info['cidMap'][bvid]['cids'].items()
+            p = int(p) - 1
             title = legal_title(init_info['videoData']['title'])
             base_url = url.split('?')[0]
-            p = None
-            cid = None
             for idx, i in enumerate(init_info['videoData']['pages']):
-                page_num = i['page']  # type: int
-                if page_num == selected_page_num:
-                    p = idx
-                    cid = i['cid']
-                p_url = f"{base_url}?p={page_num}"
-                p_name = f"P{page_num}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
+                p_url = f"{base_url}?p={idx + 1}"
+                p_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
                 pages.append(Page(p_name=p_name, p_url=p_url))
-            assert p is not None, f"没有找到分P: p{selected_page_num}，请检查输入"  # cid 也会是 None
         elif 'initEpList' in init_info:  # 动漫，电视剧，电影
             stat = init_info['mediaInfo']['stat']
             status = Status(
