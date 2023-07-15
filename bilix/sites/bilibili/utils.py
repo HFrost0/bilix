@@ -15,5 +15,5 @@ def parse_ids_from_url(url_or_string: str):
     # ?p=123 or &p=123
     if m := re.match(r'.*[?&]p=(\d+)', url_or_string):
         page_num = int(m.groups()[0])
-        assert page_num > 1
+        assert page_num >= 1
     return aid, bvid, page_num
