@@ -428,7 +428,7 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
         return await _get_video_info_from_html(client, url)
     except APIBannedError:
         # try to get video info from api if web front-end is banned
-        await _get_video_info_from_api(client, url)
+        return await _get_video_info_from_api(client, url)
 
 
 async def _get_video_info_from_html(client: httpx.AsyncClient, url: str) -> VideoInfo:

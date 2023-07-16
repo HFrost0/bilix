@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - 'docs/**'
-      - 'package*.json'
     branches:
       - master
 jobs:
@@ -23,10 +22,13 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          cache: npm
-      - run: npm ci
-      - name: Build
-        run: npm run docs:build
+          cache: 'npm'
+          cache-dependency-path: docs/package-lock.json
+      - name: Install dependencies and build
+        run: |
+          npm ci
+          npm run docs:build
+        working-directory: docs
       - uses: actions/configure-pages@v2
       - uses: actions/upload-pages-artifact@v1
         with:
