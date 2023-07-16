@@ -2,8 +2,8 @@ import asyncio
 import inspect
 import time
 import random
-from collections import defaultdict
 from functools import wraps
+from collections import OrderedDict
 from typing import Union, Optional, Callable, Dict, Any, Tuple, List, Set, Annotated, get_origin, get_args
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
@@ -28,7 +28,7 @@ def is_instance_of_generic_type(value: Any, target_type: Any) -> bool:
     return isinstance(value, origin)
 
 
-def annotated_convertors(annotated_type) -> Callable:
+def annotated_convertors(annotated_type) -> Tuple[Any, List[Callable], Set[Any]]:
     assert get_origin(annotated_type) is Annotated
     args = get_args(annotated_type)
     assert len(args) > 1
@@ -135,7 +135,7 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
         # active stream number
         self._stream_num = 0
         # url score
-        self._url_score = defaultdict(lambda: self.stream_retry * 5)
+        self._url_scores = DefaultLRUCache(default_factory=lambda: self.stream_retry * 5, capacity=1000)
 
     async def __aenter__(self):
         await self.client.__aenter__()
@@ -204,16 +204,16 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
 
     def _change_sore(self, exc: Union[httpx.HTTPStatusError, httpx.TransportError]):
         """change url score according to exception"""
-        # todo clean score
         if isinstance(exc, httpx.HTTPStatusError):
-            self._url_score[exc.request.url] -= 4
+            self._url_scores[exc.request.url] -= 4
         elif isinstance(exc, httpx.TransportError):
-            self._url_score[exc.request.url] -= 1
-        self._url_score[exc.request.url] = max(1, self._url_score[exc.request.url])
+            self._url_scores[exc.request.url] -= 1
+        self._url_scores[exc.request.url] = max(1, self._url_scores[exc.request.url])
 
     def _choose_stream_url(self, urls: List[str]) -> int:
         """choose a stream url idx from urls"""
-        return random.choices(range(len(urls)), weights=[self._url_score[url] for url in urls], k=1)[0]
+
+        return random.choices(range(len(urls)), weights=[self._url_scores[url] for url in urls], k=1)[0]
 
     @asynccontextmanager
     async def _stream_context(self, times: int):
@@ -277,3 +277,23 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
             self.logger.debug(f"load complete, consumed time: {time.time() - a} s")
         except AttributeError:
             raise AttributeError(f"Invalid Browser {browser}")
+
+
+class DefaultLRUCache(OrderedDict):
+    def __init__(self, default_factory, capacity: int):
+        self.default_factory = default_factory
+        self.capacity = capacity
+        super().__init__()
+
+    def __missing__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        else:
+            value = self.default_factory()
+            self[key] = value
+            return value
+
+    def __setitem__(self, key, value):
+        if key not in self and len(self) >= self.capacity:
+            self.popitem(last=False)
+        super().__setitem__(key, value)
