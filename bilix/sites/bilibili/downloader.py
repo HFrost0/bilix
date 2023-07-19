@@ -6,7 +6,7 @@ from typing import Union, Sequence, Tuple, List
 import aiofiles
 import httpx
 from datetime import datetime, timedelta
-from . import api
+from bilix.sites.bilibili import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix._process import SingletonPPE
 from bilix.utils import legal_title, cors_slice, valid_sess_data, t2s, json2srt

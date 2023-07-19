@@ -30,7 +30,7 @@ dependencies = [
     "json5",
     "m3u8",
     "pycryptodome",
-    "pydantic==1.*",
+    "pydantic==2.*",
     "rich",
     "browser_cookie3>=0.17.1",
     "pymp4>=1.2.0",

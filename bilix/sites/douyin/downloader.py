@@ -6,7 +6,7 @@ import httpx
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.utils import legal_title
-
+from bilix.exception import APIResourceError
 
 class DownloaderDouyin(BaseDownloaderPart):
     pattern = re.compile(r"^https?://([A-Za-z0-9-]+\.)*(douyin\.com)")
@@ -32,7 +32,7 @@ class DownloaderDouyin(BaseDownloaderPart):
             logger=logger,
             part_concurrency=part_concurrency,
         )
-
+        
     async def get_video(self, url: str, path=Path('.'), image=False):
         """
         :cli: short: v
@@ -42,6 +42,9 @@ class DownloaderDouyin(BaseDownloaderPart):
         :return:
         """
         video_info = await api.get_video_info(self.client, url)
+        if video_info is None:
+            self.logger.info("未找到视频信息", url)
+            return
         title = legal_title(video_info.author_name, video_info.title)
         cors = [self.get_file(video_info.nwm_urls, path=path / f"{title}.mp4")]
         if image:

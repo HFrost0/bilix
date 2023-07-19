@@ -1,8 +1,8 @@
 import asyncio
 from typing import Tuple
 from rich.tree import Tree
-from .downloader import DownloaderBilibili
-from . import api
+from bilix.sites.bilibili import DownloaderBilibili
+from bilix.sites.bilibili import api
 from bilix.log import logger
 from rich import print as rprint
 from bilix.utils import convert_size
@@ -45,6 +45,9 @@ class InformerBilibili(DownloaderBilibili):
                 m.size = int(res.headers['Content-Range'].split('/')[-1])
 
         dash = video_info.dash
+        cors = []
+        if dash is None:
+            return logger.warning(f'dash is None')
         cors = [ensure_size(m) for m in dash.videos] + [ensure_size(m) for m in dash.audios]
         await asyncio.gather(*cors)
 

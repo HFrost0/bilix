@@ -3,7 +3,7 @@ import json
 import re
 from urllib.parse import quote
 import httpx
-from pydantic import BaseModel, Field, validator
+from pydantic import field_validator, BaseModel, Field
 from typing import Union, List, Tuple, Dict, Optional
 import json5
 from danmakuC.bilibili import parse_view
@@ -62,7 +62,10 @@ async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
         req_retry(client, 'https://api.bilibili.com/x/series/archives', params=params),
         req_retry(client, f'https://api.bilibili.com/x/space/acc/info?mid={mid}'))
     list_info, up_info = json.loads(list_res.text), json.loads(up_res.text)
-    list_name, up_name = meta['data']['meta']['name'], up_info['data']['name']
+    up_name = None
+    if 'data' in up_info.keys():
+        up_name = up_info['data']['name']
+    list_name = meta['data']['meta']['name']
     bvids = [i['bvid'] for i in list_info['data']['archives']]
     return list_name, up_name, bvids
 
@@ -194,8 +197,8 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
 
 
 class Media(BaseModel):
-    base_url: str
-    backup_url: List[str] = None
+    base_url: Optional[str] 
+    backup_url: Optional[List[str]]
     size: int = None
     width: int = None
     height: int = None
@@ -212,7 +215,7 @@ class Media(BaseModel):
 
 class Dash(BaseModel):
     duration: int
-    videos: List[Media]
+    videos: List[Media] = []
     audios: List[Media]
     video_formats: Dict[str, Dict[str, Media]]
     audio_formats: Dict[str, Optional[Media]]
@@ -301,7 +304,8 @@ class Status(BaseModel):
     share: int = Field(description="分享数")
     follow: int = Field(default=None, description="追剧数/追番数")
 
-    @validator('view', pre=True)
+    @field_validator('view', mode="before")
+    @classmethod
     def no_view(cls, v):
         return 0 if v == '--' else v
 
@@ -320,7 +324,7 @@ class VideoInfo(BaseModel):
     pages: List[Page]  # [[p_name, p_url], ...]
     img_url: str
     status: Status
-    bvid: str = None
+    bvid: Optional[str] = None
     dash: Optional[Dash] = None
     other: Optional[List[Media]] = None  # durl resource: flv, mp4.
 

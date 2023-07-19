@@ -49,7 +49,7 @@ class DownloaderJable(BaseDownloaderM3u8):
         """
         data = await api.get_model_info(self.client, url)
         if self.hierarchy:
-            path /= data['model_name']
+            path /= data['video_name']
             path.mkdir(parents=True, exist_ok=True)
         await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
 
@@ -64,7 +64,7 @@ class DownloaderJable(BaseDownloaderM3u8):
         """
         video_info = await api.get_video_info(self.client, url)
         if self.hierarchy:
-            path /= f"{video_info.avid} {video_info.model_name}"
+            path /= f"{video_info.avid} {video_info.video_name}"
             path.mkdir(parents=True, exist_ok=True)
         cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f"{video_info.title}.mp4",
                                     time_range=time_range)]
