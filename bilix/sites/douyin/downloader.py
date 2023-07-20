@@ -42,11 +42,9 @@ class DownloaderDouyin(BaseDownloaderPart):
         :return:
         """
         video_info = await api.get_video_info(self.client, url)
-        if video_info is None:
-            self.logger.info("未找到视频信息", url)
-            return
-        title = legal_title(video_info.author_name, video_info.title)
-        cors = [self.get_file(video_info.nwm_urls, path=path / f"{title}.mp4")]
+        if video_info :
+            title = legal_title(video_info.author_name, video_info.title)
+            cors = [self.get_file(video_info.nwm_urls, path=path / f"{title}.mp4")]
         if image:
             cors.append(self.get_static(video_info.cover, path / title))
         await asyncio.gather(*cors)

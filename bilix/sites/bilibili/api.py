@@ -62,10 +62,7 @@ async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
         req_retry(client, 'https://api.bilibili.com/x/series/archives', params=params),
         req_retry(client, f'https://api.bilibili.com/x/space/acc/info?mid={mid}'))
     list_info, up_info = json.loads(list_res.text), json.loads(up_res.text)
-    up_name = None
-    if 'data' in up_info.keys():
-        up_name = up_info['data']['name']
-    list_name = meta['data']['meta']['name']
+    list_name,up_name = meta['data']['meta']['name'],up_info['data']['name']
     bvids = [i['bvid'] for i in list_info['data']['archives']]
     return list_name, up_name, bvids
 
@@ -197,15 +194,15 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
 
 
 class Media(BaseModel):
-    base_url: Optional[str] 
+    base_url: str
     backup_url: Optional[List[str]]
     size: int = None
     width: int = None
     height: int = None
-    suffix: str = None
-    quality: str = None
-    codec: str = None
-    segment_base: dict = None
+    suffix: Optional[str] = None
+    quality: Optional[str] = None
+    codec: Optional[str] = None
+    segment_base: Optional[dict] = None
 
     @property
     def urls(self):

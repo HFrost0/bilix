@@ -8,9 +8,9 @@ client = httpx.AsyncClient(**api.dft_client_settings)
 @pytest.mark.asyncio
 async def test_get_video_info():
     data = await api.get_video_info(client, "https://jable.tv/videos/ssis-533/")
-    assert data.video_name
+    assert data.actor_name
     data = await api.get_video_info(client, "https://jable.tv/videos/ssis-448/")
-    assert data.video_name
+    assert data.actor_name
 
 
 @pytest.mark.asyncio
