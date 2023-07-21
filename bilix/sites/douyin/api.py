@@ -66,6 +66,7 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
 
 
 if __name__ == '__main__':
+    # 無法正常跑通
     async def main():
         client = httpx.AsyncClient(**dft_client_settings)
         data = await get_video_info(client, 'https://www.douyin.com/video/7132430286415252773')
