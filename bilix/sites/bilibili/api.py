@@ -419,8 +419,8 @@ async def _get_video_info_from_api(client: httpx.AsyncClient, url: str) -> Video
 async def _attach_dash_and_durl_from_api(client: httpx.AsyncClient, video_info: VideoInfo) \
         -> Tuple[Dash, List[Media]]:
     params = {'cid': video_info.cid, 'bvid': video_info.bvid,
-              'qn': 116,  # 1080P60（请求 DASH 会取到所有分辨率的流地址，应该不用设置 qn）
-              'fnval': 4048,  # 请求 dash 格式的全部可用流
+              'qn': 120,  # 如无 dash 资源（少数老视频），fallback 到 4K 超清 durl
+              'fnval': 4048,  # 如 dash 资源可用，请求 dash 格式的全部可用流
               'fourk': 1,  # 请求 4k 资源
               'fnver': 0, 'platform': 'pc', 'otype': 'json'}
     dash_response = await req_retry(client, 'https://api.bilibili.com/x/player/playurl',
@@ -432,8 +432,6 @@ async def _attach_dash_and_durl_from_api(client: httpx.AsyncClient, video_info: 
     if 'dash' in dash_json['data']:
         dash = Dash.from_dict(dash_json)
     if 'durl' in dash_json['data']:
-        # 请求了 dash ，API 应该永远不会返回 durl 资源。解析一下以防万一
-        assert len(dash_json['data']['durl']) == 1, "durl 中返回了多个视频流，这可能是错误？请报告"
         for i in dash_json['data']['durl']:
             suffix = re.search(r'\.([a-zA-Z0-9]+)\?', i['url']).group(1)
             other.append(Media(base_url=i['url'], backup_url=i['backup_url'], size=i['size'], suffix=suffix))
