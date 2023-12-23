@@ -28,8 +28,8 @@ class APIUnsupportedError(APIError):
     """The resource parse is not supported yet"""
 
 
-class APIBannedError(APIError):
-    """API request is banned"""
+class APIInvalidError(APIError):
+    """API request is invalid"""
 
 
 class HandleError(Exception):
