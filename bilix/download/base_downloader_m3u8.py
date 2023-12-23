@@ -66,7 +66,7 @@ class BaseDownloaderM3u8(BaseDownloader):
         res = await req_retry(self.client, m3u8_url, follow_redirects=True)
         m3u8_info = m3u8.loads(res.text)
         if not m3u8_info.base_uri:
-            m3u8_info.base_uri = re.search(r"(.*/)[^/]*m3u8", m3u8_url).groups()[0]
+            m3u8_info.base_uri = m3u8_url
         if m3u8_info.is_variant:
             self.logger.debug(f"m3u8 is variant, use first playlist: {m3u8_info.playlists[0].absolute_uri}")
             return await self.to_invariant_m3u8(m3u8_info.playlists[0].absolute_uri)
