@@ -10,7 +10,7 @@ from danmakuC.bilibili import parse_view
 from bilix.download.utils import req_retry, raise_api_error
 from bilix.sites.bilibili.utils import parse_ids_from_url
 from bilix.utils import legal_title
-from bilix.exception import APIBannedError, APIError, APIResourceError, APIUnsupportedError
+from bilix.exception import APIInvalidError, APIError, APIResourceError, APIUnsupportedError
 import hashlib
 import time
 
@@ -356,7 +356,7 @@ class VideoInfo(BaseModel):
     @staticmethod
     def parse_html(url, html: str):
         if "window._riskdata_" in html:
-            raise APIBannedError("web 前端访问被风控", url)
+            raise APIInvalidError("web 前端访问被风控", url)
         init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
         init_info = json.loads(init_info)
         if len(init_info.get('error', {})) > 0:
@@ -426,13 +426,15 @@ async def get_video_info(client: httpx.AsyncClient, url: str) -> VideoInfo:
     try:
         # try to get video info from web front-end first
         return await _get_video_info_from_html(client, url)
-    except APIBannedError:
+    except APIInvalidError:
         # try to get video info from api if web front-end is banned
         return await _get_video_info_from_api(client, url)
 
 
 async def _get_video_info_from_html(client: httpx.AsyncClient, url: str) -> VideoInfo:
     res = await req_retry(client, url, follow_redirects=True)
+    if str(res.url).startswith("https://www.bilibili.com/festival"):
+        raise APIInvalidError("特殊节日页面", url)
     video_info = VideoInfo.parse_html(url, res.text)
     return video_info
 
@@ -521,6 +523,7 @@ async def get_dm_urls(client: httpx.AsyncClient, aid, cid) -> List[str]:
     return [f'https://api.bilibili.com/x/v2/dm/web/seg.so?oid={cid}&type=1&segment_index={i + 1}' for i in range(total)]
 
 
+@raise_api_error
 async def get_up_album_info(client: httpx.AsyncClient, url: str) -> Tuple[Dict, List[Dict]]:
     """todo it seems that page_size is not working, count may be incorrect"""
     uid = re.search(r'^https://space.bilibili.com/(\d+)/?', url).group(1)
