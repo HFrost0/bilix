@@ -202,7 +202,7 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
             self.logger.done(path.name)
         return path
 
-    def _change_sore(self, exc: Union[httpx.HTTPStatusError, httpx.TransportError]):
+    def _change_score(self, exc: Union[httpx.HTTPStatusError, httpx.TransportError]):
         """change url score according to exception"""
         if isinstance(exc, httpx.HTTPStatusError):
             self._url_scores[exc.request.url] -= 4
@@ -233,13 +233,13 @@ class BaseDownloader(Handler, metaclass=BaseDownloaderMeta):
             else:
                 self.logger.warning(f"STREAM {e}")
                 await asyncio.sleep(.5 * (times + 1))
-            self._change_sore(e)
+            self._change_score(e)
             raise
         except httpx.TransportError as e:
             msg = f'STREAM {e.__class__.__name__} 异常可能由于网络条件不佳或并发数过大导致，若重复出现请考虑降低并发数'
             self.logger.warning(msg) if times > 2 else self.logger.debug(msg)
             await asyncio.sleep(.1 * (times + 1))
-            self._change_sore(e)
+            self._change_score(e)
             raise
         except Exception as e:
             self.logger.warning(f'STREAM Unexpected Exception class:{e.__class__.__name__} {e}')
