@@ -12,7 +12,7 @@ import m3u8
 from Crypto.Cipher import AES
 from m3u8 import Segment
 from bilix.download.base_downloader import BaseDownloader
-from bilix.download.utils import path_check, parse_speed_str, str2path, parse_time_range
+from bilix.download.utils import path_check, parse_speed_str, str2path, parse_time_range, merge_files
 from bilix.progress.abc import Progress
 from bilix import ffmpeg
 from .utils import req_retry
@@ -122,9 +122,21 @@ class BaseDownloaderM3u8(BaseDownloader):
                     cors.append(self._get_seg(seg, path.with_name(f"{path.stem}-{idx}.ts"), task_id, p_sema))
             if len(cors) == 0 and time_range:
                 raise Exception(f"time range <{start_time}-{end_time}> invalid for <{path.name}>")
+            if init_sec := m3u8_info.segments[0].init_section:
+                async def _get_init():
+                    r = await req_retry(self.client, init_sec.absolute_uri)
+                    async with aiofiles.open(fn := path.with_name(f"{path.stem}-init"), 'wb') as f:
+                        await f.write(r.content)
+                        return fn
+
+                cors.insert(0, _get_init())
+                merge_fn = merge_files
+            else:
+                merge_fn = ffmpeg.concat
             await self.progress.update(task_id, total_time=total_time)
             file_list = await asyncio.gather(*cors)
-        await ffmpeg.concat(file_list, path)
+
+        await merge_fn(file_list, path)
         if time_range:
             path_tmp = path.with_stem(str(uuid.uuid4()))
             # to save key frame, use 0 as start time instead of s, clip will be a little longer than expected
