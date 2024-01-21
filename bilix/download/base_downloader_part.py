@@ -7,7 +7,7 @@ import aiofiles
 import httpx
 import uuid
 import os
-import cgi
+from email.message import Message
 from pymp4.parser import Box
 from bilix.download.base_downloader import BaseDownloader, str2path
 from bilix.download.utils import path_check, merge_files, parse_speed_str, parse_time_range
@@ -51,8 +51,9 @@ class BaseDownloaderPart(BaseDownloader):
         total = int(res.headers['Content-Range'].split('/')[-1])
         # get filename
         if content_disposition := res.headers.get('Content-Disposition', None):
-            key, pdict = cgi.parse_header(content_disposition)
-            filename = pdict.get('filename', '')
+            m = Message()
+            m['content-type'] = content_disposition
+            filename = m.get_param('filename', '')
         else:
             filename = ''
         # change origin url to redirected position to avoid twice redirect

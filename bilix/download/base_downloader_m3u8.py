@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import re
 import uuid
 from pathlib import Path, PurePath
 from typing import Tuple, Union, Annotated

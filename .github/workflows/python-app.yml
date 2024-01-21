@@ -7,13 +7,11 @@ on:
   push:
     paths:
       - 'bilix/**'
-      - 'tests/**'
       - 'pyproject.toml'
     branches: [ "master" ]
   pull_request:
     paths:
       - 'bilix/**'
-      - 'tests/**'
       - 'pyproject.toml'
     branches: [ "master" ]
 
@@ -27,7 +25,7 @@ jobs:
       # You can use PyPy versions in python-version.
       # For example, pypy-2.7 and pypy-3.8
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12""]
 
     steps:
     - uses: actions/checkout@v3
