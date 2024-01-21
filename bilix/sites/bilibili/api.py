@@ -3,7 +3,7 @@ import json
 import re
 from urllib.parse import quote
 import httpx
-from pydantic import BaseModel, Field, validator
+from pydantic import field_validator, BaseModel, Field
 from typing import Union, List, Tuple, Dict, Optional
 import json5
 from danmakuC.bilibili import parse_view
@@ -301,7 +301,8 @@ class Status(BaseModel):
     share: int = Field(description="分享数")
     follow: int = Field(default=None, description="追剧数/追番数")
 
-    @validator('view', pre=True)
+    @field_validator('view', mode="before")
+    @classmethod
     def no_view(cls, v):
         return 0 if v == '--' else v
 
