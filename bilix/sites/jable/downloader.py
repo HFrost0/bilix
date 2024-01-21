@@ -39,18 +39,18 @@ class DownloaderJable(BaseDownloaderM3u8):
         )
         self.hierarchy = hierarchy
 
-    async def get_model(self, url: str, path: Annotated[Path, str2path] = Path("."), image=True):
+    async def get_actor(self, url: str, path: Annotated[Path, str2path] = Path("."), image=True):
         """
-        download videos of a model
-        :cli short: m
-        :param url: model page url
+        download videos of a actor
+        :cli short: a
+        :param url: actor page url
         :param path: save path
         :param image: download cover
         :return:
         """
-        data = await api.get_model_info(self.client, url)
+        data = await api.get_actor_info(self.client, url)
         if self.hierarchy:
-            path /= data['model_name']
+            path /= data['actor_name']
             path.mkdir(parents=True, exist_ok=True)
         await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
 
@@ -66,7 +66,7 @@ class DownloaderJable(BaseDownloaderM3u8):
         """
         video_info = await api.get_video_info(self.client, url)
         if self.hierarchy:
-            path /= f"{video_info.avid} {video_info.model_name}"
+            path /= f"{video_info.avid} {video_info.actor_name}"
             path.mkdir(parents=True, exist_ok=True)
         cors = [self.get_m3u8_video(m3u8_url=video_info.m3u8_url, path=path / f"{video_info.title}.mp4",
                                     time_range=time_range)]
