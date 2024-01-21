@@ -5,7 +5,7 @@ from typing import Union, Tuple, Annotated
 import httpx
 from . import api
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
-from bilix.download.utils import str2path, parse_speed_str
+from bilix.download.utils import str2path, parse_speed_str, parse_time_range
 
 
 class DownloaderJable(BaseDownloaderM3u8):
@@ -55,7 +55,7 @@ class DownloaderJable(BaseDownloaderM3u8):
         await asyncio.gather(*[self.get_video(url, path, image) for url in data['urls']])
 
     async def get_video(self, url: str, path: Annotated[Path, str2path] = Path("."),
-                        image=True, time_range: Tuple[int, int] = None):
+                        image=True, time_range: Annotated[Tuple[int, int], parse_time_range,] = None):
         """
         :cli short: v
         :param url:

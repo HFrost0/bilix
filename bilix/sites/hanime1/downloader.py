@@ -6,7 +6,7 @@ import httpx
 from . import api
 from bilix.download.base_downloader_part import BaseDownloaderPart
 from bilix.download.base_downloader_m3u8 import BaseDownloaderM3u8
-from bilix.download.utils import str2path, parse_speed_str
+from bilix.download.utils import str2path, parse_speed_str, parse_time_range
 
 
 class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
@@ -37,7 +37,7 @@ class DownloaderHanime1(BaseDownloaderM3u8, BaseDownloaderPart):
         )
 
     async def get_video(self, url: str, path: Annotated[Path, str2path] = Path('.'),
-                        image=False, time_range: Tuple[int, int] = None):
+                        image=False, time_range: Annotated[Tuple[int, int], parse_time_range] = None):
         """
         :cli short: v
         :param url:
