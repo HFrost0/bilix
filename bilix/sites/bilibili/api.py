@@ -195,14 +195,14 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
 
 class Media(BaseModel):
     base_url: str
-    backup_url: List[str] = None
-    size: int = None
-    width: int = None
-    height: int = None
-    suffix: str = None
-    quality: str = None
-    codec: str = None
-    segment_base: dict = None
+    backup_url: Optional[List[str]] = None
+    size: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    suffix: Optional[str] = None
+    quality: Optional[str] = None
+    codec: Optional[str] = None
+    segment_base: Optional[dict] = None
 
     @property
     def urls(self):
@@ -299,7 +299,7 @@ class Status(BaseModel):
     reply: int = Field(description="回复数")
     favorite: int = Field(description="收藏数")
     share: int = Field(description="分享数")
-    follow: int = Field(default=None, description="追剧数/追番数")
+    follow: Optional[int] = Field(default=None, description="追剧数/追番数")
 
     @field_validator('view', mode="before")
     @classmethod
@@ -321,7 +321,7 @@ class VideoInfo(BaseModel):
     pages: List[Page]  # [[p_name, p_url], ...]
     img_url: str
     status: Status
-    bvid: str = None
+    bvid: Optional[str] = None
     dash: Optional[Dash] = None
     other: Optional[List[Media]] = None  # durl resource: flv, mp4.
 
