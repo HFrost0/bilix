@@ -58,11 +58,13 @@ async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     meta = json.loads(res.text)
     mid = meta['data']['meta']['mid']
     params = {'mid': mid, 'series_id': sid, 'ps': meta['data']['meta']['total']}
-    list_res, up_res = await asyncio.gather(
+    list_res, up_info = await asyncio.gather(
         req_retry(client, 'https://api.bilibili.com/x/series/archives', params=params),
-        req_retry(client, f'https://api.bilibili.com/x/space/acc/info?mid={mid}'))
-    list_info, up_info = json.loads(list_res.text), json.loads(up_res.text)
-    list_name, up_name = meta['data']['meta']['name'], up_info['data']['name']
+        get_up_info(client, str(mid)),
+    )
+    list_info = json.loads(list_res.text)
+    list_name = meta['data']['meta']['name']
+    up_name = up_info.get('name', '')
     bvids = [i['bvid'] for i in list_info['data']['archives']]
     return list_name, up_name, bvids
 
@@ -211,14 +213,14 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str):
 
 class Media(BaseModel):
     base_url: str
-    backup_url: List[str] = None
-    size: int = None
-    width: int = None
-    height: int = None
-    suffix: str = None
-    quality: str = None
-    codec: str = None
-    segment_base: dict = None
+    backup_url: Optional[List[str]] = None
+    size: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    suffix: Optional[str] = None
+    quality: Optional[str] = None
+    codec: Optional[str] = None
+    segment_base: Optional[dict] = None
 
     @property
     def urls(self):
@@ -328,7 +330,7 @@ class Status(BaseModel):
     reply: int = Field(description="回复数")
     favorite: int = Field(description="收藏数")
     share: int = Field(description="分享数")
-    follow: int = Field(default=None, description="追剧数/追番数")
+    follow: Optional[int] = Field(default=None, description="追剧数/追番数")
 
     @field_validator('view', mode="before")
     @classmethod
@@ -350,7 +352,7 @@ class VideoInfo(BaseModel):
     pages: List[Page]  # [[p_name, p_url], ...]
     img_url: str
     status: Status
-    bvid: str = None
+    bvid: Optional[str] = None
     dash: Optional[Dash] = None
     other: Optional[List[Media]] = None  # durl resource: flv, mp4.
 
