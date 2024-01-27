@@ -10,12 +10,9 @@
 
 <div align="center"> <img src='https://s2.loli.net/2022/08/31/P5X8YAQ7WyNEbrq.gif' style="border-radius: 8px"> </div>
 
-## Getting Started
+## Vesrion 1.x
 
-Just read the instructions
-
-* [中文文档](https://hfrost0.github.io/bilix/)
-* [English Document](https://hfrost0.github.io/bilix/en)
+Version 1.x is on alpha, refer to [link]() to see detals
 
 ## Features
 
