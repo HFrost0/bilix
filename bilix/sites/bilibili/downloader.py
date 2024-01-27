@@ -248,7 +248,7 @@ class DownloaderBilibili(BaseDownloaderPart):
         :return:
         """
         ps = 30
-        up_name, total_size, bv_ids = await api.get_up_info(self.client, url_or_mid, 1, ps, order, keyword)
+        up_name, total_size, bv_ids = await api.get_up_video_info(self.client, url_or_mid, 1, ps, order, keyword)
         if self.hierarchy:
             path /= legal_title(f"【up】{up_name}")
             path.mkdir(parents=True, exist_ok=True)
@@ -269,7 +269,7 @@ class DownloaderBilibili(BaseDownloaderPart):
                               series=True, image=False, subtitle=False, dm=False, only_audio=False, codec='', ):
         ps = 30
         num = min(ps, num)
-        _, _, bvids = await api.get_up_info(self.client, url_or_mid, pn, ps, order, keyword)
+        _, _, bvids = await api.get_up_video_info(self.client, url_or_mid, pn, ps, order, keyword)
         bvids = bvids[:num]
         func = self.get_series if series else self.get_video
         # noinspection PyArgumentList

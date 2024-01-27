@@ -58,11 +58,13 @@ async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     meta = json.loads(res.text)
     mid = meta['data']['meta']['mid']
     params = {'mid': mid, 'series_id': sid, 'ps': meta['data']['meta']['total']}
-    list_res, up_res = await asyncio.gather(
+    list_res, up_info = await asyncio.gather(
         req_retry(client, 'https://api.bilibili.com/x/series/archives', params=params),
-        req_retry(client, f'https://api.bilibili.com/x/space/acc/info?mid={mid}'))
-    list_info, up_info = json.loads(list_res.text), json.loads(up_res.text)
-    list_name, up_name = meta['data']['meta']['name'], up_info['data']['name']
+        get_up_info(client, str(mid)),
+    )
+    list_info = json.loads(list_res.text)
+    list_name = meta['data']['meta']['name']
+    up_name = up_info.get('name', '')
     bvids = [i['bvid'] for i in list_info['data']['archives']]
     return list_name, up_name, bvids
 
@@ -164,8 +166,12 @@ async def _add_sign(client: httpx.AsyncClient, params: dict):
     return params
 
 
+def _find_mid(space_url: str):
+    return re.search(r'^https://space.bilibili.com/(\d+)/?', space_url).group(1)
+
+
 @raise_api_error
-async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order="pubdate", keyword=""):
+async def get_up_video_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, order="pubdate", keyword=""):
     """
     获取up主信息
 
@@ -191,6 +197,18 @@ async def get_up_info(client: httpx.AsyncClient, url_or_mid: str, pn=1, ps=30, o
     total_size = info["data"]["page"]["count"]
     bv_ids = [i["bvid"] for i in info["data"]["list"]["vlist"]]
     return up_name, total_size, bv_ids
+
+
+async def get_up_info(client: httpx.AsyncClient, url_or_mid: str):
+    if url_or_mid.startswith("http"):
+        mid = _find_mid(url_or_mid)
+    else:
+        mid = url_or_mid
+    params = {"mid": mid}
+    await _add_sign(client, params)
+    res = await req_retry(client, "https://api.bilibili.com/x/space/wbi/acc/info", params=params)
+    data = json.loads(res.text)['data']
+    return data
 
 
 class Media(BaseModel):

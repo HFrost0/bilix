@@ -61,8 +61,8 @@ async def test_get_cate_page_info():
 
 
 @pytest.mark.asyncio
-async def test_get_up_info():
-    up_name, total_size, bvids = await api.get_up_info(client, "316568752", keyword="什么")
+async def test_get_up_video_info():
+    up_name, total_size, bvids = await api.get_up_video_info(client, "316568752", keyword="什么")
     assert len(bvids) > 0 and bvids[0].startswith('BV')
 
 
