@@ -40,7 +40,7 @@ class InformerBilibili(DownloaderBilibili):
     async def info_video(self, url: str):
         video_info = await api.get_video_info(self.client, url)
         if video_info.dash is None and video_info.other is None:
-            return logger.warning(f'{video_info.h1_title} 需要大会员或该地区不支持')
+            return logger.warning(f'{video_info.title} 需要大会员或该地区不支持')
         elif video_info.other and video_info.dash is None:
             return rprint(video_info.other)  # todo: beautify durl info
 
@@ -54,7 +54,7 @@ class InformerBilibili(DownloaderBilibili):
         await asyncio.gather(*cors)
 
         tree = Tree(
-            f"[bold reverse] {video_info.h1_title} [/]"
+            f"[bold reverse] {video_info.title}-{video_info.pages[video_info.p].p_name} [/]"
             f" {video_info.status.view:,}👀 {video_info.status.like:,}👍 {video_info.status.coin:,}🪙",
             guide_style="bold cyan")
         video_tree = tree.add("[bold]画面 Video")
