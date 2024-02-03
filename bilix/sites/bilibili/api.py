@@ -418,7 +418,7 @@ def _parse_ep_html(url, html: str) -> VideoInfo:
     desc = media_info['evaluate']
     episodes = media_info['episodes']
     path: str = url.split('?')[0].split('/')[-1]
-    ep_id = path[2:] if path.startswith('ep') else episodes[0]["ep_id"]
+    ep_id = path[2:] if path.startswith('ep') else str(episodes[0]["ep_id"])
     p = 0
     aid, cid, bvid = 0, 0, ""
     pages = []
