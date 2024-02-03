@@ -237,10 +237,10 @@ class Dash(BaseModel):
 
     @classmethod
     def from_dict(cls, play_info: dict):
-        dash = play_info['data']['dash']  # may raise KeyError
+        dash = play_info['dash']  # may raise KeyError
         video_formats = {}
         quality_map = {}
-        for d in play_info['data']['support_formats']:
+        for d in play_info['support_formats']:
             quality_map[d['quality']] = d['new_description']
             video_formats[d['new_description']] = {}
         videos = []
@@ -332,9 +332,9 @@ class Page(BaseModel):
 
 class VideoInfo(BaseModel):
     title: str
-    h1_title: str  # for bv same to title, but for tv or bangumi title will be more specific
     aid: int
     cid: int
+    ep_id: Optional[int] = None
     p: int
     pages: List[Page]  # [[p_name, p_url], ...]
     img_url: str
@@ -342,73 +342,86 @@ class VideoInfo(BaseModel):
     bvid: Optional[str] = None
     dash: Optional[Dash] = None
     other: Optional[List[Media]] = None  # durl resource: flv, mp4.
+    desc: Optional[str] = None
+    tags: Optional[List[str]] = None
 
-    @staticmethod
-    def parse_html(url, html: str):
-        if "window._riskdata_" in html:
-            raise APIInvalidError("web 前端访问被风控", url)
-        init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
-        init_info = json.loads(init_info)
-        if len(init_info.get('error', {})) > 0:
-            raise APIResourceError("视频已失效", url)  # 啊叻？视频不见了？在分区下载的时候可能产生
-        # extract meta
-        pages = []
-        h1_title = legal_title(re.search('<h1[^>]*title="([^"]*)"', html).groups()[0])
-        if 'videoData' in init_info:  # bv视频
-            status = Status(**init_info['videoData']['stat'])
-            bvid = init_info['bvid']
-            aid = init_info['aid']
-            (p, cid), = init_info['cidMap'][bvid]['cids'].items()
-            p = int(p) - 1
-            title = legal_title(init_info['videoData']['title'])
-            base_url = url.split('?')[0]
-            for idx, i in enumerate(init_info['videoData']['pages']):
-                p_url = f"{base_url}?p={idx + 1}"
-                p_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
-                pages.append(Page(p_name=p_name, p_url=p_url))
-        elif 'initEpList' in init_info:  # 动漫，电视剧，电影
-            stat = init_info['mediaInfo']['stat']
-            status = Status(
-                view=stat['views'], danmaku=stat['danmakus'], coin=stat['coins'], like=stat['likes'],
-                reply=stat['reply'], favorite=stat['favorite'], follow=stat['favorites'], share=stat['share'],
-            )
-            bvid = None
-            aid = init_info['epInfo']['aid']
-            cid = init_info['epInfo']['cid']
-            p = init_info['epInfo']['i']
-            title = legal_title(re.search('property="og:title" content="([^"]*)"', html).groups()[0])
-            for idx, i in enumerate(init_info['initEpList']):
-                p_url = i['link']
-                p_name = i['title']
-                pages.append(Page(p_name=p_name, p_url=p_url))
-        else:
-            raise APIUnsupportedError("未知视频类型", url)
-        # extract dash and flv_url
-        dash, other = None, []
-        try:
-            play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', html).groups()[0]
-            play_info = json.loads(play_info)
-        except AttributeError:  # AttributeError-动画
-            pass
-        else:
-            try:
-                dash = Dash.from_dict(play_info)
-            except KeyError:
-                pass
-            try:
-                for i in play_info['data']['durl']:
-                    suffix = re.search(r'\.([a-zA-Z0-9]+)\?', i['url']).group(1)
-                    other.append(Media(base_url=i['url'], backup_url=i['backup_url'], suffix=suffix))
-            except KeyError:
-                pass
-        # extract img url
-        img_url = re.search('property="og:image" content="([^"]*)"', html).groups()[0]
-        if not img_url.startswith('http'):  # https://github.com/HFrost0/bilix/issues/52 just for some video
-            img_url = 'http:' + img_url.split('@')[0]
-        # construct data
-        video_info = VideoInfo(title=title, h1_title=h1_title, aid=aid, cid=cid, status=status,
-                               p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash, other=other)
-        return video_info
+
+def _parse_bv_html(url, html: str) -> VideoInfo:
+    init_info = re.search(r'<script>window.__INITIAL_STATE__=({.*});\(', html).groups()[0]  # this line may raise
+    init_info = json.loads(init_info)
+    if len(init_info.get('error', {})) > 0:
+        raise APIResourceError("视频已失效", url)  # 啊叻？视频不见了？在分区下载的时候可能产生
+    # extract meta
+    pages = []
+    h1_title = legal_title(re.search('<h1[^>]*title="([^"]*)"', html).groups()[0])
+    status = Status(**init_info['videoData']['stat'])
+    bvid = init_info['bvid']
+    desc = init_info['videoData'].get('desc', '')
+    tags = [i['tag_name'] for i in init_info['tags']]
+    aid = init_info['aid']
+    (p, cid), = init_info['cidMap'][bvid]['cids'].items()
+    p = int(p) - 1
+    title = legal_title(init_info['videoData']['title'])
+    base_url = url.split('?')[0]
+    for idx, i in enumerate(init_info['videoData']['pages']):
+        p_url = f"{base_url}?p={idx + 1}"
+        p_name = f"P{idx + 1}-{i['part']}" if len(init_info['videoData']['pages']) > 1 else ''
+        pages.append(Page(p_name=p_name, p_url=p_url))
+    # extract dash and flv_url
+    dash, other = None, []
+    play_info = re.search('<script>window.__playinfo__=({.*})</script><script>', html).groups()[0]
+    play_info = json.loads(play_info)['data']
+    try:
+        dash = Dash.from_dict(play_info)
+    except KeyError:
+        pass
+    try:
+        for i in play_info['durl']:
+            suffix = re.search(r'\.([a-zA-Z0-9]+)\?', i['url']).group(1)
+            other.append(Media(base_url=i['url'], backup_url=i['backup_url'], suffix=suffix))
+    except KeyError:
+        pass
+    # extract img url
+    img_url = re.search('property="og:image" content="([^"]*)"', html).groups()[0]
+    if not img_url.startswith('http'):  # https://github.com/HFrost0/bilix/issues/52 just for some video
+        img_url = 'http:' + img_url.split('@')[0]
+    # construct data
+    video_info = VideoInfo(title=title, aid=aid, cid=cid, status=status,
+                           p=p, pages=pages, img_url=img_url, bvid=bvid, dash=dash, other=other,
+                           desc=desc, tags=tags)
+    return video_info
+
+
+def _parse_ep_html(url, html: str) -> VideoInfo:
+    data = re.search(r'<script id="__NEXT_DATA__" type="application/json">({.*})</script>', html).groups()[0]
+    data = json.loads(data)
+    queries = data['props']['pageProps']['dehydratedState']['queries']
+    season_info = queries[0]['state']['data']['seasonInfo']
+    media_info = season_info['mediaInfo']
+    stat = media_info['stat']
+    status = Status(coin=stat['coins'], view=stat['views'], danmaku=stat['danmakus'], share=stat['share'],
+                    like=stat['likes'], reply=stat['reply'], favorite=stat['favorite'], follow=stat['favorites'])
+    title = legal_title(media_info['title'])
+    desc = media_info['evaluate']
+    episodes = media_info['episodes']
+    path: str = url.split('?')[0].split('/')[-1]
+    ep_id = path[2:] if path.startswith('ep') else episodes[0]["ep_id"]
+    p = 0
+    aid, cid, bvid = 0, 0, ""
+    pages = []
+    img_url = ''
+    for i, ep in enumerate(episodes):
+        if str(ep["ep_id"]) == ep_id:
+            p = i
+            aid, cid, bvid = ep["aid"], ep["cid"], ep["bvid"]
+            img_url = ep["cover"]
+        pages.append(Page(p_name=legal_title(ep["playerEpTitle"]), p_url=ep["link"]))
+    video_info = VideoInfo(
+        title=title, status=status, desc=desc,
+        aid=aid, cid=cid, bvid=bvid, p=p, pages=pages,
+        img_url=img_url, ep_id=ep_id,
+    )
+    return video_info
 
 
 @raise_api_error
@@ -425,8 +438,17 @@ async def _get_video_info_from_html(client: httpx.AsyncClient, url: str) -> Vide
     res = await req_retry(client, url, follow_redirects=True)
     if str(res.url).startswith("https://www.bilibili.com/festival"):
         raise APIInvalidError("特殊节日页面", url)
-    video_info = VideoInfo.parse_html(url, res.text)
-    return video_info
+    html = res.text
+    if "window._riskdata_" in html:
+        raise APIInvalidError("web 前端访问被风控", url)
+    if "window.__INITIAL_STATE__" in html:
+        return _parse_bv_html(url, html)
+    elif "__NEXT_DATA__" in html:
+        video_info = _parse_ep_html(url, html)
+        await _attach_ep_dash(client, video_info)
+        return video_info
+    else:
+        raise APIUnsupportedError("未知页面类型", url)
 
 
 async def _get_video_info_from_api(client: httpx.AsyncClient, url: str) -> VideoInfo:
@@ -437,8 +459,30 @@ async def _get_video_info_from_api(client: httpx.AsyncClient, url: str) -> Video
     return video_info
 
 
-async def _attach_dash_and_durl_from_api(client: httpx.AsyncClient, video_info: VideoInfo) \
-        -> Tuple[Dash, List[Media]]:
+async def _attach_ep_dash(client: httpx.AsyncClient, video_info: VideoInfo):
+    params = {
+        'support_multi_audio': True,
+        'avid': video_info.aid,
+        'cid': video_info.cid,
+        'fnver': 0,
+        'fnval': 4048,
+        'fourk': 1,
+        'ep_id': video_info.ep_id,
+    }
+    res = await req_retry(client, 'https://api.bilibili.com/pgc/player/web/v2/playurl', params=params)
+    res = json.loads(res.text)
+    data = res['result']['video_info']
+    if "dash" in data:
+        video_info.dash = Dash.from_dict(data)
+    if "durl" in data:
+        other = []
+        for i in data['durl']:
+            suffix = re.search(r'\.([a-zA-Z0-9]+)\?', i['url']).group(1)
+            other.append(Media(base_url=i['url'], backup_url=i['backup_url'], size=i['size'], suffix=suffix))
+        video_info.other = other
+
+
+async def _attach_dash_and_durl_from_api(client: httpx.AsyncClient, video_info: VideoInfo):
     params = {'cid': video_info.cid, 'bvid': video_info.bvid,
               'qn': 120,  # 如无 dash 资源（少数老视频），fallback 到 4K 超清 durl
               'fnval': 4048,  # 如 dash 资源可用，请求 dash 格式的全部可用流
@@ -451,7 +495,7 @@ async def _attach_dash_and_durl_from_api(client: httpx.AsyncClient, video_info: 
         raise APIResourceError(dash_json['message'], video_info.bvid)
     dash, other = None, []
     if 'dash' in dash_json['data']:
-        dash = Dash.from_dict(dash_json)
+        dash = Dash.from_dict(dash_json['data'])
     if 'durl' in dash_json['data']:
         for i in dash_json['data']['durl']:
             suffix = re.search(r'\.([a-zA-Z0-9]+)\?', i['url']).group(1)

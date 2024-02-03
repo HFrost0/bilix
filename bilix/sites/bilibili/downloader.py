@@ -336,9 +336,9 @@ class DownloaderBilibili(BaseDownloaderPart):
                 except (APIResourceError, APIUnsupportedError) as e:
                     return self.logger.warning(e)
             p_name = legal_title(video_info.pages[video_info.p].p_name)
-            task_name = legal_title(video_info.h1_title, p_name)
+            task_name = legal_title(video_info.title, p_name)
             # if title is too long, use p_name as base_name
-            base_name = p_name if len(video_info.h1_title) > self.title_overflow and self.hierarchy and p_name else \
+            base_name = p_name if len(video_info.title) > self.title_overflow and self.hierarchy and p_name else \
                 task_name
             media_name = base_name if not time_range else legal_title(base_name, *map(t2s, time_range))
             media_cors = []
@@ -464,10 +464,10 @@ class DownloaderBilibili(BaseDownloaderPart):
         file_type = '.' + ('pb' if not convert_func else convert_func.__name__.split('2')[-1])
         p_name = video_info.pages[video_info.p].p_name
         # to avoid file name too long bug
-        if len(video_info.h1_title) > self.title_overflow and self.hierarchy and p_name:
+        if len(video_info.title) > self.title_overflow and self.hierarchy and p_name:
             file_name = legal_title(p_name, "弹幕") + file_type
         else:
-            file_name = legal_title(video_info.h1_title, p_name, "弹幕") + file_type
+            file_name = legal_title(video_info.title, p_name, "弹幕") + file_type
         file_path = path / file_name
         exist, file_path = path_check(file_path)
         if not update and exist:
@@ -506,10 +506,10 @@ class DownloaderBilibili(BaseDownloaderPart):
         cors = []
 
         for sub_url, sub_name in subtitles:
-            if len(video_info.h1_title) > self.title_overflow and self.hierarchy and p_name:
+            if len(video_info.title) > self.title_overflow and self.hierarchy and p_name:
                 file_name = legal_title(p_name, sub_name)
             else:
-                file_name = legal_title(video_info.h1_title, p_name, sub_name)
+                file_name = legal_title(video_info.title, p_name, sub_name)
             cors.append(self.get_static(sub_url, path / file_name, convert_func=convert_func))
         paths = await asyncio.gather(*cors)
         return paths
