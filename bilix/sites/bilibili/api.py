@@ -488,6 +488,8 @@ async def _attach_dash_and_durl_from_api(client: httpx.AsyncClient, video_info: 
               'fnval': 4048,  # 如 dash 资源可用，请求 dash 格式的全部可用流
               'fourk': 1,  # 请求 4k 资源
               'fnver': 0, 'platform': 'pc', 'otype': 'json'}
+    if not client.cookies.get("SESSDATA"):
+        params["try_look"] = "1"
     dash_response = await req_retry(client, 'https://api.bilibili.com/x/player/playurl',
                                     params=params, follow_redirects=True)
     dash_json = json.loads(dash_response.text)
