@@ -219,7 +219,9 @@ class Media(BaseModel):
     height: Optional[int] = None
     suffix: Optional[str] = None
     quality: Optional[str] = None
+    quality_id: Optional[int] = None
     codec: Optional[str] = None
+    bandwidth: Optional[int] = None
     segment_base: Optional[dict] = None
 
     @property
@@ -248,14 +250,14 @@ class Dash(BaseModel):
             if d['id'] not in quality_map:
                 continue  # https://github.com/HFrost0/bilix/issues/93
             quality = quality_map[d['id']]
-            m = Media(quality=quality, codec=d['codecs'], **d)
+            m = Media(quality=quality, quality_id=d['id'], codec=d['codecs'], **d)
             video_formats[quality][m.codec] = m
             videos.append(m)
 
         audios = []
         audio_formats = {}
         if dash.get('audio', None):  # some video have NO audio
-            d = dash['audio'][0]
+            d = max(dash['audio'], key=lambda audio: audio['bandwidth'])
             m = Media(quality="default", suffix='.aac', codec=d['codecs'], **d)
             audios.append(m)
             audio_formats[m.quality] = m
@@ -263,7 +265,7 @@ class Dash(BaseModel):
             quality = "dolby"
             audio_formats[quality] = None
             if dash['dolby'].get('audio', None):
-                d = dash['dolby']['audio'][0]
+                d = max(dash['dolby']['audio'], key=lambda audio: audio['bandwidth'])
                 m = Media(quality=quality, suffix='.eac3', codec=d['codecs'], **d)
                 audios.append(m)
                 audio_formats[m.quality] = m
@@ -278,29 +280,48 @@ class Dash(BaseModel):
                    video_formats=video_formats, audio_formats=audio_formats)
 
     def choose_video(self, quality: Union[int, str], video_codec: str) -> Media:
+        def select_max_bandwidth(format: str) -> Optional[Media]:
+            formats = [
+                video_format
+                for c, video_format in self.video_formats[format].items()
+                if c.startswith(video_codec)
+            ]
+            if not formats:
+                return None
+            return max(
+                formats,
+                key=lambda media: media.bandwidth if media.bandwidth is not None else 0,
+            )
+
         # 1. absolute choice with quality name like 4k 1080p '1080p 60帧'
         if isinstance(quality, str):
             for k in self.video_formats:
                 if k.upper().startswith(quality.upper()):  # incase 1080P->1080p
-                    for c in self.video_formats[k]:
-                        if c.startswith(video_codec):
-                            return self.video_formats[k][c]
+                    format = select_max_bandwidth(k)
+                    if format:
+                        return format
         # 2. relative choice
         else:
             keys = [k for k in self.video_formats.keys() if self.video_formats[k]]
             quality = min(quality, len(keys) - 1)
             k = keys[quality]
-            for c in self.video_formats[k]:
-                if c.startswith(video_codec):
-                    return self.video_formats[k][c]
+            format = select_max_bandwidth(k)
+            if format:
+                return format
         raise KeyError(f"no match for video quality: {quality} codec: {video_codec}")
 
     def choose_audio(self, audio_codec: str) -> Optional[Media]:
         if len(self.audios) == 0:  # some video has no audio
             return
-        for k in self.audio_formats:
-            if self.audio_formats[k] and self.audio_formats[k].codec.startswith(audio_codec):
-                return self.audio_formats[k]
+        audio_quality_rank = ['dolby', 'flac', 'default']
+        audio_formats = sorted(
+            filter(lambda item: item[1], self.audio_formats.items()),
+            key=lambda item: audio_quality_rank.index(item[0])
+            if item[0] in audio_quality_rank
+            else float('inf'),
+        )
+        if audio_formats:
+            return audio_formats[0][1]
         raise KeyError(f'no match for audio codec: {audio_codec}')
 
     def choose_quality(self, quality: Union[str, int], codec: str = '') -> Tuple[Media, Optional[Media]]:
