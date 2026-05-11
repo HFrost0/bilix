@@ -122,6 +122,13 @@ async def test_get_subtitle_info():
     assert data[0][1]
 
 
+def test_normalize_subtitle_url():
+    assert api._normalize_subtitle_url('//test.com/subtitle.vtt') == 'http://test.com/subtitle.vtt'
+    assert api._normalize_subtitle_url('/subtitles/1.json') == 'https://www.bilibili.com/subtitles/1.json'
+    assert api._normalize_subtitle_url('https://test.com/file') == 'https://test.com/file'
+    assert api._normalize_subtitle_url('test.com/file') == 'http://test.com/file'
+
+
 @pytest.mark.asyncio
 async def test_get_dm_info():
     data = await api.get_video_info(client,

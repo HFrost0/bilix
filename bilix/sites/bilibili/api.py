@@ -1,7 +1,7 @@
 import asyncio
 import json
 import re
-from urllib.parse import quote
+from urllib.parse import quote, urljoin
 import httpx
 from pydantic import field_validator, BaseModel, Field
 from typing import Union, List, Tuple, Dict, Optional
@@ -536,6 +536,16 @@ async def _get_video_basic_info_from_api(client: httpx.AsyncClient, url) -> Vide
     return basic_video_info
 
 
+def _normalize_subtitle_url(subtitle_url: str) -> str:
+    if subtitle_url.startswith('//'):
+        return 'http:' + subtitle_url
+    if subtitle_url.startswith('/'):
+        return urljoin('https://www.bilibili.com', subtitle_url)
+    if not subtitle_url.startswith('http'):
+        return 'http://' + subtitle_url
+    return subtitle_url
+
+
 @raise_api_error
 async def get_subtitle_info(client: httpx.AsyncClient, bvid, cid):
     params = {'bvid': bvid, 'cid': cid}
@@ -543,7 +553,7 @@ async def get_subtitle_info(client: httpx.AsyncClient, bvid, cid):
     info = json.loads(res.text)
     if info['code'] == -400:
         raise APIError(f'未找到字幕信息', params)
-    return [[f'http:{i["subtitle_url"]}', i['lan_doc']] for i in info['data']['subtitle']['subtitles']]
+    return [[_normalize_subtitle_url(i['subtitle_url']), i['lan_doc']] for i in info['data']['subtitle']['subtitles']]
 
 
 @raise_api_error
