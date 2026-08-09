@@ -32,6 +32,12 @@ async def test_get_list_info():
         "https://space.bilibili.com/369750017/channel/seriesdetail?sid=2458228")
     assert list_name == '瘦腰腹跟练'
     assert len(bvids) > 0 and bvids[0].startswith('BV')
+    # 新版空间列表链接 /lists/{id}?type=series
+    list_name2, _, bvids2 = await api.get_list_info(
+        client,
+        "https://space.bilibili.com/369750017/lists/2458228?type=series")
+    assert list_name2 == list_name
+    assert bvids2 == bvids
 
 
 @pytest.mark.asyncio
@@ -41,6 +47,22 @@ async def test_get_collect_info():
         "https://space.bilibili.com/54296062/channel/collectiondetail?sid=412818&ctype=0")
     assert list_name == 'asyncio协程'
     assert len(bvids) > 0 and bvids[0].startswith('BV')
+    # 新版空间合集链接 /lists/{id}?type=season
+    list_name2, _, bvids2 = await api.get_collect_info(
+        client,
+        "https://space.bilibili.com/54296062/lists/412818?type=season")
+    assert list_name2 == list_name
+    assert bvids2 == bvids
+
+
+def test_parse_sid():
+    assert api._parse_sid('412818') == '412818'
+    assert api._parse_sid(
+        'https://space.bilibili.com/54296062/channel/collectiondetail?sid=412818&ctype=0') == '412818'
+    assert api._parse_sid(
+        'https://space.bilibili.com/307801268/lists/7727117?type=season') == '7727117'
+    assert api._parse_sid(
+        'https://space.bilibili.com/369750017/lists/2458228?type=series') == '2458228'
 
 
 @pytest.mark.asyncio

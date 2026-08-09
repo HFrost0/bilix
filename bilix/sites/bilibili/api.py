@@ -41,6 +41,20 @@ async def get_cate_meta(client: httpx.AsyncClient) -> dict:
     return cate_info
 
 
+def _parse_sid(url_or_sid: str) -> str:
+    """从合集/视频列表 url 或纯 sid 中解析 id。
+
+    兼容旧版 channel/*detail?sid= 与新版 /lists/{id}?type= 两种链接。
+    """
+    if not url_or_sid.startswith('http'):
+        return url_or_sid
+    if m := re.search(r'[?&]sid=(\d+)', url_or_sid):
+        return m.group(1)
+    if m := re.search(r'/lists/(\d+)', url_or_sid):
+        return m.group(1)
+    raise ValueError(f'{url_or_sid} does not contain sid')
+
+
 @raise_api_error
 async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     """
@@ -50,10 +64,7 @@ async def get_list_info(client: httpx.AsyncClient, url_or_sid: str, ):
     :param client:
     :return:
     """
-    if url_or_sid.startswith('http'):
-        sid = re.search(r'sid=(\d+)', url_or_sid).groups()[0]
-    else:
-        sid = url_or_sid
+    sid = _parse_sid(url_or_sid)
     res = await req_retry(client, f'https://api.bilibili.com/x/series/series?series_id={sid}')  # meta api
     meta = json.loads(res.text)
     mid = meta['data']['meta']['mid']
@@ -78,7 +89,7 @@ async def get_collect_info(client: httpx.AsyncClient, url_or_sid: str):
     :param client:
     :return:
     """
-    sid = re.search(r'sid=(\d+)', url_or_sid).groups()[0] if url_or_sid.startswith('http') else url_or_sid
+    sid = _parse_sid(url_or_sid)
     params = {'season_id': sid}
     res = await req_retry(client, 'https://api.bilibili.com/x/space/fav/season/list', params=params)
     data = json.loads(res.text)

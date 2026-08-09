@@ -71,6 +71,8 @@ class DownloaderBilibili(BaseDownloaderPart):
     def parse_url(cls, url: str):
         if re.match(r'https://space\.bilibili\.com/\d+/favlist\?fid=\d+', url):
             return cls.get_favour
+        elif re.match(r'https://space\.bilibili\.com/\d+/lists/\d+', url):
+            return cls.get_collect_or_list
         elif re.match(r'https://space\.bilibili\.com/\d+/channel/seriesdetail\?sid=\d+', url):
             return cls.get_collect_or_list
         elif re.match(r'https://space\.bilibili\.com/\d+/channel/collectiondetail\?sid=\d+', url):
@@ -96,12 +98,13 @@ class DownloaderBilibili(BaseDownloaderPart):
         :param codec:
         :return:
         """
-        if 'series' in url:
-            list_name, up_name, bvids = await api.get_list_info(self.client, url)
-            name = legal_title(f"【视频列表】{up_name}", list_name)
-        elif 'collection' in url:
+        # 新版空间页: /lists/{id}?type=season|series；旧版: channel/collectiondetail|seriesdetail
+        if 'type=season' in url or 'collection' in url:
             col_name, up_name, bvids = await api.get_collect_info(self.client, url)
             name = legal_title(f"【合集】{up_name}", col_name)
+        elif 'type=series' in url or 'series' in url:
+            list_name, up_name, bvids = await api.get_list_info(self.client, url)
+            name = legal_title(f"【视频列表】{up_name}", list_name)
         else:
             raise ValueError(f'{url} invalid for get_collect_or_list')
         if self.hierarchy:
