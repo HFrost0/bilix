@@ -439,7 +439,7 @@ async def _get_video_info_from_html(client: httpx.AsyncClient, url: str) -> Vide
     if str(res.url).startswith("https://www.bilibili.com/festival"):
         raise APIInvalidError("特殊节日页面", url)
     html = res.text
-    if "window._riskdata_" in html:
+    if "window._riskdata_" in html or "risk-captcha-sdk" in html:
         raise APIInvalidError("web 前端访问被风控", url)
     if "window.__INITIAL_STATE__" in html:
         return _parse_bv_html(url, html)
